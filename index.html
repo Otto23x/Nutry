@@ -273,7 +273,7 @@ const INT={bassa:.8,media:1,alta:1.2};
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="2.4.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="2.4.1";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0}))};}
@@ -299,6 +299,7 @@ S.ai=Object.assign({key:"",model:"auto"},S.ai||{});
 S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
 S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};
 S.meta=S.meta||{updated:new Date().toISOString()};
+S.conadTpl=S.conadTpl||"";
 S.diet=Object.assign({intol:"lattosio; colon irritabile",
   no:"aglio, cipolla, porro, pomodoro, arancia, ananas, caffè, peperoni, melanzane, cavoli e verza, carciofi, asparagi, avena",
   si:"pollo, patate, kefir, yogurt greco senza lattosio, uova, salmone, piselli, quinoa soffiata",
@@ -812,6 +813,13 @@ window.stopScan=()=>{if(scanner){scanner.stop().catch(()=>{});scanner=null;}
 /* ═══════════════════════════════════════════════════════════════
    12. PAGINA SPESA (Conad, sostituzioni AI, prodotti salvati, WhatsApp)
    ═══════════════════════════════════════════════════════════════ */
+/* Costruisce il link di ricerca: usa il modello personale se impostato
+   (con {q} = termine pulito e codificato), altrimenti apre solo la home
+   del sito (nessun link indovinato: Conad richiede prima il negozio). */
+function conadLink(text){
+  const q=encodeURIComponent(conadQ(text));
+  if(S.conadTpl&&S.conadTpl.includes("{q}"))return safeUrl(S.conadTpl.replace("{q}",q));
+  return "https://spesaonline.conad.it/";}
 function conadQ(t){ // pulizia testo per la ricerca Conad
   return t.replace(/\(.*?\)/g,"").replace(/~|≈/g,"")
     .replace(/\b(crudi|crudo|crude|cruda|secca|secchi|freschi|fresco|SENZA|senza|surgelati|surgelata|opz\.?)\b/gi,"")
@@ -834,7 +842,11 @@ window.genShop=async()=>{
     S.customShop=arr.map(x=>[String(x[0]),x[1].map(String)]);S.shop={};save();render("spesa");
   }catch(e){aiFail(e);}};
 function renderSpesa(){const el=document.getElementById("pg-spesa");
-  let h=`<div class="card"><h2>Lista della spesa</h2>
+  let h=`<div class="card"><h2>🔗 Link di ricerca Conad</h2>
+  <div class="hint">Conad richiede di selezionare prima il tuo negozio: non esiste un link universale. Vai su <b>spesaonline.conad.it</b>, scegli il tuo punto vendita, cerca un prodotto qualsiasi, copia l'indirizzo ottenuto e incollalo qui sotto sostituendo il termine cercato con <b>{q}</b>.</div>
+  <input type="text" id="cTpl" value="${esc(S.conadTpl||"")}" placeholder="es. https://spesaonline.conad.it/negozio/123/ricerca?q={q}">
+  <button class="btn small" onclick="saveConadTpl()">Salva modello</button></div>
+  <div class="card"><h2>Lista della spesa</h2>
   <div class="hint">☐ spunta · 🔗 cerca su Conad · 🤖 alternativa se esaurito. Le spunte restano salvate.</div>
   <div class="mtools"><button class="btn ghost small" onclick="resetShop()">Svuota spunte</button>
   <button class="btn ghost small" onclick="waShop()">📤 WhatsApp</button></div></div>`;
@@ -844,7 +856,7 @@ function renderSpesa(){const el=document.getElementById("pg-spesa");
       h+=`<div class="shopitem ${c?"c":""}">
         <span class="box" onclick="tglShop('${id}')">${c?"✓":""}</span>
         <span class="st" onclick="tglShop('${id}')">${esc(it)}</span>
-        <a class="ibtn" target="_blank" rel="noopener" title="Cerca su Conad" href="https://spesaonline.conad.it/ricerca?q=${encodeURIComponent(conadQ(it))}">🔗</a>
+        <a class="ibtn" target="_blank" rel="noopener" title="Cerca su Conad" href="${conadLink(it)}" title="${S.conadTpl?'Cerca nel tuo Conad':'Apri Conad (imposta il tuo link in cima alla pagina)'}">🔗</a>
         <button class="ibtn" title="Alternativa AI" onclick="subAI('${it.replace(/'/g,"\\'")}')">🤖</button></div>`;});
     h+=`</div>`;});
   // Prodotti Conad salvati
@@ -855,6 +867,9 @@ function renderSpesa(){const el=document.getElementById("pg-spesa");
     <span><a class="ibtn" target="_blank" rel="noopener" href="${esc(safeUrl(l.u))}">🛒 Apri</a><span class="del" onclick="delLink(${i})">✕</span></span></div>`;});
   h+=`<button class="btn ghost small" onclick="addLink()">+ Aggiungi prodotto</button></div>`;
   el.innerHTML=h;}
+window.saveConadTpl=()=>{const v=document.getElementById("cTpl").value.trim();
+  if(v&&!v.includes("{q}"))return alert("Il modello deve contenere {q} al posto del termine cercato.");
+  S.conadTpl=v;save();alert(v?"Modello salvato: i link ora puntano al tuo negozio.":"Modello rimosso: i link apriranno la home Conad.");render("spesa");};
 window.tglShop=id=>{S.shop[id]=!S.shop[id];save();render("spesa");};
 window.resetShop=()=>{S.shop={};save();render("spesa");};
 window.addLink=()=>{const n=prompt("Nome prodotto (es. Kefir XYZ 500g)");if(!n)return;
@@ -1200,7 +1215,8 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>🏖️</td><td>Vacanza (in Io): congela deficit e 🔥; l'app resta un diario senza giudizio.</td></tr>
 <tr><td>🌅</td><td>Banner del mattino: se ieri hai pasti senza spunta o zero allenamenti, ti propone "Completa ieri" per chiudere la giornata.</td></tr>
 <tr><td>📅</td><td>Banner del lunedì: nuova settimana → controlla il recap e convalida la scorsa. <b>Dopo il salvataggio non è più modificabile.</b> Le medie del recap contano solo i giorni completati (i ⏳ sono esclusi).</td></tr>
-<tr><td>🛒</td><td><b>I miei prodotti Conad</b> (in Spesa): apri il tuo prodotto sul sito Conad, copia il link dalla barra del browser, poi "+ Aggiungi prodotto" → dai un nome e incolla il link. Da quel momento lo riapri con un tap su "🛒 Apri".</td></tr>
+<tr><td>🔗</td><td><b>Link di ricerca Conad</b> (in cima a Spesa): Conad richiede di scegliere prima il negozio, quindi non c'è un link universale. Fai una ricerca sul sito col TUO negozio selezionato, copia l'indirizzo, sostituisci il termine cercato con <b>{q}</b> e incollalo nel campo — da quel momento ogni 🔗 della lista punta al tuo negozio.</td></tr>
+<tr><td>🛒</td><td><b>I miei prodotti Conad</b> (in Spesa): per un prodotto preciso, apri la sua pagina sul sito Conad, copia il link, poi "+ Aggiungi prodotto" → dai un nome e incolla il link. Da quel momento lo riapri con "🛒 Apri", senza passare dal modello di ricerca.</td></tr>
 <tr><td>🥗</td><td><b>Caratteristiche alimentari</b> (in Io): intolleranze, cibi da evitare/preferiti e FODMAP — le rispettano TUTTE le funzioni AI. Modificale a mano o con "🤖 Compila con l'AI".</td></tr></table></div>
 
 <div class="card"><h2>AI (Gemini)</h2>
