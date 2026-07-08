@@ -6,7 +6,7 @@
 <!-- ══════════ SICUREZZA: Content-Security-Policy ══════════
      Limita da dove possono arrivare script e verso dove l'app può connettersi.
      Anche in caso di iniezione, i dati non possono uscire verso domini estranei. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://generativelanguage.googleapis.com https://world.openfoodfacts.org https://www.googleapis.com https://accounts.google.com http://localhost:11434 http://127.0.0.1:11434; frame-src https://accounts.google.com; worker-src blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://generativelanguage.googleapis.com https://world.openfoodfacts.org https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; worker-src blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'">
 <title>Il mio Diario — Dieta & Sport</title>
 
 <!-- ══════════ LIBRERIE CDN con SRI (integrità verificata): se il file
@@ -98,8 +98,9 @@ html[data-theme="dark"] .btn{color:#0F1712}
 .btn.ghost{background:var(--card);color:var(--salvia);border:1.5px solid var(--salvia);box-shadow:none}
 .btn.warn{background:var(--rosso)}
 .btn.small{padding:6px 12px;font-size:12.5px;margin-top:4px}
-.row2{display:flex;gap:9px}.row2>*{flex:1}
-.row3{display:flex;gap:7px}.row3>*{flex:1}
+.row2{display:flex;gap:9px}.row2>*{flex:1;min-width:0}
+.row3{display:flex;gap:7px}.row3>*{flex:1;min-width:0}
+label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shopcat{font-weight:700;color:#fff;background:linear-gradient(90deg,var(--hdr1),var(--hdr2));border-radius:11px 11px 0 0;padding:9px 13px;font-size:13.5px;margin-top:13px}
 .shopitems{background:var(--card);border:1px solid var(--linea);border-top:0;border-radius:0 0 11px 11px;padding:4px 0;box-shadow:var(--shadow)}
 .shopitem{display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid var(--linea);font-size:13.5px}
@@ -133,6 +134,10 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .stars span{filter:grayscale(1);opacity:.4}
 .stars span.on{filter:none;opacity:1}
 .hint{font-size:12px;color:var(--grigio);margin-top:5px;line-height:1.55}
+.gtable{width:100%;font-size:13px}
+.gtable td{padding:6px 6px;vertical-align:top;border-bottom:1px solid var(--linea)}
+.gtable td:first-child{width:64px;text-align:center;font-size:17px}
+.gsec{font-weight:700;color:var(--bosco);margin:10px 0 2px;font-size:13.5px}
 .aibox{background:var(--mensabg);border:1px solid var(--linea);border-radius:11px;padding:11px;margin-top:9px;font-size:13.5px;line-height:1.5;white-space:pre-wrap}
 .histweek{border:1px solid var(--linea);border-radius:12px;background:var(--card);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)}
 .histweek .hh{padding:11px 13px;display:flex;justify-content:space-between;cursor:pointer;font-weight:700;color:var(--bosco);font-size:14px}
@@ -171,6 +176,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
     <h1 id="hTitle">Il mio Diario</h1>
     <div class="hbtns">
       <span class="streak" id="hStreak" title="Giorni in target consecutivi">🔥 0</span>
+      <button class="hbtn" onclick="show('guida')" title="Guida rapida">❓</button>
       <button class="hbtn" id="themeBtn" onclick="toggleTheme()" title="Tema chiaro/scuro">🌙</button>
     </div>
   </div>
@@ -188,6 +194,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
 <div class="page" id="pg-sport"></div>
 <div class="page" id="pg-storico"></div>
 <div class="page" id="pg-io"></div>
+<div class="page" id="pg-guida"></div>
 <div id="printreport"></div>
 
 <nav class="tabs">
@@ -263,10 +270,11 @@ const INT={bassa:.8,media:1,alta:1.2};
 /* ═══════════════════════════════════════════════════════════════
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
-const KEY="diarioDieta_v2";
+const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
+const APP_VER="2.2.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
-    extras:[],workouts:[],note:"",water:0,sleep:0,stress:0}))};}
+    extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0}))};}
 function defaultState(){return {
   profile:{name:"",gender:"m",dob:"",h:185,w:114,lbm:"",act:1.3,weights:[]},
   customSports:[],shop:{},links:[],permMeals:{},week:freshWeek(),history:[],
@@ -285,13 +293,16 @@ if(!S)S=defaultState();
 // retro-compatibilità morbida su tutti i rami
 S.ui=Object.assign({theme:"light",vacanza:false,lastOpen:"",lastMorning:""},S.ui||{});
 S.drive=Object.assign({cid:"",akey:"",on:false},S.drive||{});
-S.ai=Object.assign({key:"",model:"auto",provider:"gemini",ourl:"http://localhost:11434",omodel:"gemma4:e4b"},S.ai||{});
+S.ai=Object.assign({key:"",model:"auto"},S.ai||{});
+S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
 S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};
 S.meta=S.meta||{updated:new Date().toISOString()};
+if(S.profile&&S.profile.lbm&&!S.profile.fatp&&S.profile.w>0){ // migrazione: da magra kg a % grasso
+  S.profile.fatp=Math.round((1-parseFloat(S.profile.lbm)/S.profile.w)*1000)/10;}
 if(!S.week||!S.week.days||S.week.days.length!==7)S.week=freshWeek();
 S.week.days.forEach((d,di)=>{d.meals.forEach(m=>{if(m.skip===undefined)m.skip=false;if(m.movedAs===undefined)m.movedAs="";if(m.custom===undefined)m.custom=null;});
   while(d.meals.length<PLAN[di].meals.length)d.meals.push({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null});
-  if(d.sleep===undefined)d.sleep=0;if(d.stress===undefined)d.stress=0;});
+  if(d.sleep===undefined)d.sleep=0;if(d.relax===undefined)d.relax=(d.stress?Math.max(1,6-d.stress):0);if(d.feel===undefined)d.feel=0;});
 let driveTimer=null;
 function save(){S.meta.updated=new Date().toISOString();
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
@@ -318,7 +329,9 @@ const fmtDate=d=>d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",mont
    ═══════════════════════════════════════════════════════════════ */
 function age(){if(!S.profile.dob)return 0;const b=new Date(S.profile.dob),n=new Date();
   let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a;}
-function bmr(){const p=S.profile,lbm=parseFloat(p.lbm);
+function bmr(){const p=S.profile;
+  const fat=parseFloat(p.fatp);
+  const lbm=fat>0?p.w*(1-fat/100):parseFloat(p.lbm); // magra in kg dalla % di grasso
   if(lbm>0)return Math.round(370+21.6*lbm);
   const base=10*p.w+6.25*p.h-5*age();return Math.round(p.gender==="m"?base+5:base-161);}
 function tdee(){return Math.round(bmr()*S.profile.act);}
@@ -372,33 +385,52 @@ const GEM_ALL=["auto"].concat(GEM_CHAIN,["gemini-3.1-pro-preview","gemini-2.5-pr
 function gemModels(){const m=S.ai.model||"auto";
   return m==="auto"?GEM_CHAIN:[m].concat(GEM_CHAIN.filter(x=>x!==m));}
 /* parts extra (immagini) in formato Gemini inline_data */
-async function geminiCall(prompt,imgB64,mime){
+/* Registra consumo giornaliero (chiamate + token dichiarati da Gemini) */
+function trackUsage(tok,err){const t=new Date().toISOString().slice(0,10);
+  if(S.usage.day!==t){S.usage.day=t;S.usage.calls=0;S.usage.tokens=0;S.usage.errors=0;}
+  if(err){S.usage.errors++;}else{S.usage.calls++;S.usage.tokens+=tok||0;}
+  S.usage.last=new Date().toISOString();save();
+  const el=document.getElementById("usageLine");if(el)el.innerHTML=usageHtml();}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+/* Chiamata Gemini robusta: fino a 3 tentativi per modello con backoff su 429/503/rete;
+   passa al modello successivo su 404/quota; errori tipizzati per messaggi chiari. */
+async function geminiCall(prompt,imgs){
   const key=(S.ai&&S.ai.key||"").trim();if(!key)throw new Error("nokey");
   const parts=[];
-  if(imgB64)parts.push({inline_data:{mime_type:mime||"image/jpeg",data:imgB64}});
+  (imgs||[]).forEach(im=>parts.push({inline_data:{mime_type:im.mime||"image/jpeg",data:im.b64}}));
   parts.push({text:prompt});
   let lastErr=null;
   for(const m of gemModels()){
-    try{const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+m+":generateContent?key="+encodeURIComponent(key),{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({contents:[{parts}]})});
-      if(r.status===404||r.status===429){lastErr=new Error(r.status===404?"modello":"quota");continue;}
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      const j=await r.json();return j.candidates[0].content.parts.map(p=>p.text||"").join("");
-    }catch(e){lastErr=e;if(!/modello|quota/.test(String(e.message||e)))break;}}
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),25000);
+        let r;
+        try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+m+":generateContent?key="+encodeURIComponent(key),{
+          method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts}]}),signal:ctrl.signal});}
+        finally{clearTimeout(to);}
+        if(r.status===429){lastErr=new Error("quota");break;}              // quota: cambia modello
+        if(r.status===404){lastErr=new Error("modello");break;}            // modello assente: cambia
+        if(r.status===503||r.status===500){lastErr=new Error("busy");await wait(800*(attempt+1));continue;} // sovraccarico: riprova
+        if(r.status===400){throw new Error("badkey");}                     // chiave/permessi
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        const j=await r.json();
+        if(j.promptFeedback&&j.promptFeedback.blockReason)throw new Error("blocked");
+        const txt=(j.candidates&&j.candidates[0]&&j.candidates[0].content.parts.map(p=>p.text||"").join(""))||"";
+        trackUsage((j.usageMetadata&&j.usageMetadata.totalTokenCount)||0,false);
+        return txt;
+      }catch(e){lastErr=e;
+        const msg=String(e.message||e);
+        if(e.name==="AbortError"||/Failed to fetch|NetworkError|load failed/i.test(msg)){await wait(700*(attempt+1));continue;} // rete: riprova
+        if(/quota|modello/.test(msg))break; // gestiti sopra
+        break; // badkey/blocked/altro: non riprovare, prova prossimo modello
+      }
+    }
+  }
+  trackUsage(0,true);
   throw lastErr||new Error("errore");}
-/* Ollama locale (es. Gemma 4 multimodale): API nativa /api/chat, immagini in base64.
-   Richiede Ollama sul PC con OLLAMA_ORIGINS impostato per il CORS. */
-async function ollamaCall(prompt,imgB64){
-  const url=(S.ai.ourl||"http://localhost:11434").replace(/\/$/,"");
-  const msg={role:"user",content:prompt};if(imgB64)msg.images=[imgB64];
-  const r=await fetch(url+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:S.ai.omodel||"gemma4:e4b",messages:[msg],stream:false})});
-  if(!r.ok)throw new Error("Ollama HTTP "+r.status);
-  const j=await r.json();return j.message.content;}
-const aiOn=()=>S.ai.provider==="ollama"||!!(S.ai&&S.ai.key);
-async function aiAsk(prompt){return S.ai.provider==="ollama"?ollamaCall(prompt):geminiCall(prompt);}
-async function aiAskVision(prompt,imgB64,mime){return S.ai.provider==="ollama"?ollamaCall(prompt,imgB64):geminiCall(prompt,imgB64,mime);}
+const aiOn=()=>!!(S.ai&&S.ai.key);
+async function aiAsk(prompt){return geminiCall(prompt);}
+async function aiAskVision(prompt,imgs){return geminiCall(prompt,imgs);}
 /* Scatta/scegli una foto e ridimensionala (max 1024px, JPEG) per contenere i token */
 function snapPhoto(){return new Promise((res,rej)=>{
   const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.capture="environment";
@@ -415,17 +447,46 @@ function snapPhoto(){return new Promise((res,rej)=>{
 /* fascia oraria corrente, per il selezionatore di menù */
 function currentSlot(){const h=new Date().getHours();
   return h<11?"colazione":h<15?"pranzo":h<18?"merenda":"cena";}
+/* Surplus accumulato finora: quanto hai mangiato in PIÙ rispetto al pianificato
+   dei pasti già consumati (extra e modifiche compresi). >0 = sei sopra. */
+function surplusOfDay(di){let plannedDone=0;
+  dayItems(di).forEach(it=>{const st=S.week.days[it.pdi].meals[it.mi];
+    if(st.done&&!st.skip){plannedDone+=mealOpt(it.pdi,it.mi).k;}});
+  return eatenOfDay(di).k-plannedDone;}
+/* Il pasto in piano di questo momento, con target COMPENSATO dal surplus:
+   se hai già accumulato calorie extra, il target scende (le proteine no). */
+function targetMealOf(di){
+  const map={colazione:["Colazione","Metà mattina"],pranzo:["Pranzo"],merenda:["Metà pomeriggio","Aperitivo"],cena:["Cena","Dopo cena"]};
+  const slots=map[currentSlot()];
+  let base=null;
+  for(const s of slots){const it=dayItems(di).find(x=>x.slot===s&&!S.week.days[x.pdi].meals[x.mi].done);
+    if(it){const o=mealOpt(it.pdi,it.mi);base={slot:s,k:o.k,p:o.p};break;}}
+  if(!base){const plan=plannedOfDay(di),eat=eatenOfDay(di);
+    base={slot:currentSlot(),k:Math.max(300,plan.k-eat.k),p:30};}
+  const sur=Math.max(0,surplusOfDay(di));
+  base.sur=sur;base.kAdj=Math.max(200,base.k-sur);
+  return base;}
+function compNote(t){return t.sur>50?(" ATTENZIONE: oggi ho già accumulato circa +"+t.sur+" kcal rispetto al piano, quindi per compensare punta a circa "+t.kAdj+" kcal MANTENENDO le proteine ("+t.p+" g)."):"";}
 function parseAIJSON(t){const m=t.match(/\{[\s\S]*\}|\[[\s\S]*\]/);return JSON.parse(m?m[0]:t);}
 /* ══ SICUREZZA: escaping HTML per OGNI testo dinamico (utente/AI/scanner)
    e whitelist http/https per i link salvati (blocca javascript: ecc.) ══ */
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const safeUrl=u=>/^https?:\/\//i.test(String(u).trim())?String(u).trim():"";
-const aiFail=e=>alert("AI non disponibile ("+(e.message==="nokey"?"chiave Gemini mancante: pagina Io":(S.ai.provider==="ollama"?"Ollama locale non raggiungibile: è avviato? OLLAMA_ORIGINS impostato?":"connessione o chiave"))+").");
+function aiFail(e){const m=String(e&&e.message||e);
+  const map={
+    nokey:"Chiave Gemini mancante: impostala nella pagina Io.",
+    quota:"Hai raggiunto il limite gratuito di Gemini (troppe richieste al minuto o al giorno). Aspetta un minuto e riprova; se càpita spesso, in Io vedi il consumo di oggi.",
+    busy:"I server Gemini sono momentaneamente sovraccarichi: riprova tra poco.",
+    badkey:"Chiave non valida o senza permessi per questo modello (spesso i modelli Pro richiedono fatturazione). Controlla la chiave o scegli un modello Flash.",
+    blocked:"Gemini ha bloccato la risposta per i filtri di sicurezza sul contenuto della foto/testo.",
+    errore:"Connessione non riuscita dopo alcuni tentativi. Controlla la rete e riprova."
+  };
+  alert("🤖 "+(map[m]||("Problema imprevisto nel contatto con Gemini ("+m+"): di solito è la rete che va e viene. Riprova tra poco; se persiste controlla connessione e chiave nella pagina Io.")));}
 
 /* ═══════════════════════════════════════════════════════════════
    7. NAVIGAZIONE
    ═══════════════════════════════════════════════════════════════ */
-const pages=["oggi","piano","spesa","sport","storico","io"];let cur="oggi";
+const pages=["oggi","piano","spesa","sport","storico","io","guida"];let cur="oggi";
 function show(p){cur=p;pages.forEach(x=>document.getElementById("pg-"+x).classList.toggle("active",x===p));
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
   render(p);window.scrollTo(0,0);}
@@ -509,7 +570,7 @@ window.addExtra=async(d)=>{const n=prompt("Cosa hai mangiato in più? (es. birra
 window.extraPhoto=async(di)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
   try{const ph=await snapPhoto();
-    const t=await aiAskVision('Analizza la FOTO di questo cibo/piatto. Identifica cosa è e stima porzione, calorie e proteine. Rispondi SOLO JSON: {"nome":"nome breve del piatto","kcal":numero,"prot":numero}',ph.b64,ph.mime);
+    const t=await aiAskVision('Analizza la FOTO di questo cibo/piatto. Identifica cosa è e stima porzione, calorie e proteine. Rispondi SOLO JSON: {"nome":"nome breve del piatto","kcal":numero,"prot":numero}',[ph]);
     const j=parseAIJSON(t);
     if(confirm("📸 "+j.nome+"\n~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot\n\nOK = aggiungi come extra · Annulla = correggi a mano")){
       S.week.days[di].extras.push({d:j.nome,k:Math.round(j.kcal),p:Math.round(j.prot)});save();render(cur);}
@@ -517,14 +578,15 @@ window.extraPhoto=async(di)=>{
       S.week.days[di].extras.push({d:j.nome,k,p});save();render(cur);}
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
 window.rebalance=async(di)=>{
+  const sg=Math.max(0,surplusOfDay(di));
+  if(sg<=50)return alert("Sei in linea col piano di oggi (surplus +"+sg+" kcal): non c'è nulla da ribilanciare.");
   if(!aiOn())return aiFail(new Error("nokey"));
-  const sg=extrasKcal(di);if(sg<=0)return alert("Nessuno sgarro registrato oggi.");
   const remaining=dayItems(di).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
     return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm";});
   if(!remaining.length)return alert("Non ci sono pasti normali ancora da consumare da ribilanciare.");
   const list=remaining.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
   try{
-    const t=await aiAsk('Ho sgarrato '+sg+' kcal extra oggi. Questi sono i pasti rimanenti: '+JSON.stringify(list)+'. Riduci carboidrati e grassi (MAI le proteine) per assorbire circa '+sg+' kcal totali, mantenendo piatti realistici con grammature. Vincoli: no aglio/cipolla/pomodoro, basso FODMAP. Rispondi SOLO JSON array: [{"slot":"...","desc":"...","kcal":n,"prot":n}]');
+    const t=await aiAsk('Oggi ho accumulato '+sg+' kcal in più rispetto al piano. Questi sono i pasti rimanenti: '+JSON.stringify(list)+'. Riduci carboidrati e grassi (MAI le proteine) per assorbire circa '+sg+' kcal totali, mantenendo piatti realistici con grammature. Vincoli: no aglio/cipolla/pomodoro, basso FODMAP. Rispondi SOLO JSON array: [{"slot":"...","desc":"...","kcal":n,"prot":n}]');
     const arr=parseAIJSON(t);
     let msg="Proposta di ribilanciamento:\n";arr.forEach(a=>msg+="\n• "+a.slot+": "+a.desc+" (~"+a.kcal+" kcal · "+a.prot+"p)");
     if(!confirm(msg+"\n\nOK = applica ai pasti rimanenti"))return;
@@ -535,46 +597,50 @@ window.rebalance=async(di)=>{
 /* 🧊 Svuota-frigo */
 window.fridge=async(di)=>{
   const ing=document.getElementById("fridgeIn").value.trim();
-  if(!ing)return alert("Scrivi cosa hai in frigo.");
+  if(!ing)return alert("Scrivi gli ingredienti, o usa le foto.");
   if(!aiOn())return aiFail(new Error("nokey"));
-  const plan=plannedOfDay(di),eat=eatenOfDay(di);
-  const needK=Math.max(0,plan.k-eat.k),needP=Math.max(0,plan.p-eat.p);
-  const box=document.getElementById("fridgeOut");box.textContent="🧑‍🍳 Sto cucinando l'idea…";
+  const tgt=targetMealOf(di);
+  const box=document.getElementById("fridgeOut");box.textContent="🧑‍🍳 Sto creando il piatto…";
   try{
-    const t=await aiAsk('Ho in frigo: '+ing+'. Mi mancano circa '+needK+' kcal e '+needP+' g di proteine per chiudere la giornata. Crea UNA ricetta semplice con dosi esatte usando (anche solo in parte) questi ingredienti, aggiungendo al massimo 1-2 ingredienti base da dispensa. Vincoli: no aglio, cipolla, pomodoro, lattosio; basso FODMAP. Rispondi SOLO JSON: {"titolo":"...","ricetta":"passaggi brevi con grammature","kcal":n,"prot":n}');
+    const t=await aiAsk('Ho a disposizione: '+ing+'. In questo momento dovrei mangiare: '+tgt.slot+' da circa '+tgt.k+' kcal e '+tgt.p+' g di proteine.'+compNote(tgt)+' Crea UN piatto semplice da circa '+tgt.kAdj+' kcal e '+tgt.p+' g di proteine con dosi esatte (al massimo 1-2 basi da dispensa). Vincoli: no aglio, cipolla, pomodoro, lattosio; basso FODMAP. Rispondi SOLO JSON: {"titolo":"...","ricetta":"passaggi brevi con grammature","kcal":n,"prot":n}');
     const j=parseAIJSON(t);
     box.innerHTML="<b>"+esc(j.titolo)+"</b> (~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot)\n\n"+esc(j.ricetta)+
       '\n\n<button class="btn small" onclick=\'addFridge('+di+","+Math.round(j.kcal)+","+Math.round(j.prot)+","+JSON.stringify(j.titolo)+')\'>Aggiungi come pasto extra</button>';
   }catch(e){box.textContent="";aiFail(e);}};
-window.fridgePhoto=async(di)=>{
+let FR=[]; // foto in attesa per lo svuota-frigo (frigo, congelatore, dispensa…)
+window.frAdd=async()=>{try{const ph=await snapPhoto();FR.push(ph);
+  const n=document.getElementById("frN");if(n)n.textContent=FR.length;
+  }catch(e){}};
+window.frCreate=async(di)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
-  const plan=plannedOfDay(di),eat=eatenOfDay(di);
-  const needK=Math.max(0,plan.k-eat.k),needP=Math.max(0,plan.p-eat.p);
-  try{const ph=await snapPhoto();
-    const box=document.getElementById("fridgeOut");box.textContent="🧑‍🍳 Guardo cosa c'è e invento…";
-    const t=await aiAskVision('Questa è la FOTO del mio frigo/dispensa. 1) Riconosci gli ingredienti utilizzabili. 2) Mi mancano circa '+needK+' kcal e '+needP+' g di proteine per chiudere la giornata: crea UNA ricetta semplice con dosi esatte usando SOLO ciò che vedi (al massimo 1-2 ingredienti base da dispensa come olio o sale). Vincoli: no aglio, cipolla, pomodoro, lattosio; basso FODMAP. Rispondi SOLO JSON: {"visti":"ingredienti riconosciuti in breve","titolo":"...","ricetta":"passaggi brevi con grammature","kcal":n,"prot":n}',ph.b64,ph.mime);
-    const j=parseAIJSON(t);
+  if(!FR.length)return alert("Prima scatta almeno una foto (📸), anche più di una: frigo, congelatore, dispensa.");
+  const tgt=targetMealOf(di);
+  const extra=document.getElementById("fridgeIn").value.trim();
+  const box=document.getElementById("fridgeOut");box.textContent="🧑‍🍳 Guardo le "+FR.length+" foto e invento…";
+  try{
+    const t=await aiAskVision('Queste '+FR.length+' FOTO mostrano il cibo che ho tra frigo, congelatore e dispensa.'+(extra?' In più ho: '+extra+'.':'')+' In questo momento dovrei mangiare: '+tgt.slot+' da circa '+tgt.k+' kcal e '+tgt.p+' g di proteine.'+compNote(tgt)+' Crea UN piatto semplice da circa '+tgt.kAdj+' kcal e '+tgt.p+' g di proteine, con dosi esatte, usando SOLO ciò che vedi (al massimo 1-2 basi da dispensa come olio o sale). Vincoli: no aglio, cipolla, pomodoro, lattosio; basso FODMAP. Rispondi SOLO JSON: {"visti":"ingredienti riconosciuti in breve","titolo":"...","ricetta":"passaggi brevi con grammature","kcal":n,"prot":n}',FR);
+    const j=parseAIJSON(t);FR=[];
     box.innerHTML="👀 Ho visto: "+esc(j.visti)+"\n\n<b>"+esc(j.titolo)+"</b> (~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot)\n\n"+esc(j.ricetta)+
       '\n\n<button class="btn small" onclick=\'addFridge('+di+","+Math.round(j.kcal)+","+Math.round(j.prot)+","+JSON.stringify(j.titolo)+')\'>Aggiungi come pasto extra</button>';
-  }catch(e){if(e.message!=="annullato")aiFail(e);}};
-window.addFridge=(di,k,p,n)=>{S.week.days[di].extras.push({d:"Svuota-frigo: "+n,k,p});save();render(cur);};
+  }catch(e){box.textContent="";if(e.message!=="annullato")aiFail(e);}};
+window.addFridge=(di,k,p,n)=>{S.week.days[di].extras.push({d:"Piatto creato: "+n,k,p});save();render(cur);};
 /* 🍽️ Traduttore di menù */
 window.menuPhoto=async(di)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
-  const plan=plannedOfDay(di),eat=eatenOfDay(di);const needK=Math.max(300,plan.k-eat.k);
+  const tgt=targetMealOf(di);
   try{const ph=await snapPhoto();
     const box=document.getElementById("menuOut");box.textContent="🔎 Leggo il menù e scelgo…";
-    const t=await aiAskVision('Questa è la FOTO di un menù di ristorante. Siamo a '+currentSlot()+' e ho circa '+needK+' kcal disponibili. Dieta: no aglio, cipolla, pomodoro, arancia, ananas, lattosio; basso FODMAP; priorità alle proteine. SCEGLI il singolo piatto (o combinazione) MIGLIORE per me adesso, poi indica 2 riserve. Per ciascuno: nome dal menù, stima kcal/proteine, 1 riga di motivo. Metti la scelta n.1 in evidenza. Testo semplice, niente markdown.',ph.b64,ph.mime);
+    const t=await aiAskVision('Questa è la FOTO di un menù di ristorante. In questo momento, secondo il mio piano alimentare, dovrei mangiare: '+tgt.slot+' da circa '+tgt.k+' kcal e '+tgt.p+' g di proteine.'+compNote(tgt)+' Dieta: no aglio, cipolla, pomodoro, arancia, ananas, lattosio; basso FODMAP. SCEGLI dal menù il singolo piatto (o combinazione) più COMPATIBILE o vicino a '+tgt.kAdj+' kcal e '+tgt.p+' g prot, poi indica 2 riserve. Per ciascuno: nome dal menù, stima kcal/proteine, 1 riga sul perché è compatibile. Metti la scelta n.1 in evidenza. Testo semplice, niente markdown.',[ph]);
     box.textContent=t;
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
 window.menuAI=async(di)=>{
   const txt=document.getElementById("menuIn").value.trim();
   if(!txt)return alert("Incolla il testo del menù.");
   if(!aiOn())return aiFail(new Error("nokey"));
-  const plan=plannedOfDay(di),eat=eatenOfDay(di);const needK=Math.max(300,plan.k-eat.k);
   const box=document.getElementById("menuOut");box.textContent="🔎 Analizzo il menù…";
   try{
-    const t=await aiAsk('Menù del ristorante: """'+txt.slice(0,3000)+'""". Ho ancora circa '+needK+' kcal disponibili stasera. Dieta: no aglio, cipolla, pomodoro, arancia, ananas, lattosio; basso FODMAP; priorità alle proteine. Siamo a '+currentSlot()+'. SCEGLI il piatto migliore per me adesso più 2 riserve, con stima kcal/prot e 1 riga di motivo ciascuno; evidenzia la scelta n.1. Testo semplice, niente markdown.');
+    const tgt=targetMealOf(di);
+    const t=await aiAsk('Menù del ristorante: """'+txt.slice(0,3000)+'""". In questo momento, secondo il mio piano, dovrei mangiare: '+tgt.slot+' da circa '+tgt.k+' kcal e '+tgt.p+' g di proteine.'+compNote(tgt)+' Dieta: no aglio, cipolla, pomodoro, arancia, ananas, lattosio; basso FODMAP. SCEGLI il piatto più COMPATIBILE con circa '+tgt.kAdj+' kcal e '+tgt.p+' g prot più 2 riserve, con stima kcal/prot e 1 riga di motivo; evidenzia la scelta n.1. Testo semplice, niente markdown.');
     box.textContent=t;
   }catch(e){box.textContent="";aiFail(e);}};
 
@@ -589,12 +655,12 @@ function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(
     h+=`<div class="dayname">${d.day}${di===ti?'<span class="todaytag">OGGI</span>':""}</div><div class="dayctx">${d.ctx}</div>`;
     dayItems(di).forEach(it=>h+=mealCard(it.pdi,it.mi));
     S.week.days[di].extras.forEach((e,ei)=>{h+=`<div class="meal"><div class="chk c" onclick="delExtra(${di},${ei})">✕</div>
-      <div class="mbody"><div class="mtop"><span class="mname">Extra / sgarro</span></div>
+      <div class="mbody"><div class="mtop"><span class="mname">Extra</span></div>
       <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ~${e.p||0} g prot</div></div></div>`;});
     const pl=plannedOfDay(di);
     h+=`<div class="mtools" style="margin:2px 0 6px">
-      <button class="btn ghost small" onclick="addExtra(${di})">+ Extra / sgarro</button>
-      ${extrasKcal(di)>0?`<button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia giornata</button>`:""}</div>`;
+      <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
+      <button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia</button></div>`;
     h+=`<textarea placeholder="Note del giorno…" onchange="setNote(${di},this.value)">${esc(S.week.days[di].note||"")}</textarea>`;
     h+=`<div class="daytotal">Pianificato: <span>~${pl.k} kcal · ~${pl.p} g prot</span></div>`;
   });
@@ -617,6 +683,10 @@ window.setStar=(di,f,v)=>{S.week.days[di][f]=(S.week.days[di][f]===v?0:v);save()
 function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewIdx();
   const eat=eatenOfDay(di),burn=burnedOfDay(di),t=tdee(),def=t+burn-eat.k,target=t+burn;
   let h="";
+  if(needMorningBanner())h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+    <div style="flex:1;font-size:13.5px">🌅 Ieri (<b>${PLAN[yIdx()].day}</b>) non risultano allenamenti. Te ne sei dimenticato qualcuno?</div>
+    <button class="btn small" onclick="goSportY()">Aggiungi</button>
+    <button class="ibtn" onclick="dismissMorning()" title="Nascondi per oggi">✕</button></div>`;
   if(S.ui.vacanza){
     h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
     <div class="hint">Deficit e serie 🔥 congelati. L'app resta un diario di annotazione: spunta e scrivi liberamente, senza giudizio. Disattiva la vacanza dalla pagina Io.</div>
@@ -638,35 +708,41 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   // Sonno & Stress
   h+=`<div class="card"><h2>Come stai</h2>
   <label>Sonno (notte scorsa)</label>${stars(di,"sleep")}
-  <label>Stress di oggi</label>${stars(di,"stress")}
-  <div class="hint">1 = pessimo · 5 = ottimo (per lo stress: 5 = molto stressato). Finiscono nell'analisi AI di fine settimana.</div></div>`;
+  <label>Relax di oggi</label>${stars(di,"relax")}
+  <label>Come ti senti</label>${stars(di,"feel")}
+  <div class="hint">Scala uguale per tutte: 1 = basso · 5 = alto (sonno 5 = dormito benissimo · relax 5 = rilassatissimo · come ti senti 5 = alla grande). Finiscono nell'analisi AI di fine settimana.</div></div>`;
   // Pasti
   h+=`<div class="card"><h2>I pasti</h2><div class="hint">✓ mangiato · ✗ saltato · ○ da fare</div></div>`;
   const items=dayItems(di);
   if(items.length)items.forEach(it=>h+=mealCard(it.pdi,it.mi));
   else h+=`<div class="hint">Nessun pasto assegnato a questo giorno.</div>`;
   S.week.days[di].extras.forEach((e,ei)=>{h+=`<div class="meal"><div class="chk c" onclick="delExtra(${di},${ei})">✕</div>
-    <div class="mbody"><div class="mtop"><span class="mname">Extra / sgarro</span></div>
+    <div class="mbody"><div class="mtop"><span class="mname">Extra</span></div>
     <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ~${e.p||0} g prot</div></div></div>`;});
   h+=`<div class="mtools" style="margin-top:4px">
-    <button class="btn ghost small" onclick="addExtra(${di})">+ Extra / sgarro</button>
-    <button class="btn ghost small" onclick="extraPhoto(${di})">📸 Conta-calorie dal piatto</button>
+    <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
+    <button class="btn ghost small" onclick="extraPhoto(${di})">📸 Analisi Piatto</button>
     <button class="btn ghost small" onclick="startScan(${di})">📷 Barcode</button>
-    ${extrasKcal(di)>0?`<button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia giornata</button>`:""}</div>
+    <button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia</button></div>
   <div id="scanbox"><div id="scanreader"></div><button class="btn warn small" onclick="stopScan()">Chiudi scanner</button></div>`;
   // Svuota-frigo
-  h+=`<div class="card"><h2>🧊 Svuota-frigo</h2>
-  <button class="btn small" onclick="fridgePhoto(${di})">📸 Fotografa il frigo</button>
-  <div class="hint">Scatta una foto del frigo aperto (o del ripiano): l'AI riconosce gli ingredienti e inventa la ricetta con le dosi per chiudere la giornata. Oppure scrivili a mano qui sotto.</div>
+  h+=`<div class="card"><h2>🍲 Crea un piatto con quello che hai</h2>
+  <div class="mtools">
+    <button class="btn small" onclick="frAdd()">📸 Fotografa (<span id="frN">${FR.length}</span>)</button>
+    <button class="btn small" onclick="frCreate(${di})">🍲 Crea</button>
+    <button class="btn ghost small" onclick="fridge(${di})">Usa il testo</button>
+  </div>
+  <div class="hint">Scatta PIÙ foto (frigo, congelatore, dispensa), poi "Crea": il piatto sarà tarato sul pasto di questo momento, compensando le calorie già accumulate oggi. In alternativa scrivi gli ingredienti.</div>
   <textarea id="fridgeIn" placeholder="…oppure scrivi: zucchine, uova, ricotta…"></textarea>
-  <button class="btn ghost small" onclick="fridge(${di})">Usa il testo</button>
   <div class="aibox" id="fridgeOut" style="display:none"></div></div>`;
   // Traduttore menù
   h+=`<div class="card"><h2>🍽️ Selezionatore di menù</h2>
-  <button class="btn small" onclick="menuPhoto(${di})">📸 Fotografa il menù</button>
-  <div class="hint">Al ristorante: scatta la foto del menù e l'AI SCEGLIE il piatto migliore per questo momento della giornata e per le calorie che ti restano (più due riserve). Oppure incolla il testo.</div>
+  <div class="mtools">
+    <button class="btn small" onclick="menuPhoto(${di})">📸 Fotografa il menù</button>
+    <button class="btn ghost small" onclick="menuAI(${di})">Usa il testo</button>
+  </div>
+  <div class="hint">L'AI sceglie dal menù il piatto più COMPATIBILE con quello che dovresti mangiare adesso (stesso momento della giornata, kcal e proteine più vicine al tuo pasto in piano), più due riserve.</div>
   <textarea id="menuIn" placeholder="…oppure incolla qui il testo del menù"></textarea>
-  <button class="btn ghost small" onclick="menuAI(${di})">Usa il testo</button>
   <div class="aibox" id="menuOut" style="display:none"></div></div>`;
   el.innerHTML=h;
   // mostra i box AI solo quando pieni
@@ -788,7 +864,7 @@ window.addSportType=async()=>{const n=prompt("Nome del nuovo sport? (es. canoa)"
 function weekSummary(){
   const days=PLAN.map((d,di)=>{const e=eatenOfDay(di);
     return {day:d.day,eat:e.k,prot:e.p,burn:burnedOfDay(di),def:deficitOfDay(di),sk:skippedOfDay(di),
-      sgarri:extrasKcal(di),sleep:S.week.days[di].sleep,stress:S.week.days[di].stress,
+      sgarri:extrasKcal(di),sleep:S.week.days[di].sleep,relax:S.week.days[di].relax,feel:S.week.days[di].feel,
       note:S.week.days[di].note||"",workouts:S.week.days[di].workouts.map(w=>w.sport+" "+w.min+"'")}});
   const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/7);
   return {from:S.week.started,to:iso(new Date()),tdee:tdee(),weight:S.profile.w,
@@ -797,10 +873,10 @@ function weekSummary(){
 function renderStorico(){const el=document.getElementById("pg-storico");
   const w=weekSummary();
   let h=`<div class="card"><h2>Recap della settimana in corso</h2>
-  <table><tr><th>Giorno</th><th class="n">Mangiate</th><th class="n">Prot</th><th class="n">Sport</th><th class="n">😴/😰</th><th class="n">Deficit</th></tr>`;
+  <table><tr><th>Giorno</th><th class="n">Mangiate</th><th class="n">Prot</th><th class="n">Sport</th><th class="n">😴/😌/🙂</th><th class="n">Deficit</th></tr>`;
   w.days.forEach(d=>{h+=`<tr><td>${d.day.slice(0,3)}${d.sk?` <span style="color:var(--rosso)">✗${d.sk}</span>`:""}</td>
     <td class="n">${d.eat}</td><td class="n">${d.prot}g</td><td class="n">${d.burn}</td>
-    <td class="n">${d.sleep||"–"}/${d.stress||"–"}</td>
+    <td class="n">${d.sleep||"–"}/${d.relax||"–"}/${d.feel||"–"}</td>
     <td class="n" style="color:${d.def>=0?"var(--salvia)":"var(--rosso)"}">${d.def>=0?"−":"+"}${Math.abs(d.def)}</td></tr>`;});
   h+=`</table><div class="stat3"><div><div class="v">${w.avgEat}</div><div class="l">kcal medie</div></div>
   <div><div class="v">${w.avgProt} g</div><div class="l">prot medie</div></div>
@@ -843,7 +919,7 @@ window.closeWeek=async()=>{
   const wk=weekSummary();
   // AI: report PT + correlazioni (una sola chiamata)
   if(aiOn()){try{
-    const t=await aiAsk('Sei un personal trainer rigoroso ma motivante. Dati settimana (dieta, sonno 1-5, stress 1-5, sgarri kcal): '+JSON.stringify(wk.days)+'. Deficit medio '+wk.avgDef+' kcal, proteine medie '+wk.avgProt+'g. Rispondi SOLO JSON: {"report":"commento di massimo 3 frasi in italiano","corr":"1 correlazione interessante trovata tra sonno/stress e alimentazione, 1 frase; se non ce ne sono scrivi stringa vuota"}');
+    const t=await aiAsk('Sei un personal trainer rigoroso ma motivante. Dati settimana (dieta; sonno, relax e umore in scala 1=basso 5=alto; sgarri kcal): '+JSON.stringify(wk.days)+'. Deficit medio '+wk.avgDef+' kcal, proteine medie '+wk.avgProt+'g. Rispondi SOLO JSON: {"report":"commento di massimo 3 frasi in italiano","corr":"1 correlazione interessante trovata tra sonno/relax/umore e alimentazione, 1 frase; se non ce ne sono scrivi stringa vuota"}');
     const j=parseAIJSON(t);wk.ai={report:j.report,corr:j.corr};
   }catch(e){/* senza AI si salva comunque */}}
   S.history.push(wk);
@@ -888,11 +964,11 @@ window.waWeek=()=>{const w=weekSummary();
 /* Report PDF (Modalità Nutrizionista): costruisce una vista stampabile */
 window.printReport=()=>{const p=S.profile,w=weekSummary();
   let h=`<h1>Report — ${esc(p.name||"Paziente")}</h1>
-  <div>${fmtDate(new Date())} · ${age()} anni · ${p.h} cm · ${p.w} kg${p.lbm?" · massa magra "+p.lbm+" kg":""} · BMR ${bmr()} · TDEE ${tdee()}</div>
+  <div>${fmtDate(new Date())} · ${age()} anni · ${p.h} cm · ${p.w} kg${parseFloat(p.fatp)>0?" · grasso "+p.fatp+"% (magra "+(p.w*(1-p.fatp/100)).toFixed(1)+" kg)":""} · BMR ${bmr()} · TDEE ${tdee()}</div>
   <h2>Biometriche registrate</h2><table><tr><th>Data</th><th>Peso</th><th>Grasso %</th><th>Pressione</th><th>SpO2</th></tr>`;
   p.weights.forEach(x=>h+=`<tr><td>${new Date(x.d).toLocaleDateString("it-IT")}</td><td>${x.w} kg</td><td>${x.fat??"–"}</td><td>${esc(x.pa??"–")}</td><td>${x.spo2??"–"}</td></tr>`);
-  h+=`</table><h2>Settimana in corso</h2><table><tr><th>Giorno</th><th>Kcal</th><th>Prot</th><th>Sport</th><th>Sonno</th><th>Stress</th><th>Deficit</th><th>Note</th></tr>`;
-  w.days.forEach(d=>h+=`<tr><td>${d.day}</td><td>${d.eat}</td><td>${d.prot}g</td><td>${d.burn}</td><td>${d.sleep||"–"}</td><td>${d.stress||"–"}</td><td>${d.def}</td><td>${esc(d.note)}</td></tr>`);
+  h+=`</table><h2>Settimana in corso</h2><table><tr><th>Giorno</th><th>Kcal</th><th>Prot</th><th>Sport</th><th>Sonno</th><th>Relax</th><th>Umore</th><th>Deficit</th><th>Note</th></tr>`;
+  w.days.forEach(d=>h+=`<tr><td>${d.day}</td><td>${d.eat}</td><td>${d.prot}g</td><td>${d.burn}</td><td>${d.sleep||"–"}</td><td>${d.relax||"–"}</td><td>${d.feel||"–"}</td><td>${d.def}</td><td>${esc(d.note)}</td></tr>`);
   h+=`</table><h2>Storico settimane</h2><table><tr><th>Periodo</th><th>Kcal medie</th><th>Prot medie</th><th>Deficit medio</th><th>Peso</th></tr>`;
   S.history.forEach(x=>h+=`<tr><td>${new Date(x.from).toLocaleDateString("it-IT")} → ${new Date(x.to).toLocaleDateString("it-IT")}</td><td>${x.avgEat}</td><td>${x.avgProt}g</td><td>−${x.avgDef}</td><td>${x.weight} kg</td></tr>`);
   h+=`</table><p style="margin-top:14px;font-size:10px">Generato dal Diario personale. Stime caloriche indicative — da validare col professionista.</p>`;
@@ -901,16 +977,76 @@ window.printReport=()=>{const p=S.profile,w=weekSummary();
 /* ═══════════════════════════════════════════════════════════════
    15. PAGINA IO: profilo, biometriche, AI key, vacanza, backup, Drive
    ═══════════════════════════════════════════════════════════════ */
+function usageHtml(){const u=S.usage,t=new Date().toISOString().slice(0,10);
+  const calls=u.day===t?u.calls:0,tok=u.day===t?u.tokens:0,err=u.day===t?u.errors:0;
+  return "Oggi: <b>"+calls+"</b> chiamate · <b>"+tok.toLocaleString("it-IT")+"</b> token stimati"+(err?" · <span style='color:var(--rosso)'>"+err+" errori</span>":"");}
+/* ═══ PAGINA GUIDA (statica) ═══ */
+function renderGuida(){document.getElementById("pg-guida").innerHTML=`
+<div class="card"><h2>❓ Guida rapida</h2>
+<div class="hint">Come funziona, in 20 secondi: ogni giorno <b>spunti quello che mangi</b> e registri gli allenamenti; l'anello di Oggi ti mostra il <b>deficit</b> in tempo reale; a fine settimana premi <b>Salva settimana</b> nello Storico e riparti. Tutto qui — il resto sono aiuti.</div></div>
+
+<div class="card"><h2>Le pagine</h2><table class="gtable">
+<tr><td>☀️</td><td><b>Oggi</b> — bilancio del giorno (anello), acqua, sonno/relax/umore, pasti da spuntare, foto-AI. Le frecce ‹ › in alto cambiano giorno.</td></tr>
+<tr><td>🍽️</td><td><b>Piano</b> — tutta la settimana: spunte, spostamenti, modifiche, note ed extra per ogni giorno.</td></tr>
+<tr><td>🛒</td><td><b>Spesa</b> — checklist spuntabile, ricerca Conad, alternative AI, prodotti salvati, invio WhatsApp.</td></tr>
+<tr><td>🏃</td><td><b>Sport</b> — registra allenamenti (le kcal si calcolano sul tuo peso); nuovi sport con stima MET.</td></tr>
+<tr><td>📚</td><td><b>Storico</b> — recap live, grafici, settimane salvate con report AI, stampa PDF.</td></tr>
+<tr><td>👤</td><td><b>Io</b> — dati e biometrie, motore calorico, vacanza, AI, Drive e backup.</td></tr></table></div>
+
+<div class="card"><h2>I simboli</h2>
+<div class="gsec">Sui pasti</div><table class="gtable">
+<tr><td>○ ✓ ✗</td><td>Tocca il cerchio per ciclare: <b>da fare → mangiato → saltato</b>. Solo i ✓ contano nel bilancio; i ✗ restano segnati come saltati.</td></tr>
+<tr><td>📍→</td><td>I due menu spostano il pasto in un altro <b>giorno</b> e/o <b>fascia</b> (anche pranzo↔cena dello stesso giorno). Il badge rosso ricorda da dove viene.</td></tr>
+<tr><td>✏️</td><td><b>Modifica ingredienti</b>: cambi il testo e l'AI ristima kcal/proteine.</td></tr>
+<tr><td>🎲</td><td><b>Alternativa</b>: l'AI inventa un piatto diverso con gli stessi macro; puoi renderla fissa o solo per questa settimana.</td></tr>
+<tr><td>↩️</td><td>Ripristina il pasto originale dopo ✏️ o 🎲.</td></tr>
+<tr><td>🚑</td><td><b>Ribilancia</b>: se hai accumulato calorie in più, l'AI alleggerisce i pasti rimanenti (mai le proteine).</td></tr></table>
+<div class="gsec">Colori dei pasti</div><table class="gtable">
+<tr><td>🟩</td><td>Verde = pasto normale del piano.</td></tr>
+<tr><td>🟧</td><td>Arancione = pasto <b>libero</b> (sushi, pizza, aperitivo, cornetto): non obbligatorio, c'è sempre l'opzione normale.</td></tr>
+<tr><td>🟦</td><td>Blu = <b>mensa</b> (mar/gio): segui la regola scritta nella riga.</td></tr></table>
+<div class="gsec">Altri</div><table class="gtable">
+<tr><td>📸</td><td>Foto + AI: <b>Analisi Piatto</b> (stima kcal di ciò che fotografi), <b>Selezionatore di menù</b> (sceglie dal menù il piatto compatibile col pasto di questo momento, compensando il surplus), <b>Crea un piatto</b> (più foto di frigo/congelatore/dispensa → ricetta su misura).</td></tr>
+<tr><td>📷</td><td>Barcode: scansiona un prodotto e compila l'extra da Open Food Facts (senza consumare AI).</td></tr>
+<tr><td>🔥</td><td>Giorni <b>in target</b> consecutivi (deficit ≥ 0, pasti spuntati, extra ≤ 300 kcal).</td></tr>
+<tr><td>💧</td><td>Acqua: obiettivo 8 bicchieri, <b>+2</b> nei giorni con allenamento intenso o oltre 45 minuti.</td></tr>
+<tr><td>⭐</td><td>Sonno · Relax · Come ti senti: scala 1 basso → 5 alto. Alimentano le correlazioni AI di fine settimana.</td></tr>
+<tr><td>🏖️</td><td>Vacanza (in Io): congela deficit e 🔥; l'app resta un diario senza giudizio.</td></tr>
+<tr><td>🌅</td><td>Banner del mattino: ti ricorda gli allenamenti di ieri non registrati.</td></tr></table></div>
+
+<div class="card"><h2>AI (Gemini)</h2>
+<div class="hint">Serve una chiave gratuita da <b>aistudio.google.com</b> → Get API key, da incollare in <b>Io → Motore AI</b>. "auto" sceglie da solo il modello migliore disponibile. Ogni stima è una <b>proposta</b>: confermi o correggi sempre tu. In Io vedi il contatore di chiamate/token di oggi; se compare l'errore "limite gratuito", aspetta un minuto.</div></div>
+
+<div class="card"><h2>Backup & aggiornamenti</h2>
+<div class="hint"><b>Dove sono i dati:</b> nel browser di questo dispositivo (non nel file). Per questo <b>aggiornare l'app non li tocca</b>: quando pubblichi una nuova versione su Git, riapri e ritrovi tutto (la versione in uso è scritta in Io).<br><br>
+<b>Drive</b> (Io → Sincronizzazione): dopo "Connetti", telefono e PC condividono gli stessi dati automaticamente. <b>Esporta</b> = salva su Drive · <b>Importa</b> = scarica da Drive (sovrascrive il locale) · <b>Cancella</b> = elimina il backup remoto.<br><br>
+<b>In locale</b>: Esporta/Importa = file .json sul dispositivo · Cancella = azzera tutto e ricomincia.<br><br>
+<b>Se cambi indirizzo del sito</b>: i dati non seguono da soli — Esporta su Drive dal vecchio, Importa dal nuovo.</div></div>
+
+<div class="card"><div class="hint">⚠️ Le stime di calorie, proteine e consumi sono <b>indicative</b>: l'app è un diario, non un medico. Il piano va validato col tuo professionista.</div>
+<button class="btn ghost small" onclick="show('oggi')">← Torna a Oggi</button></div>`;}
+
+/* Composizione in kg derivata da peso + percentuali. Il "resto" della massa
+   magra non è "liquidi": è acqua extra-muscolare, ossa e organi. */
+function compLine(p){const fat=parseFloat(p.fatp),mus=parseFloat(p.musp);
+  if(!(fat>0))return "";
+  const gK=(p.w*fat/100),lbmK=p.w-gK;
+  let s="La tua composizione: <b>magra "+lbmK.toFixed(1)+" kg</b> · <b>grasso "+gK.toFixed(1)+" kg</b>";
+  if(mus>0){const mK=p.w*mus/100,rest=lbmK-mK;
+    s+=" — della magra: muscolo "+mK.toFixed(1)+" kg, il resto ("+rest.toFixed(1)+" kg) è acqua extra-muscolare, ossa e organi";}
+  return `<div class="hint" style="margin:2px 0 6px">${s}. I calcoli (Katch-McArdle) usano la magra derivata dalla % di grasso.</div>`;}
 function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   let h=`<div class="card"><h2>I miei dati</h2>
   <div class="row2"><div><label>Nome</label><input type="text" id="pName" value="${p.name||""}"></div>
   <div><label>Genere</label><select id="pGen"><option value="m" ${p.gender==="m"?"selected":""}>Uomo</option><option value="f" ${p.gender==="f"?"selected":""}>Donna</option></select></div></div>
   <div class="row2"><div><label>Data di nascita</label><input type="date" id="pDob" value="${p.dob||""}"></div>
   <div><label>Altezza (cm)</label><input type="number" id="pH" value="${p.h}"></div></div>
-  <div class="row2"><div><label>Peso attuale (kg)</label><input type="number" step="0.1" id="pW" value="${p.w}"></div>
-  <div><label>Massa magra (kg, opz.)</label><input type="number" step="0.1" id="pLbm" value="${p.lbm||""}"></div></div>
-  <div class="row3"><div><label>Massa grassa % (opz.)</label><input type="number" step="0.1" id="pFat" placeholder="—"></div>
-  <div><label>Pressione (opz.)</label><input type="text" id="pPa" placeholder="120/80"></div>
+  <div class="row3"><div><label>Peso (kg)</label><input type="number" step="0.1" id="pW" value="${p.w}"></div>
+  <div><label>M. grassa %*</label><input type="number" step="0.1" id="pFat" value="${p.fatp||""}" placeholder="es. 28"></div>
+  <div><label>M. muscolare %*</label><input type="number" step="0.1" id="pMus" value="${p.musp||""}" placeholder="es. 42"></div></div>
+  <div class="hint" style="margin-top:2px">* opzionale (M = massa)</div>
+  ${compLine(p)}
+  <div class="row2"><div><label>Pressione (opz.)</label><input type="text" id="pPa" placeholder="120/80"></div>
   <div><label>SpO2 % (opz.)</label><input type="number" id="pSpo2" placeholder="98"></div></div>
   <label>Attività di base (lavoro/vita, sport escluso)</label>
   <select id="pAct"><option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario (1.2)</option>
@@ -922,7 +1058,8 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   h+=`<div class="card"><h2>Il tuo motore</h2><div class="stat3">
   <div><div class="v">${age()||"—"}</div><div class="l">anni</div></div>
   <div><div class="v">${bmr()}</div><div class="l">BMR</div></div>
-  <div><div class="v">${tdee()}</div><div class="l">TDEE base</div></div></div></div>`;
+  <div><div class="v">${tdee()}</div><div class="l">TDEE base</div></div></div>
+  <div class="hint">${parseFloat(S.profile.fatp)>0?"BMR con Katch-McArdle sulla magra derivata dalla tua % di grasso: il metodo più preciso.":"BMR con formula Mifflin-St Jeor. Inserisci la % di massa grassa per un calcolo più preciso."} Gli allenamenti si sommano giorno per giorno.</div></div>`;
   // Vacanza
   h+=`<div class="card"><h2>🏖️ Modalità vacanza</h2>
   <button class="btn ${S.ui.vacanza?"warn":"ghost"}" onclick="toggleVacanza()">${S.ui.vacanza?"Disattiva vacanza":"Attiva vacanza"}</button>
@@ -932,36 +1069,36 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   if(!p.weights.length)h+=`<div class="hint">Nessuna pesata registrata.</div>`;
   p.weights.slice().reverse().forEach((x,ri)=>{const i=p.weights.length-1-ri;
     const prev=i>0?p.weights[i-1].w:null;const d=prev?(x.w-prev).toFixed(1):null;
-    h+=`<div class="wline"><span>${new Date(x.d).toLocaleDateString("it-IT")}${x.fat?" · "+x.fat+"%":""}${x.pa?" · "+x.pa:""}${x.spo2?" · SpO2 "+x.spo2:""}</span>
+    h+=`<div class="wline"><span>${new Date(x.d).toLocaleDateString("it-IT")}${x.fat?" · grasso "+x.fat+"%":""}${x.mus?" · muscolo "+x.mus+"%":""}${x.pa?" · "+x.pa:""}${x.spo2?" · SpO2 "+x.spo2:""}</span>
     <span><b>${x.w} kg</b>${d!==null?` <span style="color:${d<=0?"var(--salvia)":"var(--rosso)"};font-size:12px">(${d>0?"+":""}${d})</span>`:""}<span class="del" onclick="delWeight(${i})">✕</span></span></div>`;});
   h+=`</div>`;
   // AI
-  h+=`<div class="card"><h2>Motore AI</h2>
-  <label>Provider</label>
-  <select id="gProv"><option value="gemini" ${S.ai.provider!=="ollama"?"selected":""}>Google Gemini (cloud, chiave gratuita)</option>
-  <option value="ollama" ${S.ai.provider==="ollama"?"selected":""}>Locale — Ollama / Gemma 4 (solo PC)</option></select>
+  h+=`<div class="card"><h2>Motore AI (Gemini)</h2>
   <label>Chiave API Google Gemini</label><input type="text" id="gKey" value="${(S.ai&&S.ai.key)||""}" placeholder="AIza…">
   <label>Modello Gemini</label>
   <select id="gModel">${GEM_ALL.map(m=>`<option ${S.ai.model===m?"selected":""}>${m}</option>`).join("")}</select>
   <div class="hint">Con la chiave gratuita usi i modelli <b>Flash</b> (auto = prova 3.5-flash → 3.1-flash-lite → 2.5). I <b>Pro</b> in fondo alla lista funzionano solo con fatturazione attiva: se li scegli senza, l'app ripiega da sola sui Flash.</div>
-  <label>Ollama locale — indirizzo</label><input type="text" id="oUrl" value="${esc(S.ai.ourl)}" placeholder="http://localhost:11434">
-  <label>Ollama locale — modello</label><input type="text" id="oModel" value="${esc(S.ai.omodel)}" placeholder="gemma4:e4b">
   <button class="btn" onclick="saveAI()">Salva impostazioni AI</button>
-  <div class="hint">Chiave gratuita su <b>aistudio.google.com</b> → Get API key (resta sul dispositivo). Alimenta: 📸 conta-calorie, 📸 svuota-frigo, 📸 selezionatore di menù, stime sgarri/sport, ✏️ ristime, 🎲 alternative, ribilancia, sostituzioni spesa, report settimanali.<br><b>Locale (Gemma 4):</b> funziona dal PC con <b>Ollama</b> installato (es. <i>ollama pull gemma4:e4b</i>) e avviato con la variabile <b>OLLAMA_ORIGINS="*"</b> (serve per il permesso CORS del browser). Gemma 4 è multimodale: legge anche le foto. Sul telefono il locale non è praticabile da questa app: lì resta Gemini cloud.</div></div>`;
+  <div class="aibox" style="margin-top:10px"><div id="usageLine">${usageHtml()}</div>
+  <div class="hint" style="margin-top:4px">Contatore locale del tuo consumo (Google non espone i token residui: quelli si vedono solo nella Google Cloud Console). Se vedi molti errori \"quota\", stai toccando i limiti gratuiti: rallenta o attiva la fatturazione.</div>
+  <button class="btn ghost small" onclick="S.usage={day:'',calls:0,tokens:0,errors:0,last:''};save();render('io')">Azzera contatore</button></div>
+  <div class="hint">Chiave gratuita su <b>aistudio.google.com</b> → Get API key (resta sul dispositivo). Alimenta: 📸 conta-calorie, 📸 svuota-frigo, 📸 selezionatore di menù, stime sgarri/sport, ✏️ ristime, 🎲 alternative, ribilancia, sostituzioni spesa, report settimanali.</div></div>`;
   // Drive
   h+=`<div class="card"><h2>☁️ Sincronizzazione Google Drive</h2>
   <label>CLIENT_ID (Google Cloud)</label><input type="text" id="dCid" value="${S.drive.cid||""}" placeholder="xxxx.apps.googleusercontent.com">
   <label>API_KEY (Google Cloud)</label><input type="text" id="dKey" value="${S.drive.akey||""}" placeholder="AIza…">
-  <div class="mtools"><button class="btn small" onclick="driveConnect()">Connetti & sincronizza</button>
-  <button class="btn ghost small" onclick="driveUpload()">Salva ora su Drive</button></div>
-  <div class="hint" id="driveStatus">${S.drive.on?"Configurato. All'avvio confronta i timestamp e carica la versione più recente; auto-save attivo dopo la connessione.":"Non connesso."}
-  <br><b>Nota tecnica onesta:</b> l'OAuth di Google non funziona aprendo il file da <i>file://</i> — serve pubblicare l'app su un indirizzo https (es. GitHub Pages) e registrare quell'origine nel progetto Google Cloud (scope drive.appdata). Da telefono, nel frattempo, usa Esporta/Importa backup.</div></div>`;
+  <div class="mtools"><button class="btn small" onclick="driveConnect()">Connetti & sincronizza</button></div>
+  <div class="mtools"><button class="btn ghost small" onclick="driveUpload()">Esporta</button>
+  <button class="btn ghost small" onclick="driveImport()">Importa</button>
+  <button class="btn warn small" onclick="driveDelete()">Cancella</button></div>
+  <div class="hint" id="driveStatus">${S.drive.on?"Configurato: a ogni avvio l'app si riconnette da sola, confronta i timestamp e carica la versione più recente (telefono e PC condividono così gli stessi dati). Auto-save attivo.":"Non connesso."}
+  <br>Ora che l'app è pubblicata (https) l'OAuth funziona: registra l'origine del tuo sito nel progetto Google Cloud (scope drive.appdata). Al primo accesso su ogni dispositivo Google chiede il consenso una volta; poi la sincronizzazione è silenziosa.</div></div>`;
   // Backup
-  h+=`<div class="card"><h2>Dati & backup</h2>
-  <button class="btn ghost" onclick="exportData()">Esporta backup (file)</button>
-  <button class="btn ghost" onclick="importData()">Importa backup</button>
-  <button class="btn warn" onclick="wipePart()">Azzera solo settimana in corso</button>
-  <button class="btn warn" onclick="wipeAll()">Cancella TUTTO e ricomincia</button></div>`;
+  h+=`<div class="card"><h2>Dati & backup in locale</h2>
+  <button class="btn ghost" onclick="exportData()">Esporta</button>
+  <button class="btn ghost" onclick="importData()">Importa</button>
+  <button class="btn warn" onclick="wipeAll()">Cancella</button>
+  <div class="hint">Esporta/Importa = file di backup sul dispositivo · Cancella = azzera tutto e ricomincia da capo.<br>Versione app: <b>${APP_VER}</b> · i dati vivono nel browser, non nel file: aggiornare non li tocca. Tutte le spiegazioni: <b>❓ in alto</b>.</div></div>`;
   el.innerHTML=h;}
 window.toggleVacanza=()=>{S.ui.vacanza=!S.ui.vacanza;save();render("io");};
 window.saveProfile=()=>{const p=S.profile;
@@ -969,29 +1106,27 @@ window.saveProfile=()=>{const p=S.profile;
   p.dob=document.getElementById("pDob").value;p.h=+document.getElementById("pH").value||185;
   const nw=+document.getElementById("pW").value||p.w;
   const fat=parseFloat(document.getElementById("pFat").value)||null;
+  const mus=parseFloat(document.getElementById("pMus").value)||null;
   const pa=document.getElementById("pPa").value.trim()||null;
   const spo2=parseFloat(document.getElementById("pSpo2").value)||null;
-  if(nw!==p.w||fat||pa||spo2||!p.weights.length)
-    p.weights.push({d:new Date().toISOString(),w:nw,fat,pa,spo2});
-  p.w=nw;p.lbm=document.getElementById("pLbm").value;p.act=+document.getElementById("pAct").value;
+  if(nw!==p.w||fat||mus||pa||spo2||!p.weights.length)
+    p.weights.push({d:new Date().toISOString(),w:nw,fat,mus,pa,spo2});
+  p.w=nw;p.fatp=fat||p.fatp;p.musp=mus||p.musp;p.act=+document.getElementById("pAct").value;
   save();render("io");renderHeader();alert("Dati salvati.");};
 window.delWeight=i=>{S.profile.weights.splice(i,1);save();render("io");};
 window.saveAI=()=>{
-  S.ai.provider=document.getElementById("gProv").value;
   S.ai.key=document.getElementById("gKey").value.trim();
   S.ai.model=document.getElementById("gModel").value;
-  S.ai.ourl=safeLocal(document.getElementById("oUrl").value.trim())||"http://localhost:11434";
-  S.ai.omodel=document.getElementById("oModel").value.trim()||"gemma4:e4b";
-  save();alert(S.ai.provider==="ollama"?"Provider locale attivo: assicurati che Ollama sia avviato con OLLAMA_ORIGINS.":"Impostazioni Gemini salvate.");render("io");};
-const safeLocal=u=>/^http:\/\/(localhost|127\.0\.0\.1):\d+$/i.test(u)?u:"";
+  save();alert(S.ai.key?"Impostazioni Gemini salvate: funzioni AI attive.":"Chiave rimossa.");render("io");};
 window.exportData=()=>{const blob=new Blob([JSON.stringify(S)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
   a.download="diario_backup_"+iso(new Date())+".json";a.click();};
 window.importData=()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".json";
   inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
     r.onload=()=>{try{S=JSON.parse(r.result);save();location.reload();}catch(x){alert("File non valido.");}};r.readAsText(f);};inp.click();};
-window.wipePart=()=>{if(confirm("Azzero la settimana in corso? (resto salvato)")){S.week=freshWeek();save();location.reload();}};
-window.wipeAll=()=>{if(confirm("Cancellare DAVVERO tutto?")&&confirm("Sicuro? Non si torna indietro.")){localStorage.removeItem(KEY);location.reload();}};
+window.wipeAll=async()=>{if(!(confirm("Cancellare DAVVERO tutto?")&&confirm("Sicuro? Non si torna indietro.")))return;
+  if(DTOKEN&&confirm("Vuoi eliminare anche il backup su Google Drive, per ricominciare da capo ovunque?"))await driveDelete(true);
+  localStorage.removeItem(KEY);location.reload();};
 
 /* ═══════════════════════════════════════════════════════════════
    16. GOOGLE DRIVE SYNC (GSI + Drive REST, scope drive.appdata)
@@ -1029,6 +1164,34 @@ window.driveUpload=async()=>{
       headers:{Authorization:"Bearer "+DTOKEN,"Content-Type":"multipart/related; boundary="+boundary},body});
     const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Salvato su Drive alle "+new Date().toLocaleTimeString("it-IT");
   }catch(e){alert("Errore Drive: "+e.message);}};
+/* Avvio: riconnessione silenziosa se già autorizzato su questo dispositivo */
+function tryDriveAuto(){
+  if(!(S.drive.on&&S.drive.cid)||location.protocol==="file:")return;
+  loadGSI(()=>{try{
+    tokenClient=google.accounts.oauth2.initTokenClient({client_id:S.drive.cid,
+      scope:"https://www.googleapis.com/auth/drive.appdata",
+      callback:async t=>{if(t&&t.access_token){DTOKEN=t.access_token;await driveSyncOnStart();
+        const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Sincronizzato con Drive.";}},
+      error_callback:()=>{}});
+    tokenClient.requestAccessToken({prompt:""});
+  }catch(e){}});}
+/* Importa da Drive su richiesta: scarica il backup e sostituisce i dati locali */
+window.driveImport=async()=>{
+  if(!DTOKEN)return alert("Connettiti prima a Drive.");
+  try{const f=await driveFind();
+    if(!f)return alert("Nessun backup trovato su Drive.");
+    if(!confirm("Importo il backup da Drive del "+new Date(f.modifiedTime).toLocaleString("it-IT")+"? Sovrascrive i dati locali."))return;
+    const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
+    S=await r.json();save();location.reload();
+  }catch(e){alert("Errore importazione: "+e.message);}};
+/* Elimina il backup da Drive (per ricominciare da capo ovunque) */
+window.driveDelete=async(silent)=>{
+  if(!DTOKEN){if(!silent)alert("Connettiti prima a Drive.");return;}
+  if(!silent&&!confirm("Eliminare il backup diario_backup.json da Google Drive?"))return;
+  try{const f=await driveFind();
+    if(f)await fetch("https://www.googleapis.com/drive/v3/files/"+f.id,{method:"DELETE",headers:{Authorization:"Bearer "+DTOKEN}});
+    if(!silent){const st=document.getElementById("driveStatus");if(st)st.textContent="🗑️ Backup eliminato da Drive.";alert("Backup eliminato da Drive.");}
+  }catch(e){if(!silent)alert("Errore eliminazione: "+e.message);}};
 async function driveSyncOnStart(){ // confronta timestamp e carica il più recente
   try{const f=await driveFind();if(!f)return driveUpload();
     if(new Date(f.modifiedTime)>new Date(S.meta.updated||0)){
@@ -1047,20 +1210,17 @@ function renderHeader(){
   const d=document.getElementById("hDate");
   d.innerHTML=fmtDate(VIEW)+(isToday()?"":"<small>tocca per tornare a oggi</small>");
   document.getElementById("hStreak").textContent="🔥 "+S.streak.count;}
-function morningPrompt(){ // notifica interna per allenamenti di ieri dimenticati
-  const today=iso(new Date());
-  if(S.ui.lastMorning===today)return;
-  S.ui.lastMorning=today;save();
-  const y=new Date();y.setDate(y.getDate()-1);
-  const ydi=wd(y);
-  if(S.week.days[ydi].workouts.length===0&&!S.ui.vacanza){
-    if(confirm("🌅 Buongiorno! Ieri ("+PLAN[ydi].day+") non risultano allenamenti registrati.\nTi sei dimenticato di inserirli? OK = vado a Sport")){
-      show("sport");setTimeout(()=>{const s=document.getElementById("wDay");if(s)s.value=ydi;},80);return true;}}
-  return false;}
-function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,storico:renderStorico,io:renderIo})[p]();renderHeader();}
-applyTheme();bumpStreak();renderHeader();
-const jumped=morningPrompt();
-if(!jumped)show(S.profile.dob?"oggi":"io");
+/* Banner (non popup) per gli allenamenti di ieri dimenticati */
+function yIdx(){const y=new Date();y.setDate(y.getDate()-1);return wd(y);}
+function needMorningBanner(){
+  if(S.ui.vacanza)return false;
+  if(S.ui.dismissMorning===iso(new Date()))return false;
+  return S.week.days[yIdx()].workouts.length===0;}
+window.goSportY=()=>{show("sport");setTimeout(()=>{const s=document.getElementById("wDay");if(s)s.value=yIdx();},80);};
+window.dismissMorning=()=>{S.ui.dismissMorning=iso(new Date());save();render("oggi");};
+function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,storico:renderStorico,io:renderIo,guida:renderGuida})[p]();renderHeader();}
+applyTheme();bumpStreak();renderHeader();tryDriveAuto();
+show(S.profile.dob?"oggi":"io");
 </script>
 </body>
 </html>
