@@ -53,17 +53,17 @@ header h1{font-size:18px;font-weight:700}
 .tabs button{flex:1;border:0;background:none;padding:7px 2px 5px;font-size:10.5px;color:var(--grigio);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:12px}
 .tabs button .ic{font-size:19px;line-height:1}
 .tabs button.on{color:var(--bosco);font-weight:700;background:var(--menta)}
-.card{background:var(--card);border:1px solid var(--linea);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
-.card h2{font-size:16px;color:var(--bosco);margin-bottom:8px}
-.dayname{font-size:22px;color:var(--bosco);margin:18px 0 1px;display:flex;align-items:center;gap:8px}
+.card{background:var(--card);border:1px solid var(--linea);border-radius:14px;padding:15px;margin-bottom:13px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;color:var(--bosco);margin-bottom:10px}
+.dayname{font-size:22px;color:var(--bosco);margin:22px 0 2px;display:flex;align-items:center;gap:9px}
 .dayctx{font-size:12px;color:var(--grigio);font-style:italic;margin-bottom:9px}
-.meal{background:var(--card);border:1px solid var(--linea);border-left:4px solid var(--salvia);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:11px;align-items:flex-start;box-shadow:var(--shadow)}
+.meal{background:var(--card);border:1px solid var(--linea);border-left:4px solid var(--salvia);border-radius:12px;padding:12px 13px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow)}
 .meal.free{border-left-color:var(--zaff);background:var(--zaffbg)}
 .meal.mensa{border-left-color:var(--mensa);background:var(--mensabg)}
 .meal.done{opacity:.6}.meal.done .mdesc{text-decoration:line-through}
 .meal.skip{opacity:.6;border-left-color:var(--rosso)}
 .meal.skip .mdesc{text-decoration:line-through;color:var(--rosso)}
-.chk{min-width:28px;height:28px;border:2px solid var(--salvia);border-radius:50%;background:var(--card);cursor:pointer;font-size:15px;line-height:24px;text-align:center;color:#fff;transition:transform .1s}
+.chk{min-width:28px;height:28px;margin-top:1px;border:2px solid var(--salvia);border-radius:50%;background:var(--card);cursor:pointer;font-size:15px;line-height:24px;text-align:center;color:#fff;transition:transform .1s}
 .chk:active{transform:scale(.88)}
 .meal.free .chk{border-color:var(--zaff)}
 .chk.c{background:var(--salvia);border-color:var(--salvia)}
@@ -81,25 +81,26 @@ header h1{font-size:18px;font-weight:700}
 .mopts{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
 .mopts button,.chipbtn{border:1.5px solid var(--linea);background:var(--card);border-radius:20px;padding:4px 11px;font-size:11.5px;cursor:pointer;color:var(--grigio)}
 .mopts button.sel{border-color:var(--zaff);color:var(--zaff);font-weight:700}
-.mtools{margin-top:7px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.mtools select{border:1px solid var(--linea);border-radius:8px;padding:4px 6px;font-size:11.5px;color:var(--grigio);background:var(--card);max-width:46%}
+.mtools{margin-top:9px;display:flex;gap:8px;row-gap:8px;align-items:center;flex-wrap:wrap}
+.mtools .btn{margin-top:0}
+.mtools select{border:1px solid var(--linea);border-radius:8px;padding:6px 8px;font-size:11.5px;color:var(--grigio);background:var(--card);flex:1 1 40%;min-width:120px}
 .badge{font-size:10.5px;background:var(--okbg);color:var(--ok);border-radius:7px;padding:2.5px 8px;font-weight:700}
 .badge.moved{background:var(--rossobg);color:var(--rosso)}
 .badge.ai{background:var(--mensabg);color:var(--mensa)}
 .legend{display:flex;gap:12px;font-size:12px;color:var(--grigio);margin-top:6px;flex-wrap:wrap}
 .legend b{font-size:14px}
-.daytotal{font-size:13px;font-weight:700;color:var(--bosco);padding:4px 2px 8px}
+.daytotal{font-size:13px;font-weight:700;color:var(--bosco);padding:6px 2px 14px}
 .daytotal span{color:var(--salvia)}
 textarea,input[type=text],input[type=number],input[type=date],input[type=password],select{width:100%;border:1px solid var(--linea);border-radius:10px;padding:9px;font-size:14px;font-family:inherit;background:var(--card);color:var(--ink)}
 textarea{min-height:54px;resize:vertical}
-label{font-size:12px;font-weight:700;color:var(--grigio);display:block;margin:8px 0 3px}
+label{font-size:12px;font-weight:700;color:var(--grigio);display:block;margin:10px 0 4px}
 .btn{display:inline-block;border:0;background:var(--salvia);color:#fff;border-radius:11px;padding:10px 17px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:var(--shadow)}
 html[data-theme="dark"] .btn{color:#0F1712}
 .btn.ghost{background:var(--card);color:var(--salvia);border:1.5px solid var(--salvia);box-shadow:none}
 .btn.warn{background:var(--rosso)}
 .btn.small{padding:6px 12px;font-size:12.5px;margin-top:4px}
-.row2{display:flex;gap:9px}.row2>*{flex:1;min-width:0}
-.row3{display:flex;gap:7px}.row3>*{flex:1;min-width:0}
+.row2{display:flex;gap:10px}.row2>*{flex:1;min-width:0}
+.row3{display:flex;gap:10px}.row3>*{flex:1;min-width:0}
 label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shopcat{font-weight:700;color:#fff;background:linear-gradient(90deg,var(--hdr1),var(--hdr2));border-radius:11px 11px 0 0;padding:9px 13px;font-size:13.5px;margin-top:13px}
 .shopitems{background:var(--card);border:1px solid var(--linea);border-top:0;border-radius:0 0 11px 11px;padding:4px 0;box-shadow:var(--shadow)}
@@ -133,7 +134,7 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .stars{display:flex;gap:4px;font-size:22px;cursor:pointer;user-select:none}
 .stars span{filter:grayscale(1);opacity:.4}
 .stars span.on{filter:none;opacity:1}
-.hint{font-size:12px;color:var(--grigio);margin-top:5px;line-height:1.55}
+.hint{font-size:12px;color:var(--grigio);margin-top:7px;line-height:1.55}
 .gtable{width:100%;font-size:13px}
 .gtable td{padding:6px 6px;vertical-align:top;border-bottom:1px solid var(--linea)}
 .gtable td:first-child{width:64px;text-align:center;font-size:17px}
@@ -152,6 +153,10 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 canvas{max-width:100%}
 #scanbox{display:none;margin-top:10px}
 #scanreader{width:100%;border-radius:12px;overflow:hidden}
+#aiSpin{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));z-index:90;background:var(--card);border:1px solid var(--linea);box-shadow:var(--shadow);border-radius:22px;padding:9px 15px;display:none;align-items:center;gap:10px;font-size:13px;color:var(--bosco);font-weight:700}
+#aiSpin.on{display:flex}
+#aiSpin .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--linea);border-top-color:var(--salvia);animation:aispin .8s linear infinite}
+@keyframes aispin{to{transform:rotate(360deg)}}
 button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible{outline:2.5px solid var(--mensa);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media(min-width:700px){.tabs{max-width:640px;left:50%;transform:translateX(-50%);border:1px solid var(--linea);border-radius:16px 16px 0 0}}
@@ -197,6 +202,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
 <div class="page" id="pg-guida"></div>
 <div class="page" id="pg-setup"></div>
 <div id="printreport"></div>
+
+<div id="aiSpin"><span class="sp"></span>L'AI sta lavorando…</div>
 
 <nav class="tabs">
   <button data-p="oggi"><span class="ic">☀️</span>Oggi</button>
@@ -273,7 +280,7 @@ const INT={bassa:.8,media:1,alta:1.2};
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="2.4.1";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="2.5.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0}))};}
@@ -400,6 +407,10 @@ function trackUsage(tok,err){const t=new Date().toISOString().slice(0,10);
   S.usage.last=new Date().toISOString();save();
   const el=document.getElementById("usageLine");if(el)el.innerHTML=usageHtml();}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+/* Indicatore "elaborazione in corso" per ogni chiamata AI */
+let AIBUSY=0;
+function aiBusy(){AIBUSY++;const e=document.getElementById("aiSpin");if(e)e.classList.add("on");}
+function aiDone(){AIBUSY=Math.max(0,AIBUSY-1);if(AIBUSY===0){const e=document.getElementById("aiSpin");if(e)e.classList.remove("on");}}
 /* Chiamata Gemini robusta: fino a 3 tentativi per modello con backoff su 429/503/rete;
    passa al modello successivo su 404/quota; errori tipizzati per messaggi chiari. */
 async function geminiCall(prompt,imgs){
@@ -407,6 +418,8 @@ async function geminiCall(prompt,imgs){
   const parts=[];
   (imgs||[]).forEach(im=>parts.push({inline_data:{mime_type:im.mime||"image/jpeg",data:im.b64}}));
   parts.push({text:prompt});
+  aiBusy();
+  try{
   let lastErr=null;
   for(const m of gemModels()){
     for(let attempt=0;attempt<3;attempt++){
@@ -435,7 +448,8 @@ async function geminiCall(prompt,imgs){
     }
   }
   trackUsage(0,true);
-  throw lastErr||new Error("errore");}
+  throw lastErr||new Error("errore");
+  }finally{aiDone();}}
 const aiOn=()=>!!(S.ai&&S.ai.key);
 async function aiAsk(prompt){return geminiCall(prompt);}
 async function aiAskVision(prompt,imgs){return geminiCall(prompt,imgs);}
@@ -540,8 +554,9 @@ function mealCard(pdi,mi){
     <select onchange="moveSlot(${pdi},${mi},this.value)">`;
   SLOTS.forEach(s=>{h+=`<option ${((st.movedAs||m.n)===s)?"selected":""}>${s}</option>`;});
   h+=`</select>
-    <button class="ibtn" title="Modifica ingredienti (ristima AI)" onclick="editMeal(${pdi},${mi})">✏️</button>
-    <button class="ibtn" title="Inventami un'alternativa con gli stessi macro" onclick="altMeal(${pdi},${mi})">🎲</button>`;
+    <button class="ibtn" title="Modifica ingredienti (stima AI)" onclick="editMeal(${pdi},${mi})">✏️</button>
+    <button class="ibtn" title="Inventami un'alternativa con gli stessi macro" onclick="altMeal(${pdi},${mi})">🎲</button>
+    <button class="ibtn" title="Non ho un ingrediente: 3 sostituzioni AI" onclick="subIngr(${pdi},${mi})">🔁</button>`;
   if(st.custom)h+=`<button class="ibtn" title="Ripristina originale" onclick="resetMeal(${pdi},${mi})">↩️</button>`;
   if(st.movedTo!==-1||st.movedAs&&st.movedAs!==m.n)h+=`<span class="badge moved">da ${PLAN[pdi].day} · ${m.n}</span>`;
   h+=`</div></div></div>`;return h;}
@@ -553,14 +568,14 @@ window.moveDay=(d,m,v)=>{const st=S.week.days[d].meals[m];st.movedTo=parseInt(v)
   if(!st.movedAs)st.movedAs=PLAN[d].meals[m].n;save();render(cur);};
 window.moveSlot=(d,m,v)=>{S.week.days[d].meals[m].movedAs=v;save();render(cur);};
 window.resetMeal=(d,m)=>{S.week.days[d].meals[m].custom=null;save();render(cur);};
-/* ✏️ Modifica pasto + ristima AI */
+/* ✏️ Modifica pasto + stima AI */
 window.editMeal=async(d,m)=>{const o=mealOpt(d,m);
   const nd=prompt("Modifica gli ingredienti del pasto:",o.d);if(!nd||nd===o.d)return;
   let k=o.k,p=o.p;
   if(aiOn()){try{
-    const t=await aiAsk('Ristima calorie e proteine di questo pasto modificato: "'+nd+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero}');
+    const t=await aiAsk('Stima calorie e proteine di questo pasto modificato: "'+nd+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero}');
     const j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
-    alert("Ristima AI: ~"+k+" kcal · ~"+p+" g prot");
+    alert("Stima AI: ~"+k+" kcal · ~"+p+" g prot");
   }catch(e){aiFail(e);k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}}
   else{k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}
   S.week.days[d].meals[m].custom={d:nd,k,p};save();render(cur);};
@@ -577,6 +592,36 @@ window.altMeal=async(d,m)=>{const o=mealOpt(d,m);
     else S.week.days[d].meals[m].custom=val;
     save();render(cur);
   }catch(e){aiFail(e);}};
+/* 🔁 Sostituzione ingredienti: 3 proposte a parità di macro, con Riprova e Foto */
+window.subIngr=async(pdi,mi)=>{
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const o=mealOpt(pdi,mi);
+  const miss=prompt("Quale ingrediente (o più di uno) NON hai in casa?\n\nPasto: "+o.d);
+  if(!miss)return;
+  let excluded=[];
+  while(true){
+    try{
+      const t=await aiAsk('Pasto del mio piano: "'+o.d+'" (~'+o.k+' kcal · '+o.p+' g prot). Non ho in casa: '+miss+'.'+(excluded.length?' Ho già scartato questi sostituti, NON riproporli: '+excluded.join(", ")+'.':'')+' Proponi 3 alternative DIVERSE per sostituire SOLO quegli ingredienti, mantenendo le kcal (±10%) e le proteine (±5 g) del pasto: per ciascuna indica il sostituto con la grammatura esatta e la descrizione completa del pasto risultante. '+dietStr()+' Rispondi SOLO JSON: [{"sost":"sostituto con grammi","piatto":"descrizione completa del nuovo pasto","k":kcal,"p":proteine},{...},{...}]');
+      const arr=parseAIJSON(t);
+      if(!Array.isArray(arr)||arr.length<1)throw new Error("formato");
+      let msg="Sostituzioni per \""+miss+"\":\n";
+      arr.slice(0,3).forEach((a,i)=>{msg+="\n"+(i+1)+") "+a.sost+"\n    → "+a.piatto+" (~"+Math.round(a.k)+" kcal · "+Math.round(a.p)+"g)\n";});
+      const c=prompt(msg+"\nScrivi 1, 2 o 3 per scegliere · R = altre proposte · F = fotografa cosa hai in casa · vuoto = annulla","1");
+      if(!c)return;
+      const cl=c.trim().toUpperCase();
+      if(cl==="R"){arr.forEach(a=>excluded.push(a.sost));continue;}
+      if(cl==="F"){
+        const ph=await snapPhoto();
+        const t2=await aiAskVision('Pasto del mio piano: "'+o.d+'" (~'+o.k+' kcal · '+o.p+' g prot). Non ho in casa: '+miss+'. Nella FOTO vedi cosa ho a disposizione: scegli il MIGLIOR sostituto tra ciò che vedi, con grammatura per mantenere kcal (±10%) e proteine (±5 g). '+dietStr()+' Rispondi SOLO JSON: {"sost":"sostituto con grammi","piatto":"descrizione completa del nuovo pasto","k":kcal,"p":proteine}',[ph]);
+        const j=parseAIJSON(t2);
+        if(confirm("Dalla foto: "+j.sost+"\n→ "+j.piatto+" (~"+Math.round(j.k)+" kcal · "+Math.round(j.p)+"g)\n\nOK = usa questo pasto")){
+          S.week.days[pdi].meals[mi].custom={d:j.piatto,k:Math.round(j.k),p:Math.round(j.p)};save();render(cur);}
+        return;}
+      const idx=parseInt(cl)-1;
+      if(arr[idx]){S.week.days[pdi].meals[mi].custom={d:arr[idx].piatto,k:Math.round(arr[idx].k),p:Math.round(arr[idx].p)};save();render(cur);}
+      return;
+    }catch(e){if(e.message!=="annullato")aiFail(e);return;}
+  }};
 window.setNote=(d,v)=>{S.week.days[d].note=v;save();};
 window.delExtra=(d,i)=>{S.week.days[d].extras.splice(i,1);save();render(cur);};
 /* Extra/sgarro: AI o manuale */
@@ -676,7 +721,7 @@ window.menuAI=async(di)=>{
 function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(new Date());
   let h=`<div class="card"><h2>La tua settimana</h2>
   <div class="legend"><span><b style="color:var(--salvia)">✓</b> mangiato</span><span><b style="color:var(--rosso)">✗</b> saltato</span><span><b>○</b> da fare</span></div>
-  <div class="hint">I due menu spostano il pasto in un altro <b>giorno</b> e/o in un'altra <b>fascia</b> (anche nello stesso giorno). ✏️ modifica con ristima AI · 🎲 alternativa AI a parità di macro.</div></div>`;
+  <div class="hint">I due menu spostano il pasto in un altro <b>giorno</b> e/o in un'altra <b>fascia</b> (anche nello stesso giorno). ✏️ modifica con stima AI · 🎲 alternativa AI a parità di macro.</div></div>`;
   PLAN.forEach((d,di)=>{
     h+=`<div class="dayname">${d.day}${di===ti?'<span class="todaytag">OGGI</span>':""}</div><div class="dayctx">${d.ctx}</div>`;
     dayItems(di).forEach(it=>h+=mealCard(it.pdi,it.mi));
@@ -745,7 +790,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   <label>Come ti senti</label>${stars(di,"feel")}
   <div class="hint">Scala uguale per tutte: 1 = basso · 5 = alto (sonno 5 = dormito benissimo · relax 5 = rilassatissimo · come ti senti 5 = alla grande). Finiscono nell'analisi AI di fine settimana.</div></div>`;
   // Pasti
-  h+=`<div class="card"><h2>I pasti</h2><div class="hint">✓ mangiato · ✗ saltato · ○ da fare</div></div>`;
+  h+=`<div class="card"><h2>I pasti</h2><div class="hint">✓ mangiato · ✗ saltato · ○ da fare · ⏳ in alto a destra quando l'AI elabora</div></div>`;
   const items=dayItems(di);
   if(items.length)items.forEach(it=>h+=mealCard(it.pdi,it.mi));
   else h+=`<div class="hint">Nessun pasto assegnato a questo giorno.</div>`;
@@ -1198,9 +1243,10 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <div class="gsec">Sui pasti</div><table class="gtable">
 <tr><td>○ ✓ ✗</td><td>Tocca il cerchio per ciclare: <b>da fare → mangiato → saltato</b>. Solo i ✓ contano nel bilancio; i ✗ restano segnati come saltati.</td></tr>
 <tr><td>📍→</td><td>I due menu spostano il pasto in un altro <b>giorno</b> e/o <b>fascia</b> (anche pranzo↔cena dello stesso giorno). Il badge rosso ricorda da dove viene.</td></tr>
-<tr><td>✏️</td><td><b>Modifica ingredienti</b>: cambi il testo e l'AI ristima kcal/proteine.</td></tr>
+<tr><td>✏️</td><td><b>Modifica ingredienti</b>: cambi il testo e l'AI stima kcal/proteine.</td></tr>
 <tr><td>🎲</td><td><b>Alternativa</b>: l'AI inventa un piatto diverso con gli stessi macro; puoi renderla fissa o solo per questa settimana.</td></tr>
-<tr><td>↩️</td><td>Ripristina il pasto originale dopo ✏️ o 🎲.</td></tr>
+<tr><td>🔁</td><td><b>Non ho un ingrediente</b>: l'AI propone 3 sostituti con grammature a parità di kcal/proteine; rispondi 1/2/3 per scegliere, <b>R</b> per altre proposte, <b>F</b> per fotografare quello che hai in casa e farti indicare il migliore.</td></tr>
+<tr><td>↩️</td><td>Ripristina il pasto originale dopo ✏️, 🎲 o 🔁.</td></tr>
 <tr><td>🚑</td><td><b>Ribilancia</b>: se hai accumulato calorie in più, l'AI alleggerisce i pasti rimanenti (mai le proteine).</td></tr></table>
 <div class="gsec">Colori dei pasti</div><table class="gtable">
 <tr><td>🟩</td><td>Verde = pasto normale del piano.</td></tr>
@@ -1209,7 +1255,7 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <div class="gsec">Altri</div><table class="gtable">
 <tr><td>📸</td><td>Foto + AI: <b>Analisi Piatto</b> (stima kcal di ciò che fotografi), <b>Selezionatore di menù</b> (sceglie dal menù il piatto compatibile col pasto di questo momento, compensando il surplus), <b>Crea un piatto</b> (più foto di frigo/congelatore/dispensa → ricetta su misura).</td></tr>
 <tr><td>📷</td><td>Barcode: scansiona un prodotto e compila l'extra da Open Food Facts (senza consumare AI).</td></tr>
-<tr><td>🔥</td><td><b>Serie "giorni in target"</b>: ogni mattina l'app guarda IERI — se la giornata è chiusa con deficit ≥ 0, pasti spuntati e extra ≤ 300 kcal, la fiamma sale di 1; se un giorno manca il target (o resta vuoto) la serie riparte da 0; in 🏖️ vacanza è congelata. Serve solo come motivazione: più giorni di fila = più costanza.</td></tr>
+<tr><td>🔥</td><td><b>La serie, in parole semplici</b>: conta i giorni "buoni" di fila. Ogni mattina l'app guarda com'è andata IERI e si fa 3 domande: hai spuntato i pasti? sei rimasto dentro le calorie? gli extra erano al massimo 300 kcal? <b>Tre sì = fiamma +1. Anche un solo no = si riparte da 0.</b> Fa tutto da sola, non devi premere nulla; in 🏖️ vacanza si mette in pausa.</td></tr>
 <tr><td>💧</td><td>Acqua: obiettivo 8 bicchieri, <b>+2</b> nei giorni con allenamento intenso o oltre 45 minuti.</td></tr>
 <tr><td>⭐</td><td>Sonno · Relax · Come ti senti: scala 1 basso → 5 alto. Alimentano le correlazioni AI di fine settimana.</td></tr>
 <tr><td>🏖️</td><td>Vacanza (in Io): congela deficit e 🔥; l'app resta un diario senza giudizio.</td></tr>
