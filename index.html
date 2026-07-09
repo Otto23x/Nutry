@@ -1760,6 +1760,15 @@ let DTOKEN=null,tokenClient=null,driveReauthed=false;
    (~1h) l'app riusa il token salvato senza chiedere di nuovo l'accesso, anche
    dopo un riavvio. Alla scadenza si rinnova in silenzio. */
 const DTOK_KEY="diario_dtoken";
+// Questo dispositivo ha già completato una sincronizzazione con Drive? Serve a
+// distinguere il PRIMO collegamento di un nuovo dispositivo (dove non bisogna
+// mai spingere un profilo vuoto sopra un backup con dati veri di un altro
+// dispositivo) dalle sincronizzazioni successive (dove basta confrontare i
+// timestamp di contenuto).
+const SYNCED_ONCE_KEY="diario_synced_once";
+function hasRealLocalContent(){
+  return !!(S.profile&&S.profile.dob) || (S.history&&S.history.length>0) || (S.profile&&S.profile.weights&&S.profile.weights.length>0);
+}
 function driveSaveToken(t){try{if(t&&t.access_token){DTOKEN=t.access_token;
   const exp=Date.now()+(((+t.expires_in||3600)-90)*1000);
   localStorage.setItem(DTOK_KEY,JSON.stringify({tok:t.access_token,exp}));}}catch(e){}}
@@ -1807,6 +1816,7 @@ window.driveUpload=async()=>{
     await fetch(url,{method:f?"PATCH":"POST",
       headers:{Authorization:"Bearer "+DTOKEN,"Content-Type":"multipart/related; boundary="+boundary},body});
     const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Salvato su Drive alle "+new Date().toLocaleTimeString("it-IT");
+    try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}
   }catch(e){alert("Errore Drive: "+e.message);}};
 /* Avvio: riconnessione silenziosa se già autorizzato su questo dispositivo.
    1) se ho un token valido in cache lo riuso senza contattare Google (nessun
@@ -1825,7 +1835,7 @@ window.driveImport=async()=>{
     if(!f)return alert("Nessun backup trovato su Drive.");
     if(!confirm("Importo il backup da Drive del "+new Date(f.modifiedTime).toLocaleString("it-IT")+"? Sovrascrive i dati locali."))return;
     const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
-    S=await r.json();save();location.reload();
+    S=await r.json();localStorage.setItem(KEY,JSON.stringify(S));try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}location.reload();
   }catch(e){alert("Errore importazione: "+e.message);}};
 /* Elimina il backup da Drive (per ricominciare da capo ovunque) */
 window.driveDelete=async(silent)=>{
@@ -1836,7 +1846,7 @@ window.driveDelete=async(silent)=>{
     if(!silent){const st=document.getElementById("driveStatus");if(st)st.textContent="🗑️ Backup eliminato da Drive.";alert("Backup eliminato da Drive.");}
   }catch(e){if(!silent)alert("Errore eliminazione: "+e.message);}};
 async function driveSyncOnStart(){ // confronta i timestamp DI CONTENUTO e allinea in silenzio
-  try{const f=await driveFind();if(!f)return driveUpload();
+  try{const f=await driveFind();if(!f){try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}return driveUpload();}
     // Scarico il contenuto e confronto remote.meta.updated con S.meta.updated:
     // sono entrambi scritti dallo stesso save(), quindi sullo STESSO dispositivo
     // combaciano (niente più falso avviso "versione più recente" a ogni avvio).
@@ -1847,6 +1857,31 @@ async function driveSyncOnStart(){ // confronta i timestamp DI CONTENUTO e allin
     const remote=await r.json();
     const rT=new Date((remote&&remote.meta&&remote.meta.updated)||0).getTime();
     const lT=new Date((S&&S.meta&&S.meta.updated)||0).getTime();
+    const firstSyncOnThisDevice=!localStorage.getItem(SYNCED_ONCE_KEY);
+
+    if(firstSyncOnThisDevice){
+      // Primo collegamento di QUESTO dispositivo: un dispositivo appena aperto
+      // non ha un timestamp di contenuto significativo (è solo il momento in
+      // cui il profilo vuoto è stato creato), quindi non va MAI usato per
+      // decidere di sovrascrivere un backup che può contenere i dati veri di
+      // un altro dispositivo — è esattamente il bug che impediva la
+      // sincronizzazione tra telefono e tablet. Se qui non c'è nulla di
+      // reale, adottiamo sempre il backup in silenzio; se invece questo
+      // dispositivo ha già dati suoi mai sincronizzati, chiediamo una sola volta.
+      if(!hasRealLocalContent()){
+        S=remote;localStorage.setItem(KEY,JSON.stringify(S));
+        try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}
+        location.reload();return;
+      }
+      const useRemote=confirm("Questo dispositivo non si è mai sincronizzato con Drive. È già presente un backup del "+
+        new Date(remote.meta&&remote.meta.updated||f.modifiedTime).toLocaleString("it-IT")+
+        ".\n\nOK = usa i dati di Drive (quelli presenti solo su questo dispositivo andranno persi)\nAnnulla = mantieni i dati di questo dispositivo e sovrascrivi Drive");
+      try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}
+      if(useRemote){S=remote;localStorage.setItem(KEY,JSON.stringify(S));location.reload();}
+      else{await driveUpload();}
+      return;
+    }
+
     if(rT>lT+2000){ // il remoto è davvero più recente (modifica da un altro dispositivo): lo adotto in silenzio
       S=remote;localStorage.setItem(KEY,JSON.stringify(S));location.reload();
     }else if(lT>rT+2000){ // il locale è più recente: aggiorno Drive
