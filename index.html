@@ -1133,6 +1133,12 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   <button class="btn" style="margin-top:14px" onclick="askProgress()">🤖 Chiedi un'analisi dei progressi</button>
   <div class="hint">Considera pasti, resoconti settimanali, sonno/relax/umore e allenamenti del periodo scelto sopra. Solo suggerimenti: nessun parametro viene cambiato in automatico.</div>
   <div class="aibox" id="anAI" style="display:none"></div></div>`;
+  // 💬 Chiedi all'AI: domande libere sui propri risultati/dati
+  h+=`<div class="card"><h2>💬 Chiedi all'AI</h2>
+  <div class="hint" style="margin-top:0">Domande sui tuoi risultati, alimentazione, peso e obiettivi (es. "sto mangiando in modo corretto?" oppure "in quanto tempo raggiungo l'obiettivo continuando così?"). Rispondo solo a domande inerenti ai tuoi dati.</div>
+  <textarea id="diaryQ" rows="2" placeholder="Scrivi la tua domanda…" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--linea);border-radius:10px;font-size:14px;resize:vertical"></textarea>
+  <button class="btn" style="margin-top:8px" onclick="askDiaryQuestion()">Invia domanda</button>
+  <div class="aibox" id="diaryQA" style="display:none"></div></div>`;
   // Storia
   h+=`<div class="card"><h2>Settimane passate</h2>`;
   if(!S.history.length)h+=`<div class="hint">Ancora nessuna settimana salvata.</div>`;
@@ -1285,6 +1291,37 @@ function renderProgressBox(){
     log.slice(0,-1).slice().reverse().forEach(e=>{h+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--linea)"><div style="font-size:11px;color:var(--grigio);margin-bottom:3px">${new Date(e.t).toLocaleString("it-IT",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>${esc(e.text)}</div>`;});
     h+=`</details>`;}
   box.innerHTML=h;}
+/* ── 💬 Chiedi all'AI: contesto compatto + domanda libera con filtro pertinenza ── */
+function buildDiaryContext(){
+  const all=flattenDiet();
+  const recent=all.slice(-30); // ultimi 30 giorni con dati
+  const avg=f=>recent.length?Math.round(recent.reduce((a,x)=>a+(x[f]||0),0)/recent.length):0;
+  const workoutsCount={};recent.forEach(d=>(d.workouts||[]).forEach(w=>{const s=String(w).split(" ")[0];if(s)workoutsCount[s]=(workoutsCount[s]||0)+1;}));
+  return {
+    obiettivo_peso_kg:S.profile.goalW||null,
+    peso_attuale_kg:S.profile.w||null,
+    giorni_con_dati:recent.length,
+    kcal_medie:avg("eat"),proteine_medie_g:avg("prot"),carboidrati_medi_g:avg("c"),grassi_medi_g:avg("f"),
+    deficit_medio_kcal:avg("def"),
+    sonno_medio:avg("sleep")||null,relax_medio:avg("relax")||null,umore_medio:avg("feel")||null,
+    allenamenti_per_tipo:workoutsCount,
+    resoconti_settimanali:S.history.slice(-4).map(w=>({periodo:new Date(w.from).toLocaleDateString("it-IT")+"→"+new Date(w.to).toLocaleDateString("it-IT"),kcal_medie:w.avgEat,deficit_medio:w.avgDef,peso:w.weight}))
+  };}
+window.askDiaryQuestion=async()=>{
+  const ta=document.getElementById("diaryQ");const box=document.getElementById("diaryQA");
+  const q=(ta&&ta.value||"").trim();
+  if(!q){if(box){box.style.display="block";box.textContent="Scrivi prima una domanda.";}return;}
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const ctx=buildDiaryContext();
+  if(box){box.style.display="block";box.textContent="🤔 Sto pensando…";}
+  try{
+    const t=await aiAsk("Sei l'assistente del diario alimentare/sportivo dell'utente. Rispondi alla sua domanda usando SOLO i dati qui sotto: "+JSON.stringify(ctx)+
+      ". DOMANDA: \""+q+"\". REGOLE: se la domanda NON riguarda alimentazione, peso, deficit, macronutrienti, allenamenti, obiettivi o progressi registrati in questa app, rispondi ESATTAMENTE con la sola parola NON_PERTINENTE (in maiuscolo, senza altro). Altrimenti rispondi in italiano, massimo 5-6 frasi, diretta e concreta, senza elenchi puntati e senza markdown. Se servono stime (es. tempo per raggiungere l'obiettivo di peso), calcolale dal ritmo recente e dichiara che è una proiezione; se i dati sono insufficienti dillo chiaramente.");
+    if(String(t).trim().toUpperCase().startsWith("NON_PERTINENTE")){
+      if(box)box.textContent="⚠️ Posso rispondere solo a domande sui tuoi dati: alimentazione, peso, allenamenti, obiettivi e progressi.";
+      return;}
+    if(box)box.textContent=t;
+  }catch(e){if(box)box.style.display="none";aiFail(e);}};
 window.closeWeek=async()=>{
   if(!confirm("Salvo la settimana nello storico e azzero la nuova?\n\n⚠️ ATTENZIONE: una volta salvata, la settimana NON potrà più essere modificata."))return;
   const wk=weekSummary();
@@ -1718,7 +1755,28 @@ window.wipeAll=async()=>{if(!(confirm("Cancellare DAVVERO tutto?")&&confirm("Sic
    16. GOOGLE DRIVE SYNC (GSI + Drive REST, scope drive.appdata)
        Funziona solo da origine http/https registrata nel progetto.
    ═══════════════════════════════════════════════════════════════ */
-let DTOKEN=null,tokenClient=null;
+let DTOKEN=null,tokenClient=null,driveReauthed=false;
+/* Cache del token d'accesso Drive: dopo il primo consenso, entro la sua durata
+   (~1h) l'app riusa il token salvato senza chiedere di nuovo l'accesso, anche
+   dopo un riavvio. Alla scadenza si rinnova in silenzio. */
+const DTOK_KEY="diario_dtoken";
+function driveSaveToken(t){try{if(t&&t.access_token){DTOKEN=t.access_token;
+  const exp=Date.now()+(((+t.expires_in||3600)-90)*1000);
+  localStorage.setItem(DTOK_KEY,JSON.stringify({tok:t.access_token,exp}));}}catch(e){}}
+function driveCachedToken(){try{const c=JSON.parse(localStorage.getItem(DTOK_KEY)||"null");
+  if(c&&c.tok&&c.exp&&Date.now()<c.exp)return c.tok;}catch(e){}return null;}
+function driveClearToken(){DTOKEN=null;try{localStorage.removeItem(DTOK_KEY);}catch(e){}}
+/* Riacquisizione silenziosa del token (nessun popup se la sessione Google è
+   attiva e il consenso è già stato dato in passato su questo dispositivo). */
+function driveSilentAuth(){
+  loadGSI(()=>{try{
+    tokenClient=google.accounts.oauth2.initTokenClient({client_id:S.drive.cid,
+      scope:"https://www.googleapis.com/auth/drive.appdata",
+      callback:async t=>{if(t&&t.access_token){driveSaveToken(t);await driveSyncOnStart();
+        const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Sincronizzato con Drive.";}},
+      error_callback:()=>{}});
+    tokenClient.requestAccessToken({prompt:""});
+  }catch(e){}});}
 function loadGSI(cb){if(window.google&&google.accounts)return cb();
   const s=document.createElement("script");s.src="https://accounts.google.com/gsi/client";
   s.onload=cb;s.onerror=()=>alert("Impossibile caricare Google Identity (offline?).");document.head.appendChild(s);}
@@ -1729,13 +1787,14 @@ window.driveConnect=()=>{
   loadGSI(()=>{
     tokenClient=google.accounts.oauth2.initTokenClient({client_id:S.drive.cid,
       scope:"https://www.googleapis.com/auth/drive.appdata",
-      callback:async t=>{DTOKEN=t.access_token;S.drive.on=true;save();
+      callback:async t=>{driveSaveToken(t);S.drive.on=true;save();
         document.getElementById("driveStatus").textContent="✅ Connesso. Sincronizzo…";
         await driveSyncOnStart();render("io");}});
     tokenClient.requestAccessToken();});};
 async function driveFind(){
   const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27diario_backup.json%27&fields=files(id,modifiedTime)",
     {headers:{Authorization:"Bearer "+DTOKEN}});
+  if(r.status===401){driveClearToken();throw new Error("auth");}
   const j=await r.json();return (j.files&&j.files[0])||null;}
 window.driveUpload=async()=>{
   if(!DTOKEN)return alert("Connettiti prima a Drive.");
@@ -1749,17 +1808,16 @@ window.driveUpload=async()=>{
       headers:{Authorization:"Bearer "+DTOKEN,"Content-Type":"multipart/related; boundary="+boundary},body});
     const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Salvato su Drive alle "+new Date().toLocaleTimeString("it-IT");
   }catch(e){alert("Errore Drive: "+e.message);}};
-/* Avvio: riconnessione silenziosa se già autorizzato su questo dispositivo */
+/* Avvio: riconnessione silenziosa se già autorizzato su questo dispositivo.
+   1) se ho un token valido in cache lo riuso senza contattare Google (nessun
+      popup, nessun "accesso a Drive"); 2) altrimenti provo il rinnovo silenzioso. */
 function tryDriveAuto(){
   if(!(S.drive.on&&S.drive.cid)||location.protocol==="file:")return;
-  loadGSI(()=>{try{
-    tokenClient=google.accounts.oauth2.initTokenClient({client_id:S.drive.cid,
-      scope:"https://www.googleapis.com/auth/drive.appdata",
-      callback:async t=>{if(t&&t.access_token){DTOKEN=t.access_token;await driveSyncOnStart();
-        const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Sincronizzato con Drive.";}},
-      error_callback:()=>{}});
-    tokenClient.requestAccessToken({prompt:""});
-  }catch(e){}});}
+  const cached=driveCachedToken();
+  if(cached){DTOKEN=cached;
+    driveSyncOnStart().then(()=>{const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Sincronizzato con Drive.";}).catch(()=>{});
+    return;}
+  driveSilentAuth();}
 /* Importa da Drive su richiesta: scarica il backup e sostituisce i dati locali */
 window.driveImport=async()=>{
   if(!DTOKEN)return alert("Connettiti prima a Drive.");
@@ -1777,15 +1835,24 @@ window.driveDelete=async(silent)=>{
     if(f)await fetch("https://www.googleapis.com/drive/v3/files/"+f.id,{method:"DELETE",headers:{Authorization:"Bearer "+DTOKEN}});
     if(!silent){const st=document.getElementById("driveStatus");if(st)st.textContent="🗑️ Backup eliminato da Drive.";alert("Backup eliminato da Drive.");}
   }catch(e){if(!silent)alert("Errore eliminazione: "+e.message);}};
-async function driveSyncOnStart(){ // confronta timestamp e carica il più recente
+async function driveSyncOnStart(){ // confronta i timestamp DI CONTENUTO e allinea in silenzio
   try{const f=await driveFind();if(!f)return driveUpload();
-    if(new Date(f.modifiedTime)>new Date(S.meta.updated||0)){
-      const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
-      const remote=await r.json();
-      if(confirm("Su Drive c'è una versione più recente ("+new Date(f.modifiedTime).toLocaleString("it-IT")+"). Caricarla?")){
-        S=remote;save();location.reload();}
-    }else driveUpload();
-  }catch(e){/* silenzioso */}}
+    // Scarico il contenuto e confronto remote.meta.updated con S.meta.updated:
+    // sono entrambi scritti dallo stesso save(), quindi sullo STESSO dispositivo
+    // combaciano (niente più falso avviso "versione più recente" a ogni avvio).
+    // Non uso f.modifiedTime (ora del file sul server), che è sempre leggermente
+    // successiva al contenuto e faceva scattare l'avviso ogni volta.
+    const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
+    if(r.status===401){driveClearToken();throw new Error("auth");}
+    const remote=await r.json();
+    const rT=new Date((remote&&remote.meta&&remote.meta.updated)||0).getTime();
+    const lT=new Date((S&&S.meta&&S.meta.updated)||0).getTime();
+    if(rT>lT+2000){ // il remoto è davvero più recente (modifica da un altro dispositivo): lo adotto in silenzio
+      S=remote;localStorage.setItem(KEY,JSON.stringify(S));location.reload();
+    }else if(lT>rT+2000){ // il locale è più recente: aggiorno Drive
+      await driveUpload();
+    } // altrimenti sono allineati: non faccio nulla
+  }catch(e){ if(String(e&&e.message)==="auth"&&!driveReauthed){driveReauthed=true;driveSilentAuth();} }}
 
 /* ═══════════════════════════════════════════════════════════════
    17. AVVIO: header, tema, streak, prompt del mattino
@@ -1832,7 +1899,12 @@ function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:r
     const man={name:"Nutri",short_name:"Nutri",display:"standalone",
       start_url:location.href.split("#")[0],scope:location.href.replace(/[^/]*$/,""),
       background_color:"#F4F7F2",theme_color:"#0F3D20",
-      icons:[{src:ICON192,sizes:"192x192",type:"image/png"},{src:ICON512,sizes:"512x512",type:"image/png"}]};
+      icons:[
+        {src:ICON192,sizes:"192x192",type:"image/png",purpose:"any"},
+        {src:ICON192,sizes:"192x192",type:"image/png",purpose:"maskable"},
+        {src:ICON512,sizes:"512x512",type:"image/png",purpose:"any"},
+        {src:ICON512,sizes:"512x512",type:"image/png",purpose:"maskable"}
+      ]};
     const l=document.createElement("link");l.rel="manifest";
     l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));
     document.head.appendChild(l);
