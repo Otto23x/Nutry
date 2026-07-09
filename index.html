@@ -294,7 +294,7 @@ const INT={bassa:.8,media:1,alta:1.2};
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="3.1.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="3.2.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -1811,7 +1811,19 @@ window.goYesterday=()=>{VIEW=new Date();VIEW.setDate(VIEW.getDate()-1);VIEW.setH
 window.goSportY=()=>{show("sport");setTimeout(()=>{const s=document.getElementById("wDay");if(s)s.value=yIdx();},80);};
 window.dismissMorning=()=>{S.ui.dismissMorning=iso(new Date());save();render("oggi");};
 function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,storico:renderStorico,io:renderIo,guida:renderGuida,setup:renderSetup})[p]();renderHeader();}
-/* ══ PWA: manifest generato a runtime (URL assoluti) + service worker ══ */
+/* Pulizia: rimuove un eventuale service worker registrato dal vecchio
+   esperimento (causava doppio download delle librerie = lentezza). Non ne
+   registriamo uno nuovo: niente offline, niente file separato. */
+(function(){
+  try{
+    if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister())).catch(()=>{});
+    if(window.caches&&caches.keys)caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))).catch(()=>{});
+  }catch(e){}
+})();
+/* Manifest per "Aggiungi a schermata Home / Installa": generato qui dentro,
+   tutto in un file solo, senza service worker (che dal 2021 Chrome non
+   richiede più per l'installazione). Icone incorporate come immagini,
+   nessun file esterno da mantenere. */
 (function(){
   try{
     const ICON192="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAE/UlEQVR42u3dwXXTQBSFYTKHPSwoADqgAKA0FpSWkwLoIA2wSAew59iRI1nSm3e/f5sQj97cf95IHpuHD98//30HhDKUAAQACAAQACAAQACAAAABAAIABAAIABAAIABAAIAAAAEAAgAEAAgA1Oe9EuzLy+Pz5r/x8ccXhdyJBx+KrxFychBA4AlBAKEnAwGEngwEEHoyEEDwiUAAwScCAQSfCAQQfCIQQPCJQADBJ8I9GMKP5Dq27ACCrxvEdgDhV99YAYRfnSO3QIJvSxTbAYRf/WMFEH7zECuA8JuPWAGE37zECiD85idWAOE3T7ECCD8JYgUQfhLECiD8JIgVQPhJECuA8JPgCEqeBeoY/q8/v7353/z+9dSuDtXODpUToEP414Q9SYpKEvh26OKBX3qtjl0itgPMtvofGfxunaFKFygjwCzhrxT62WWoIEEJAWYI/9bgrwnlGa+ZJgEBdgjhnsHr9jQpXoAu4T8jZNXHN4MEpwpQNfy3BqtSqGYccwUJ7iLAy+PznwsX9GlGAW4JUuXVdNbxLwmwNmO7C3BpYLcMcMbwz/SoccZruSbB2oztLsBrA1saYCUBOgV/5mu7JMCWjN3C2DP8135P+I9jafyV3tf4PxdbMra7AB3oHv4ZJTiacbblFcP/+9dTuzM2S9dURYKj8xHZAZbC35kZJGgrQIXVPzn8s0hwZE6iOoDw6wSnCVD5yEPqmfrK131UXmI6wLVVLf0DJdeuP6ULjE42Cz8JdADhJwEBAAJY/XWBXAGEnwS2QMKvTokCJB/uUlcCWP3VK1cAq7/66gBWf3UjABAmwKX2bPW/fxfotA3SAaADuDlDar1bdwDbH3W0BQIIADQWwNOfc7ZBHe4DdADoAAABAAIABHADjJgbYR0AOgBAAIAAAAEAAgAEAAgAEAAgAEAAgAAAAUrQ/XtrKtHx4KEOAB0AIABAAIAAboQRcQOsA0AHUAIQIKhtQx1bCuCbINRbBwCSBfA06JjtT6duqwNAB3ATh9S6tRPAzbD66gC6gHolC6ALqKsOoAuoU7IA11YrEqwLf9euGvn/BJNA+CO3QECcALqA1f90AT7++EIC4dcBSCD8sQKc3QXWhCA1/BU4Ki9RN8GvrWppErx2vUlvJI6OVpNg7vAfmZPIx6DJElj5Txagyr3AkgTdRFi6pirhPzofY8NAP93z96pJ0KkbLF1H1ZX/iIyNPQd47eeVngh1l2Cm8F/KxdqM3crDh++f/24d+Mvj85+3Duzl8VlYXMvNC+OajB0mwAZxpgtOdRFmHf9ZuwICbNj2VArSjGOOF6CyBG/d/58RrOrjqx7+EgJ0kuCIsFUbz8zhJ8DOwdsawjNekwAk2DWURzDL06oKj8PLCDCTBBVlmO0YQ5X3gkoJMKMEZ4sw4/mdSm+Evn+Hu4dwTyF851HzDjBrF9ijS3QMe7UPRpUUoKsE6VT8VOBQLCTP51A0JM/jUDwkz99QRCTP21BMJM/XUFQkz9NQXCTPz1BkJM/LUGwkz8dQdCTPw1B8JNe/7FmgNTg/JPhxHUA3UGcCkEB9bYFsiQRfB9AN1FEH0A0EnwBEEHwCEEHwCUAEwScAEQSfAEQQfAJkyiD0BIiTQegJECeD0BMgSgiBJ0B7OYScAMAuDCUAAQACAAQACAAQACAAQACAAAABAAIABAAIABAAIABAAIAAAAGASfgHQkDJZa3hObwAAAAASUVORK5CYII=";
@@ -1823,8 +1835,6 @@ function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:r
     const l=document.createElement("link");l.rel="manifest";
     l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));
     document.head.appendChild(l);
-    if("serviceWorker" in navigator&&location.protocol!=="file:")
-      navigator.serviceWorker.register("./sw.js").catch(()=>{});
   }catch(e){}
 })();
 applyTheme();bumpStreak();renderHeader();tryDriveAuto();
