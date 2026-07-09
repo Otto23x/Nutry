@@ -191,7 +191,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
 
 <header>
   <div class="hrow">
-    <h1 id="hTitle">Il mio Diario</h1>
+    <h1 id="hTitle">Nutri</h1>
     <div class="hbtns">
       <span class="streak" id="hStreak" title="Giorni in target consecutivi">🔥 0</span>
       <button class="hbtn" onclick="show('guida')" title="Guida rapida">❓</button>
@@ -1893,7 +1893,7 @@ async function driveSyncOnStart(){ // confronta i timestamp DI CONTENUTO e allin
    17. AVVIO: header, tema, streak, prompt del mattino
    ═══════════════════════════════════════════════════════════════ */
 function renderHeader(){
-  document.getElementById("hTitle").textContent=(S.profile.name?"Diario di "+S.profile.name:"Il mio Diario")+(S.ui.vacanza?" 🏖️":"");
+  document.getElementById("hTitle").textContent="Nutri"+(S.ui.vacanza?" 🏖️":"");
   const d=document.getElementById("hDate");
   d.innerHTML=fmtDate(VIEW)+(isToday()?"":"<small>tocca per tornare a oggi</small>");
   document.getElementById("hStreak").textContent="🔥 "+S.streak.count;}
