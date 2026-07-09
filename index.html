@@ -6,7 +6,8 @@
 <!-- ══════════ SICUREZZA: Content-Security-Policy ══════════
      Limita da dove possono arrivare script e verso dove l'app può connettersi.
      Anche in caso di iniezione, i dati non possono uscire verso domini estranei. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://generativelanguage.googleapis.com https://world.openfoodfacts.org https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; worker-src blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'">
+<meta name="theme-color" content="#0F3D20">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://generativelanguage.googleapis.com https://world.openfoodfacts.org https://www.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; worker-src blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'">
 <title>Il mio Diario — Dieta & Sport</title>
 
 <!-- ══════════ LIBRERIE CDN con SRI (integrità verificata): se il file
@@ -156,6 +157,17 @@ canvas{max-width:100%}
 #aiSpin{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));z-index:90;background:var(--card);border:1px solid var(--linea);box-shadow:var(--shadow);border-radius:22px;padding:9px 15px;display:none;align-items:center;gap:10px;font-size:13px;color:var(--bosco);font-weight:700}
 #aiSpin.on{display:flex}
 #aiSpin .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--linea);border-top-color:var(--salvia);animation:aispin .8s linear infinite}
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);top:74px;z-index:96;background:var(--bosco);color:#fff;border-radius:20px;padding:10px 18px;font-size:13.5px;font-weight:700;opacity:0;pointer-events:none;transition:all .3s;box-shadow:var(--shadow)}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:97;overflow:hidden}
+#confetti span{position:absolute;width:9px;height:9px;border-radius:2px;top:-12px;animation:cfall 1.15s ease-in forwards}
+.modal{position:fixed;inset:0;background:rgba(10,20,12,.5);z-index:95;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .mcard{width:100%;max-width:530px;max-height:86vh;overflow:auto;background:var(--card);border:1px solid var(--linea);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.optbtn{display:block;width:100%;text-align:left;border:2px solid var(--linea);border-radius:12px;padding:11px 12px;margin-top:9px;background:var(--card);cursor:pointer;font-size:13px;line-height:1.45;color:var(--ink)}
+.optbtn.sel{border-color:var(--salvia);background:var(--menta)}
+.optbtn b{color:var(--bosco)}
+@keyframes cfall{to{transform:translateY(105vh) rotate(560deg);opacity:.9}}
+@media(prefers-reduced-motion:reduce){#confetti{display:none}}
 @keyframes aispin{to{transform:rotate(360deg)}}
 button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible{outline:2.5px solid var(--mensa);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -204,6 +216,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
 <div id="printreport"></div>
 
 <div id="aiSpin"><span class="sp"></span>L'AI sta lavorando…</div>
+<div id="toast"></div>
+<div id="confetti"></div>
 
 <nav class="tabs">
   <button data-p="oggi"><span class="ic">☀️</span>Oggi</button>
@@ -223,45 +237,45 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
       normale al giorno (mai mensa, mai liberi).
    ═══════════════════════════════════════════════════════════════ */
 const ADD=" + parmigiano 15g + 1 noce"; // il compenso quotidiano
-const MM ={n:"Metà mattina",t:"09:30",type:"norm",o:[{d:"Kefir 150g + quinoa soffiata 25g + frutti di bosco 40g + semi oleosi 10g",k:250,p:9}]};
-const POM={n:"Metà pomeriggio",t:"16:00",type:"norm",o:[{d:"Yogurt greco 150g + frutta di stagione 40g + semi oleosi 10g",k:170,p:17}]};
-const DC ={n:"Dopo cena",t:"21:30",type:"norm",o:[{d:"Tisana senza zucchero e frutta",k:70,p:0}]};
+const MM ={n:"Metà mattina",t:"09:30",type:"norm",o:[{d:"Kefir 150g + quinoa soffiata 25g + frutti di bosco 40g + semi oleosi 10g",k:250,p:9,c:30,f:9}]};
+const POM={n:"Metà pomeriggio",t:"16:00",type:"norm",o:[{d:"Yogurt greco 150g + frutta di stagione 40g + semi oleosi 10g",k:170,p:17,c:10,f:8}]};
+const DC ={n:"Dopo cena",t:"21:30",type:"norm",o:[{d:"Tisana senza zucchero e frutta",k:70,p:0,c:16,f:0}]};
 const BASE_PLAN=[
  {day:"Lunedì",ctx:"A casa (smart)",meals:[MM,
-   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Pollo 200g + verdura + patate 150g + ½ avocado + EVO 10g"+ADD,k:710,p:53}]},POM,
-   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Zuppa di verdure + 2 uova sode + crostini 30g + ½ avocado + EVO 10g",k:490,p:22}]},DC]},
+   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Pollo 200g + verdura + patate 150g + ½ avocado + EVO 10g"+ADD,k:710,p:53,c:32,f:37}]},POM,
+   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Zuppa di verdure + 2 uova sode + crostini 30g + ½ avocado + EVO 10g",k:490,p:22,c:40,f:26}]},DC]},
  {day:"Martedì",ctx:"In ufficio — pranzo in mensa",meals:[{...MM,t:"09:30 (portatile)"},
-   {n:"Pranzo",t:"12:30",type:"mensa",o:[{d:"MENSA: secondo di carne o pesce + verdura/insalata + pane + frutta",k:600,p:38}]},
+   {n:"Pranzo",t:"12:30",type:"mensa",o:[{d:"MENSA: secondo di carne o pesce + verdura/insalata + pane + frutta",k:600,p:38,c:60,f:24}]},
    {...POM,t:"16:00 (portatile)"},
    {n:"Cena",t:"19:30",type:"norm",o:[
-     {d:"Pane 60g + vitello 200g + scamorza 20g + insalata + patate 150g"+ADD,k:700,p:63},
-     {d:"Pane 60g + prosciutto 150g + scamorza 40g + insalata + patate 150g"+ADD,k:700,p:63},
-     {d:"Pane 120g + prosciutto 150g + scamorza 40g + insalata"+ADD,k:700,p:63}]},DC]},
+     {d:"Pane 60g + vitello 200g + scamorza 20g + insalata + patate 150g"+ADD,k:700,p:63,c:60,f:24},
+     {d:"Pane 60g + prosciutto 150g + scamorza 40g + insalata + patate 150g"+ADD,k:700,p:63,c:60,f:24},
+     {d:"Pane 120g + prosciutto 150g + scamorza 40g + insalata"+ADD,k:700,p:63,c:60,f:24}]},DC]},
  {day:"Mercoledì",ctx:"A casa (smart)",meals:[MM,
    {n:"Pranzo",t:"12:30",type:"free",o:[
-     {d:"LIBERO: sushi — 4 nigiri + 16 uramaki (vai piano con la soia)",k:720,p:30},
-     {d:"Branzino 250g + verdura + patate 180g + EVO 10g",k:520,p:51}]},POM,
-   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Verdura cruda + tonno 100g + fiocchi di latte 170g + pane 30g"+ADD,k:580,p:57}]},DC]},
+     {d:"LIBERO: sushi — 4 nigiri + 16 uramaki (vai piano con la soia)",k:720,p:30,c:105,f:20},
+     {d:"Branzino 250g + verdura + patate 180g + EVO 10g",k:520,p:51,c:34,f:20}]},POM,
+   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Verdura cruda + tonno 100g + fiocchi di latte 170g + pane 30g"+ADD,k:580,p:57,c:28,f:24}]},DC]},
  {day:"Giovedì",ctx:"In ufficio — pranzo in mensa",meals:[{...MM,t:"09:30 (portatile)"},
-   {n:"Pranzo",t:"12:30",type:"mensa",o:[{d:"MENSA: secondo di carne o pesce + verdura/insalata + pane + frutta",k:600,p:38}]},
+   {n:"Pranzo",t:"12:30",type:"mensa",o:[{d:"MENSA: secondo di carne o pesce + verdura/insalata + pane + frutta",k:600,p:38,c:60,f:24}]},
    {...POM,t:"16:00 (portatile)"},
-   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Pollo 200g + verdura + patate al forno 200g + EVO 10g"+ADD,k:630,p:52}]},
-   {n:"Dopo cena",t:"21:30",type:"free",o:[{d:"LIBERO: gelato 1 pallina o dolcetto",k:150,p:3}]}]},
+   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Pollo 200g + verdura + patate al forno 200g + EVO 10g"+ADD,k:630,p:52,c:38,f:28}]},
+   {n:"Dopo cena",t:"21:30",type:"free",o:[{d:"LIBERO: gelato 1 pallina o dolcetto",k:150,p:3,c:18,f:7}]}]},
  {day:"Venerdì",ctx:"A casa (smart)",meals:[MM,
-   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Pasta 100g + tonno 120g + parmigiano 15g + verdura + EVO 10g"+ADD,k:780,p:52}]},
+   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Pasta 100g + tonno 120g + parmigiano 15g + verdura + EVO 10g"+ADD,k:780,p:52,c:72,f:32}]},
    {n:"Aperitivo",t:"17:30",type:"free",o:[
-     {d:"LIBERO: birra media, olive, pochi panificati o fritti",k:570,p:0},
-     {d:"Yogurt greco 150g + frutta di stagione 40g + semi oleosi 10g",k:170,p:17}]},
-   {n:"Cena",t:"20:00",type:"norm",o:[{d:"3 uova + piselli 220g + patate 100g",k:520,p:39}]},DC]},
+     {d:"LIBERO: birra media, olive, pochi panificati o fritti",k:570,p:0,c:70,f:32},
+     {d:"Yogurt greco 150g + frutta di stagione 40g + semi oleosi 10g",k:170,p:17,c:10,f:8}]},
+   {n:"Cena",t:"20:00",type:"norm",o:[{d:"3 uova + piselli 220g + patate 100g",k:520,p:39,c:42,f:22}]},DC]},
  {day:"Sabato",ctx:"Weekend — flessibile",meals:[MM,
-   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Caprino 100g + piselli 240g + verdura + patate 100g + EVO 10g"+ADD,k:800,p:45}]},POM,
-   {n:"Cena",t:"20:00",type:"free",o:[{d:"LIBERO: pizza, burger o grigliata non eccessivi, poche patatine",k:900,p:30}]},DC]},
+   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Caprino 100g + piselli 240g + verdura + patate 100g + EVO 10g"+ADD,k:800,p:45,c:48,f:46}]},POM,
+   {n:"Cena",t:"20:00",type:"free",o:[{d:"LIBERO: pizza, burger o grigliata non eccessivi, poche patatine",k:900,p:30,c:110,f:36}]},DC]},
  {day:"Domenica",ctx:"Weekend — flessibile",meals:[
    {n:"Colazione",t:"09:30",type:"free",o:[
-     {d:"LIBERO: 1 cornetto + succo senza zucchero",k:350,p:4},
-     {d:"Kefir 150g + quinoa soffiata 25g + frutti di bosco 40g + semi oleosi 10g",k:250,p:9}]},
-   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"3 uova + piselli 100g + verdura + EVO 10g"+ADD,k:550,p:36}]},POM,
-   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Salmone al forno 250g + verdura + patate 150g + EVO 10g",k:700,p:59}]},DC]}
+     {d:"LIBERO: 1 cornetto + succo senza zucchero",k:350,p:4,c:45,f:16},
+     {d:"Kefir 150g + quinoa soffiata 25g + frutti di bosco 40g + semi oleosi 10g",k:250,p:9,c:30,f:9}]},
+   {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"3 uova + piselli 100g + verdura + EVO 10g"+ADD,k:550,p:36,c:20,f:35}]},POM,
+   {n:"Cena",t:"19:30",type:"norm",o:[{d:"Salmone al forno 250g + verdura + patate 150g + EVO 10g",k:700,p:59,c:28,f:39}]},DC]}
 ];
 let PLAN=BASE_PLAN; // può essere sostituito dal piano personalizzato (S.customPlan)
 const SLOTS=["Colazione","Metà mattina","Pranzo","Metà pomeriggio","Aperitivo","Cena","Dopo cena"];
@@ -280,10 +294,10 @@ const INT={bassa:.8,media:1,alta:1.2};
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="2.5.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="3.0.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
-    extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0}))};}
+    extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
 function defaultState(){return {
   profile:{name:"",gender:"m",dob:"",h:185,w:114,lbm:"",act:1.3,weights:[]},
   customSports:[],shop:{},links:[],permMeals:{},week:freshWeek(),history:[],
@@ -307,6 +321,7 @@ S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
 S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};
 S.meta=S.meta||{updated:new Date().toISOString()};
 S.conadTpl=S.conadTpl||"";
+S.recipes=S.recipes||[];
 S.diet=Object.assign({intol:"lattosio; colon irritabile",
   no:"aglio, cipolla, porro, pomodoro, arancia, ananas, caffè, peperoni, melanzane, cavoli e verza, carciofi, asparagi, avena",
   si:"pollo, patate, kefir, yogurt greco senza lattosio, uova, salmone, piselli, quinoa soffiata",
@@ -317,15 +332,20 @@ if(S.customPlan&&Array.isArray(S.customPlan)&&S.customPlan.length===7)PLAN=S.cus
 if(!S.week||!S.week.days||S.week.days.length!==7)S.week=freshWeek();
 S.week.days.forEach((d,di)=>{d.meals.forEach(m=>{if(m.skip===undefined)m.skip=false;if(m.movedAs===undefined)m.movedAs="";if(m.custom===undefined)m.custom=null;});
   while(d.meals.length<PLAN[di].meals.length)d.meals.push({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null});
-  if(d.sleep===undefined)d.sleep=0;if(d.relax===undefined)d.relax=(d.stress?Math.max(1,6-d.stress):0);if(d.feel===undefined)d.feel=0;});
+  if(d.sleep===undefined)d.sleep=0;if(d.relax===undefined)d.relax=(d.stress?Math.max(1,6-d.stress):0);if(d.feel===undefined)d.feel=0;if(d.steps===undefined)d.steps=0;});
 let driveTimer=null;
 function save(){S.meta.updated=new Date().toISOString();
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   // Auto-save su Drive (debounce 4s) se connesso
   if(DTOKEN&&S.drive.on){clearTimeout(driveTimer);driveTimer=setTimeout(driveUpload,4000);}}
-function toggleTheme(){S.ui.theme=(S.ui.theme==="light"?"dark":"light");applyTheme();save();}
-function applyTheme(){document.documentElement.dataset.theme=S.ui.theme;
-  document.getElementById("themeBtn").textContent=S.ui.theme==="light"?"🌙":"☀️";}
+function toggleTheme(){S.ui.theme=({light:"dark",dark:"auto",auto:"light"})[S.ui.theme]||"light";applyTheme();save();}
+function applyTheme(){
+  const eff=S.ui.theme==="auto"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):S.ui.theme;
+  document.documentElement.dataset.theme=eff;
+  const b=document.getElementById("themeBtn");
+  b.textContent=({light:"🌙",dark:"☀️",auto:"🌓"})[S.ui.theme];
+  b.title="Tema: "+({light:"chiaro",dark:"scuro",auto:"automatico (segue il sistema)"})[S.ui.theme];}
+try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(S.ui.theme==="auto")applyTheme();});}catch(e){}
 
 /* ═══════════════════════════════════════════════════════════════
    3. DATA VISUALIZZATA (scorrimento giorni) + utilità date
@@ -364,18 +384,22 @@ function dayItems(di){const items=[];
     const st=S.week.days[pdi].meals[mi];const slot=st.movedAs||m.n;
     items.push({pdi,mi,slot,ord:SLOTS.indexOf(slot)<0?9:SLOTS.indexOf(slot)});}}));
   items.sort((a,b)=>a.ord-b.ord);return items;}
-function eatenOfDay(di){let k=0,p=0;
+function eatenOfDay(di){let k=0,p=0,c=0,f=0;
   dayItems(di).forEach(it=>{const st=S.week.days[it.pdi].meals[it.mi];
-    if(st.done&&!st.skip){const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;}});
-  S.week.days[di].extras.forEach(e=>{k+=e.k;p+=e.p||0;});return{k,p};}
+    if(st.done&&!st.skip){const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;c+=o.c||0;f+=o.f||0;}});
+  S.week.days[di].extras.forEach(e=>{k+=e.k;p+=e.p||0;c+=e.c||0;f+=e.f||0;});return{k,p,c,f};}
 function extrasKcal(di){return S.week.days[di].extras.reduce((a,e)=>a+e.k,0);}
 function skippedOfDay(di){return dayItems(di).filter(it=>S.week.days[it.pdi].meals[it.mi].skip).length;}
 function plannedOfDay(di){let k=0,p=0;
   dayItems(di).forEach(it=>{const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;});return{k,p};}
-function burnedOfDay(di){return S.week.days[di].workouts.reduce((a,w)=>a+workoutKcal(w),0);}
+function stepsKcal(di){const s=S.week.days[di].steps||0;
+  return Math.round(Math.max(0,s-5000)*S.profile.w*0.00045);} // solo i passi OLTRE la vita sedentaria già nel TDEE
+function burnedOfDay(di){return S.week.days[di].workouts.reduce((a,w)=>a+workoutKcal(w),0)+stepsKcal(di);}
 function deficitOfDay(di){return tdee()+burnedOfDay(di)-eatenOfDay(di).k;}
 /* Obiettivo acqua dinamico: +2 bicchieri se allenamento intenso o >45' */
-function waterGoal(di){const hard=S.week.days[di].workouts.some(w=>w.int==="alta"||w.min>45);return 8+(hard?2:0);}
+function waterGoal(di){const hard=S.week.days[di].workouts.some(w=>w.int==="alta"||w.min>45);
+  const base=Math.min(20,Math.max(8,Math.round(S.profile.w*0.14))); // ~35 ml/kg in bicchieri da 250 ml
+  return base+(hard?2:0);}
 
 /* ═══════════════════════════════════════════════════════════════
    5. STREAK 🔥 (giorni in target consecutivi) — congelata in vacanza
@@ -386,7 +410,8 @@ function bumpStreak(){const y=new Date();y.setDate(y.getDate()-1);y.setHours(12,
   const yIso=iso(y);if(S.streak.last===yIso)return;
   if(S.ui.vacanza){S.streak.last=yIso;save();return;} // vacanza: congela
   const prev=new Date(y);prev.setDate(prev.getDate()-1);
-  if(dayInTarget(wd(y))){S.streak.count=(S.streak.last===iso(prev)||S.streak.count===0)?S.streak.count+1:1;}
+  if(dayInTarget(wd(y))){S.streak.count=(S.streak.last===iso(prev)||S.streak.count===0)?S.streak.count+1:1;
+    if(S.streak.count>0&&S.streak.count%7===0)setTimeout(()=>{confetti();toast("🔥 "+S.streak.count+" giorni in target di fila!");},600);}
   else S.streak.count=0;
   S.streak.last=yIso;save();}
 
@@ -411,6 +436,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 let AIBUSY=0;
 function aiBusy(){AIBUSY++;const e=document.getElementById("aiSpin");if(e)e.classList.add("on");}
 function aiDone(){AIBUSY=Math.max(0,AIBUSY-1);if(AIBUSY===0){const e=document.getElementById("aiSpin");if(e)e.classList.remove("on");}}
+let toastT=null;
+function toast(msg){const e=document.getElementById("toast");if(!e)return;
+  e.textContent=msg;e.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove("on"),2600);}
+function confetti(){const box=document.getElementById("confetti");if(!box)return;
+  const cols=["#2F7D3B","#C77A15","#2F5FA6","#8FD3A0","#E8A44C"];
+  for(let i=0;i<26;i++){const s=document.createElement("span");
+    s.style.left=Math.random()*100+"vw";s.style.background=cols[i%cols.length];
+    s.style.animationDelay=(Math.random()*.25)+"s";s.style.animationDuration=(0.9+Math.random()*0.6)+"s";
+    box.appendChild(s);setTimeout(()=>s.remove(),1900);}}
+function vibra(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
 /* Chiamata Gemini robusta: fino a 3 tentativi per modello con backoff su 429/503/rete;
    passa al modello successivo su 404/quota; errori tipizzati per messaggi chiari. */
 async function geminiCall(prompt,imgs){
@@ -528,6 +563,13 @@ function show(p){cur=p;pages.forEach(x=>document.getElementById("pg-"+x).classLi
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
   render(p);window.scrollTo(0,0);}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>show(b.dataset.p));
+/* Swipe orizzontale sulla pagina Oggi per cambiare giorno */
+let _tsx=0,_tsy=0;
+document.addEventListener("touchstart",e=>{_tsx=e.touches[0].clientX;_tsy=e.touches[0].clientY;},{passive:true});
+document.addEventListener("touchend",e=>{
+  if(cur!=="oggi")return;
+  const dx=e.changedTouches[0].clientX-_tsx,dy=e.changedTouches[0].clientY-_tsy;
+  if(Math.abs(dx)>65&&Math.abs(dy)<45)shiftDay(dx<0?1:-1);},{passive:true});
 
 /* ═══════════════════════════════════════════════════════════════
    8. CARD PASTO (spunta 3 stati, spostamento giorno+fascia anche
@@ -543,7 +585,7 @@ function mealCard(pdi,mi){
     <div class="mbody">
       <div class="mtop"><span class="mname">${esc(dispName)}${st.skip?" (saltato)":""}</span><span class="mtime">${m.t}</span></div>
       <div class="mdesc">${esc(o.d)}</div>
-      <div class="mkcal">~${o.k} kcal · ~${o.p} g prot ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
+      <div class="mkcal">~${o.k} kcal · ~${o.p} g prot${o.c!=null?` · C ${o.c}g`:""}${o.f!=null?` · Gr ${o.f}g`:""} ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
   if(PLAN[pdi].meals[mi].o.length>1&&!st.custom){h+=`<div class="mopts">`+m.o.map((x,oi)=>
     `<button class="${oi===st.opt?"sel":""}" onclick="setOpt(${pdi},${mi},${oi})">Opzione ${oi+1}</button>`).join("")+`</div>`;}
   h+=`<div class="mtools">
@@ -561,8 +603,14 @@ function mealCard(pdi,mi){
   if(st.movedTo!==-1||st.movedAs&&st.movedAs!==m.n)h+=`<span class="badge moved">da ${PLAN[pdi].day} · ${m.n}</span>`;
   h+=`</div></div></div>`;return h;}
 window.tgl=(d,m)=>{const st=S.week.days[d].meals[m];
-  if(!st.done&&!st.skip)st.done=true;else if(st.done){st.done=false;st.skip=true;}else st.skip=false;
-  save();render(cur);};
+  const wasComplete=dayCompleted(d);
+  if(!st.done&&!st.skip){st.done=true;vibra(12);}
+  else if(st.done){st.done=false;st.skip=true;vibra([8,40,8]);}
+  else st.skip=false;
+  save();render(cur);
+  if(!wasComplete&&dayCompleted(d)&&!S.ui.vacanza){
+    if(deficitOfDay(d)>=0&&extrasKcal(d)<=300){confetti();toast("🎉 Giornata chiusa in target!");}
+    else toast("Giornata chiusa. Domani si riparte!");}};
 window.setOpt=(d,m,o)=>{S.week.days[d].meals[m].opt=o;save();render(cur);};
 window.moveDay=(d,m,v)=>{const st=S.week.days[d].meals[m];st.movedTo=parseInt(v);
   if(!st.movedAs)st.movedAs=PLAN[d].meals[m].n;save();render(cur);};
@@ -571,19 +619,19 @@ window.resetMeal=(d,m)=>{S.week.days[d].meals[m].custom=null;save();render(cur);
 /* ✏️ Modifica pasto + stima AI */
 window.editMeal=async(d,m)=>{const o=mealOpt(d,m);
   const nd=prompt("Modifica gli ingredienti del pasto:",o.d);if(!nd||nd===o.d)return;
-  let k=o.k,p=o.p;
+  let k=o.k,p=o.p,j=null;
   if(aiOn()){try{
-    const t=await aiAsk('Stima calorie e proteine di questo pasto modificato: "'+nd+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero}');
-    const j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
+    const t=await aiAsk('Stima calorie e proteine di questo pasto modificato: "'+nd+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero}');
+    j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
     alert("Stima AI: ~"+k+" kcal · ~"+p+" g prot");
   }catch(e){aiFail(e);k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}}
   else{k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}
-  S.week.days[d].meals[m].custom={d:nd,k,p};save();render(cur);};
+  S.week.days[d].meals[m].custom={d:nd,k,p,c:(typeof j!=="undefined"&&j&&Math.round(j.carb))||null,f:(typeof j!=="undefined"&&j&&Math.round(j.gras))||null};save();render(cur);};
 /* 🎲 Alternativa AI con macro identici */
 window.altMeal=async(d,m)=>{const o=mealOpt(d,m);
   if(!aiOn())return aiFail(new Error("nokey"));
   try{
-    const t=await aiAsk('Genera UN piatto completamente diverso da "'+o.d+'" ma con circa '+o.k+' kcal e '+o.p+' g di proteine. '+dietStr()+' Ingredienti comuni in Italia con grammature. Rispondi SOLO JSON: {"piatto":"descrizione con grammature","kcal":numero,"prot":numero}');
+    const t=await aiAsk('Genera UN piatto completamente diverso da "'+o.d+'" ma con circa '+o.k+' kcal e '+o.p+' g di proteine. '+dietStr()+' Ingredienti comuni in Italia con grammature. Rispondi SOLO JSON: {"piatto":"descrizione con grammature","kcal":numero,"prot":numero,"carb":numero,"gras":numero}');
     const j=parseAIJSON(t);
     if(!confirm("Alternativa AI:\n"+j.piatto+"\n~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot\n\nOK = usala"))return;
     const perm=confirm("Renderla FISSA anche per le prossime settimane?\nOK = fissa · Annulla = solo questa settimana");
@@ -591,57 +639,108 @@ window.altMeal=async(d,m)=>{const o=mealOpt(d,m);
     if(perm){S.permMeals[d+"_"+m]=val;S.week.days[d].meals[m].custom=null;S.week.days[d].meals[m].opt=0;}
     else S.week.days[d].meals[m].custom=val;
     save();render(cur);
+    if(confirm("Vuoi salvare questo piatto anche in ⭐ I miei piatti?"))addRecipe(val.d,val.k,val.p,null,null);
   }catch(e){aiFail(e);}};
-/* 🔁 Sostituzione ingredienti: 3 proposte a parità di macro, con Riprova e Foto */
+/* 🔁 Sostituzione ingredienti — proposte CLICCABILI in un pannello:
+   scegli toccando, "Altre proposte" rigenera, foto multiple del cibo in casa. */
+let SUB=null;
 window.subIngr=async(pdi,mi)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
   const o=mealOpt(pdi,mi);
   const miss=prompt("Quale ingrediente (o più di uno) NON hai in casa?\n\nPasto: "+o.d);
   if(!miss)return;
-  let excluded=[];
-  while(true){
-    try{
-      const t=await aiAsk('Pasto del mio piano: "'+o.d+'" (~'+o.k+' kcal · '+o.p+' g prot). Non ho in casa: '+miss+'.'+(excluded.length?' Ho già scartato questi sostituti, NON riproporli: '+excluded.join(", ")+'.':'')+' Proponi 3 alternative DIVERSE per sostituire SOLO quegli ingredienti, mantenendo le kcal (±10%) e le proteine (±5 g) del pasto: per ciascuna indica il sostituto con la grammatura esatta e la descrizione completa del pasto risultante. '+dietStr()+' Rispondi SOLO JSON: [{"sost":"sostituto con grammi","piatto":"descrizione completa del nuovo pasto","k":kcal,"p":proteine},{...},{...}]');
-      const arr=parseAIJSON(t);
-      if(!Array.isArray(arr)||arr.length<1)throw new Error("formato");
-      let msg="Sostituzioni per \""+miss+"\":\n";
-      arr.slice(0,3).forEach((a,i)=>{msg+="\n"+(i+1)+") "+a.sost+"\n    → "+a.piatto+" (~"+Math.round(a.k)+" kcal · "+Math.round(a.p)+"g)\n";});
-      const c=prompt(msg+"\nScrivi 1, 2 o 3 per scegliere · R = altre proposte · F = fotografa cosa hai in casa · vuoto = annulla","1");
-      if(!c)return;
-      const cl=c.trim().toUpperCase();
-      if(cl==="R"){arr.forEach(a=>excluded.push(a.sost));continue;}
-      if(cl==="F"){
-        const ph=await snapPhoto();
-        const t2=await aiAskVision('Pasto del mio piano: "'+o.d+'" (~'+o.k+' kcal · '+o.p+' g prot). Non ho in casa: '+miss+'. Nella FOTO vedi cosa ho a disposizione: scegli il MIGLIOR sostituto tra ciò che vedi, con grammatura per mantenere kcal (±10%) e proteine (±5 g). '+dietStr()+' Rispondi SOLO JSON: {"sost":"sostituto con grammi","piatto":"descrizione completa del nuovo pasto","k":kcal,"p":proteine}',[ph]);
-        const j=parseAIJSON(t2);
-        if(confirm("Dalla foto: "+j.sost+"\n→ "+j.piatto+" (~"+Math.round(j.k)+" kcal · "+Math.round(j.p)+"g)\n\nOK = usa questo pasto")){
-          S.week.days[pdi].meals[mi].custom={d:j.piatto,k:Math.round(j.k),p:Math.round(j.p)};save();render(cur);}
-        return;}
-      const idx=parseInt(cl)-1;
-      if(arr[idx]){S.week.days[pdi].meals[mi].custom={d:arr[idx].piatto,k:Math.round(arr[idx].k),p:Math.round(arr[idx].p)};save();render(cur);}
-      return;
-    }catch(e){if(e.message!=="annullato")aiFail(e);return;}
-  }};
+  SUB={pdi,mi,o,miss,excluded:[],opts:[],sel:-1,photos:[]};
+  renderSub();subFetch();};
+function subPrompt(){
+  return 'Pasto del mio piano: "'+SUB.o.d+'" (~'+SUB.o.k+' kcal · '+SUB.o.p+' g prot). Non ho in casa: '+SUB.miss+'.'+
+  (SUB.excluded.length?' Ho già scartato questi sostituti, NON riproporli: '+SUB.excluded.join(", ")+'.':'')+
+  ' Proponi 3 alternative DIVERSE per sostituire SOLO quegli ingredienti, mantenendo le kcal (±10%) e le proteine (±5 g): per ciascuna indica il sostituto con grammatura e la descrizione completa del pasto risultante. '+dietStr()+
+  ' Rispondi SOLO JSON: [{"sost":"sostituto con grammi","piatto":"descrizione completa","k":kcal,"p":prot,"c":carboidrati,"f":grassi},{...},{...}]';}
+async function subFetch(){
+  const st=document.getElementById("subStatus");if(st)st.textContent="🔎 Cerco proposte…";
+  try{
+    const arr=parseAIJSON(await aiAsk(subPrompt()));
+    if(!Array.isArray(arr)||!arr.length)throw new Error("formato");
+    SUB.opts=arr.slice(0,3).map(a=>({sost:String(a.sost),piatto:String(a.piatto),k:Math.round(+a.k)||SUB.o.k,p:Math.round(+a.p)||SUB.o.p,c:Math.round(+a.c)||null,f:Math.round(+a.f)||null,src:"ai"}));
+    SUB.sel=-1;renderSub();
+  }catch(e){if(SUB)closeSub();aiFail(e);}}
+window.subMore=()=>{if(!SUB)return;SUB.opts.forEach(a=>SUB.excluded.push(a.sost));SUB.opts=[];SUB.sel=-1;renderSub();subFetch();};
+window.subPhotoAdd=async()=>{try{const ph=await snapPhoto();SUB.photos.push(ph);renderSub();}catch(e){}};
+window.subPhotoAsk=async()=>{
+  if(!SUB.photos.length)return alert("Prima scatta almeno una foto del cibo che hai in casa.");
+  const st=document.getElementById("subStatus");if(st)st.textContent="👀 Guardo le foto…";
+  try{
+    const t=await aiAskVision('Pasto del mio piano: "'+SUB.o.d+'" (~'+SUB.o.k+' kcal · '+SUB.o.p+' g prot). Non ho in casa: '+SUB.miss+'. Nelle '+SUB.photos.length+' FOTO vedi il cibo che ho a disposizione: scegli il MIGLIOR sostituto tra ciò che vedi, con grammatura per mantenere kcal (±10%) e proteine (±5 g). '+dietStr()+' Rispondi SOLO JSON: {"sost":"sostituto con grammi","piatto":"descrizione completa","k":kcal,"p":prot,"c":carboidrati,"f":grassi}',SUB.photos);
+    const j=parseAIJSON(t);
+    SUB.opts.push({sost:"📸 "+String(j.sost),piatto:String(j.piatto),k:Math.round(+j.k)||SUB.o.k,p:Math.round(+j.p)||SUB.o.p,c:Math.round(+j.c)||null,f:Math.round(+j.f)||null,src:"foto"});
+    SUB.sel=SUB.opts.length-1;renderSub();
+  }catch(e){const st2=document.getElementById("subStatus");if(st2)st2.textContent="";if(e.message!=="annullato")aiFail(e);}};
+window.subPick=i=>{if(SUB){SUB.sel=i;renderSub();}};
+window.subOk=()=>{
+  if(!SUB||SUB.sel<0)return alert("Tocca prima una delle proposte per selezionarla.");
+  const a=SUB.opts[SUB.sel];
+  S.week.days[SUB.pdi].meals[SUB.mi].custom={d:a.piatto,k:a.k,p:a.p,c:a.c,f:a.f};
+  save();closeSub();render(cur);toast("Pasto aggiornato ✓");
+  if(confirm("Vuoi salvare questo piatto anche in ⭐ I miei piatti, per riusarlo in futuro?"))addRecipe(a.piatto,a.k,a.p,a.c,a.f);};
+function addRecipe(d,k,p,c,f){S.recipes.push({d,k,p,c:c||null,f:f||null});save();toast("⭐ Salvato nei tuoi piatti");}
+window.closeSub=()=>{SUB=null;const m=document.getElementById("subModal");if(m)m.remove();};
+window.recModal=(di)=>{
+  let m=document.getElementById("recM");
+  if(!m){m=document.createElement("div");m.id="recM";m.className="modal";document.body.appendChild(m);}
+  let inner=`<div class="mcard"><h2 style="color:var(--bosco);font-size:16px">⭐ I miei piatti</h2>
+  <div class="hint">I piatti che hai salvato da 🍲, 🎲 e 🔁: riusali senza consumare AI.</div>`;
+  if(!S.recipes.length)inner+=`<div class="hint">Ancora nessun piatto salvato: quando l'AI ti propone qualcosa che ti piace, cerca il bottone ⭐ Salva.</div>`;
+  S.recipes.forEach((r,i)=>{inner+=`<div class="optbtn"><b>${esc(r.d.split(" — ")[0])}</b><br>
+    <span style="color:var(--salvia);font-weight:700">~${r.k} kcal · ${r.p}g prot${r.c!=null?" · C "+r.c+"g":""}${r.f!=null?" · Gr "+r.f+"g":""}</span>
+    <div class="mtools"><button class="btn small" onclick="recUse(${di},${i})">Usa per il pasto selezionato</button>
+    <button class="btn ghost small" onclick="recExtra(${di},${i})">+ Extra</button>
+    <button class="btn warn small" onclick="recDel(${di},${i})">🗑</button></div></div>`;});
+  inner+=`<div class="mtools" style="margin-top:12px"><button class="btn warn" onclick="document.getElementById('recM').remove()">Chiudi</button></div></div>`;
+  m.innerHTML=inner;};
+window.recUse=(di,i)=>{const r=S.recipes[i];const tgt=selTarget("frTarget",di);
+  if(tgt.pdi===undefined)return alert("Nessun pasto selezionabile in questo giorno.");
+  S.week.days[tgt.pdi].meals[tgt.mi].custom={d:r.d.split(" — ")[0]+" (dai miei piatti)",k:r.k,p:r.p,c:r.c,f:r.f};
+  save();document.getElementById("recM").remove();render(cur);toast("Pasto impostato ✓");};
+window.recExtra=(di,i)=>{const r=S.recipes[i];
+  S.week.days[di].extras.push({d:r.d.split(" — ")[0],k:r.k,p:r.p,c:r.c,f:r.f});
+  save();document.getElementById("recM").remove();render(cur);};
+window.recDel=(di,i)=>{if(confirm("Eliminare questo piatto salvato?")){S.recipes.splice(i,1);document.getElementById("recM").remove();recModal(di);save();}};
+function renderSub(){
+  let m=document.getElementById("subModal");
+  if(!m){m=document.createElement("div");m.id="subModal";m.className="modal";document.body.appendChild(m);}
+  let inner=`<div class="mcard"><h2 style="color:var(--bosco);font-size:16px">🔁 Sostituisci: ${esc(SUB.miss)}</h2>
+  <div class="hint" style="margin-top:4px">${esc(SUB.o.d)} · ~${SUB.o.k} kcal · ${SUB.o.p}g prot</div>
+  <div class="hint" id="subStatus">${SUB.opts.length?"Tocca una proposta per selezionarla:":""}</div>`;
+  SUB.opts.forEach((a,i)=>{inner+=`<button class="optbtn ${SUB.sel===i?"sel":""}" onclick="subPick(${i})">
+    <b>${esc(a.sost)}</b><br>${esc(a.piatto)}<br><span style="color:var(--salvia);font-weight:700">~${a.k} kcal · ${a.p}g prot${a.c!=null?" · C "+a.c+"g":""}${a.f!=null?" · Gr "+a.f+"g":""}</span></button>`;});
+  inner+=`<div class="mtools" style="margin-top:12px">
+    <button class="btn ghost small" onclick="subMore()">🔄 Altre proposte</button>
+    <button class="btn ghost small" onclick="subPhotoAdd()">📸 Scatta foto del cibo che hai in casa (${SUB.photos.length})</button>
+    ${SUB.photos.length?'<button class="btn small" onclick="subPhotoAsk()">🍳 Proponi dalla foto</button>':""}</div>
+  <div class="mtools" style="margin-top:10px">
+    <button class="btn" onclick="subOk()">OK</button>
+    <button class="btn warn" onclick="closeSub()">Annulla</button></div></div>`;
+  m.innerHTML=inner;}
 window.setNote=(d,v)=>{S.week.days[d].note=v;save();};
 window.delExtra=(d,i)=>{S.week.days[d].extras.splice(i,1);save();render(cur);};
 /* Extra/sgarro: AI o manuale */
 window.addExtra=async(d)=>{const n=prompt("Cosa hai mangiato in più? (es. birra piccola e patatine)");if(!n)return;
   let k=null,p=null;
   if(aiOn()){try{
-    const t=await aiAsk('Stima calorie e proteine di: "'+n+'". Porzioni tipiche italiane. Rispondi SOLO JSON: {"kcal":numero,"prot":numero}');
+    const t=await aiAsk('Stima calorie e proteine di: "'+n+'". Porzioni tipiche italiane. Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero}');
     const j=parseAIJSON(t);
-    if(confirm('Stima AI per "'+n+'": ~'+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot.\nOK = uso questi · Annulla = a mano")){k=Math.round(j.kcal);p=Math.round(j.prot);}
+    if(confirm('Stima AI per "'+n+'": ~'+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot.\nOK = uso questi · Annulla = a mano")){k=Math.round(j.kcal);p=Math.round(j.prot);var _c=Math.round(j.carb)||null,_f=Math.round(j.gras)||null;}
   }catch(e){aiFail(e);}}
   if(k===null){k=parseInt(prompt("Calorie stimate?","200"))||0;p=parseInt(prompt("Proteine (g)?","0"))||0;}
-  S.week.days[d].extras.push({d:n,k,p});save();render(cur);};
+  S.week.days[d].extras.push({d:n,k,p,c:typeof _c!=="undefined"?_c:null,f:typeof _f!=="undefined"?_f:null});save();render(cur);};
 /* 🚑 Salva-sgarro: ribilancia i pasti rimanenti della giornata */
 window.extraPhoto=async(di)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
   try{const ph=await snapPhoto();
-    const t=await aiAskVision('Analizza la FOTO di questo cibo/piatto. Identifica cosa è e stima porzione, calorie e proteine. Rispondi SOLO JSON: {"nome":"nome breve del piatto","kcal":numero,"prot":numero}',[ph]);
+    const t=await aiAskVision('Analizza la FOTO di questo cibo/piatto. Identifica cosa è e stima porzione, calorie e proteine. Rispondi SOLO JSON: {"nome":"nome breve","kcal":numero,"prot":numero,"carb":numero,"gras":numero}',[ph]);
     const j=parseAIJSON(t);
     if(confirm("📸 "+j.nome+"\n~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot\n\nOK = aggiungi come extra · Annulla = correggi a mano")){
-      S.week.days[di].extras.push({d:j.nome,k:Math.round(j.kcal),p:Math.round(j.prot)});save();render(cur);}
+      S.week.days[di].extras.push({d:j.nome,k:Math.round(j.kcal),p:Math.round(j.prot),c:Math.round(j.carb)||null,f:Math.round(j.gras)||null});save();render(cur);}
     else{const k=parseInt(prompt("Calorie?",Math.round(j.kcal)))||0,p=parseInt(prompt("Proteine (g)?",Math.round(j.prot)))||0;
       S.week.days[di].extras.push({d:j.nome,k,p});save();render(cur);}
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
@@ -673,7 +772,7 @@ window.fridge=async(di)=>{
     const t=await aiAsk('Ho a disposizione: '+ing+'. In questo momento dovrei mangiare: '+tgt.slot+' da circa '+tgt.k+' kcal e '+tgt.p+' g di proteine.'+compNote(tgt)+' Crea UN piatto semplice da circa '+tgt.kAdj+' kcal e '+tgt.p+' g di proteine con dosi esatte (al massimo 1-2 basi da dispensa). '+dietStr()+' Rispondi SOLO JSON: {"titolo":"...","ricetta":"passaggi brevi con grammature","kcal":n,"prot":n}');
     const j=parseAIJSON(t);
     box.innerHTML="<b>"+esc(j.titolo)+"</b> (~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot)\n\n"+esc(j.ricetta)+
-      '\n\n<button class="btn small" onclick=\'addFridge('+di+","+Math.round(j.kcal)+","+Math.round(j.prot)+","+JSON.stringify(j.titolo)+')\'>Aggiungi come pasto extra</button> <button class="btn ghost small" onclick=\'subFridge('+tgt.pdi+','+tgt.mi+','+Math.round(j.kcal)+','+Math.round(j.prot)+','+JSON.stringify(j.titolo)+')\'>Sostituisci il pasto selezionato</button>';
+      '\n\n<button class="btn small" onclick=\'addFridge('+di+","+Math.round(j.kcal)+","+Math.round(j.prot)+","+JSON.stringify(j.titolo)+')\'>Aggiungi come pasto extra</button> <button class="btn ghost small" onclick=\'subFridge('+tgt.pdi+','+tgt.mi+','+Math.round(j.kcal)+','+Math.round(j.prot)+','+JSON.stringify(j.titolo)+')\'>Sostituisci il pasto selezionato</button> <button class="btn ghost small" onclick=\'addRecipe('+JSON.stringify(j.titolo+" — "+j.ricetta)+','+Math.round(j.kcal)+','+Math.round(j.prot)+',null,null)\'>⭐ Salva</button>';
   }catch(e){box.textContent="";aiFail(e);}};
 let FR=[]; // foto in attesa per lo svuota-frigo (frigo, congelatore, dispensa…)
 window.frAdd=async()=>{try{const ph=await snapPhoto();FR.push(ph);
@@ -689,7 +788,7 @@ window.frCreate=async(di)=>{
     const t=await aiAskVision('Queste '+FR.length+' FOTO mostrano il cibo che ho tra frigo, congelatore e dispensa.'+(extra?' In più ho: '+extra+'.':'')+' In questo momento dovrei mangiare: '+tgt.slot+' da circa '+tgt.k+' kcal e '+tgt.p+' g di proteine.'+compNote(tgt)+' Crea UN piatto semplice da circa '+tgt.kAdj+' kcal e '+tgt.p+' g di proteine, con dosi esatte, usando SOLO ciò che vedi (al massimo 1-2 basi da dispensa come olio o sale). '+dietStr()+' Rispondi SOLO JSON: {"visti":"ingredienti riconosciuti in breve","titolo":"...","ricetta":"passaggi brevi con grammature","kcal":n,"prot":n}',FR);
     const j=parseAIJSON(t);FR=[];
     box.innerHTML="👀 Ho visto: "+esc(j.visti)+"\n\n<b>"+esc(j.titolo)+"</b> (~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot)\n\n"+esc(j.ricetta)+
-      '\n\n<button class="btn small" onclick=\'addFridge('+di+","+Math.round(j.kcal)+","+Math.round(j.prot)+","+JSON.stringify(j.titolo)+')\'>Aggiungi come pasto extra</button> <button class="btn ghost small" onclick=\'subFridge('+tgt.pdi+','+tgt.mi+','+Math.round(j.kcal)+','+Math.round(j.prot)+','+JSON.stringify(j.titolo)+')\'>Sostituisci il pasto selezionato</button>';
+      '\n\n<button class="btn small" onclick=\'addFridge('+di+","+Math.round(j.kcal)+","+Math.round(j.prot)+","+JSON.stringify(j.titolo)+')\'>Aggiungi come pasto extra</button> <button class="btn ghost small" onclick=\'subFridge('+tgt.pdi+','+tgt.mi+','+Math.round(j.kcal)+','+Math.round(j.prot)+','+JSON.stringify(j.titolo)+')\'>Sostituisci il pasto selezionato</button> <button class="btn ghost small" onclick=\'addRecipe('+JSON.stringify(j.titolo+" — "+j.ricetta)+','+Math.round(j.kcal)+','+Math.round(j.prot)+',null,null)\'>⭐ Salva</button>';
   }catch(e){box.textContent="";if(e.message!=="annullato")aiFail(e);}};
 window.addFridge=(di,k,p,n)=>{S.week.days[di].extras.push({d:"Piatto creato: "+n,k,p});save();render(cur);};
 window.subFridge=(pdi,mi,k,p,n)=>{if(pdi===undefined||!PLAN[pdi])return;
@@ -758,12 +857,13 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div style="flex:1;font-size:13.5px">📅 <b>Nuova settimana!</b> Controlla il recap della scorsa e, se è tutto a posto, convalidala. <b>Dopo il salvataggio non sarà più modificabile.</b></div>
     <button class="btn small" onclick="show('storico')">Vai al recap</button>
     <button class="ibtn" onclick="dismissWeek()" title="Nascondi per oggi">✕</button></div>`;
-  if(needMorningBanner()){const um=unmarkedOfDay(yIdx()),nw=S.week.days[yIdx()].workouts.length;
-    let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>)"+(um>0?" hai "+um+" past"+(um===1?"o":"i")+" senza spunta":"")+(um>0&&nw===0?" e":"")+(nw===0?" nessun allenamento registrato":"")+". Chiudi la giornata?";
+  if(needMorningBanner()){const um=unmarkedOfDay(yIdx()),nw=S.week.days[yIdx()].workouts.length,ns=S.week.days[yIdx()].steps;
+    const parts=[];if(um>0)parts.push(um+" past"+(um===1?"o":"i")+" senza spunta");if(nw===0)parts.push("nessun allenamento");if(!ns)parts.push("passi non inseriti");
+    let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>): "+parts.join(", ")+". Chiudi la giornata?";
     h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
     <div style="flex:1;font-size:13.5px">${txt}</div>
     <button class="btn small" onclick="goYesterday()">Completa ieri</button>
-    <button class="btn ghost small" onclick="goSportY()">Sport</button>
+    <button class="btn ghost small" onclick="goSportY()">Sport & Passi</button>
     <button class="ibtn" onclick="dismissMorning()" title="Nascondi per oggi">✕</button></div>`;}
   if(S.ui.vacanza){
     h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
@@ -775,6 +875,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}</div>
     ${ring(eat.k/Math.max(1,target),def)}
     <div class="gnums"><span>Mangiate <b>${eat.k}</b></span><span>Fabbisogno <b>${t}</b></span><span>Sport <b>+${burn}</b></span></div>
+    <div class="gnums" style="margin-top:4px"><span>Prot <b>${eat.p}g</b></span><span>Carbo <b>${eat.c}g</b></span><span>Grassi <b>${eat.f}g</b></span></div>
     <div class="stat3"><div><div class="v">${eat.p} g</div><div class="l">proteine</div></div>
     <div><div class="v">${skippedOfDay(di)}</div><div class="l">pasti saltati</div></div>
     <div><div class="v">🔥 ${S.streak.count}</div><div class="l">giorni in target</div></div></div></div>`;}
@@ -782,7 +883,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   const goal=waterGoal(di);
   h+=`<div class="card"><h2>Acqua</h2><div class="water">`;
   for(let i=0;i<goal;i++)h+=`<span class="${i<S.week.days[di].water?"f":""}" onclick="setWater(${di},${i})">💧</span>`;
-  h+=`</div><div class="hint">Obiettivo: ${goal} bicchieri${goal>8?" (allenamento intenso: +2 💧)":""}.</div></div>`;
+  h+=`</div><div class="hint">Obiettivo: ${goal} bicchieri (~${(goal/4).toFixed(1)} L, tarato sul tuo peso: 35 ml/kg)${S.week.days[di].workouts.some(w=>w.int==="alta"||w.min>45)?" · allenamento intenso: +2 💧":""}.</div></div>`;
   // Sonno & Stress
   h+=`<div class="card"><h2>Come stai</h2>
   <label>Sonno (notte scorsa)</label>${stars(di,"sleep")}
@@ -810,6 +911,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <button class="btn small" onclick="frAdd()">📸 Fotografa (<span id="frN">${FR.length}</span>)</button>
     <button class="btn small" onclick="frCreate(${di})">🍲 Crea</button>
     <button class="btn ghost small" onclick="fridge(${di})">Usa il testo</button>
+    <button class="btn ghost small" onclick="recModal(${di})">⭐ I miei piatti (${S.recipes.length})</button>
   </div>
   <div class="hint">Scatta PIÙ foto (frigo, congelatore, dispensa), poi "Crea": il piatto sarà tarato sul pasto di questo momento, compensando le calorie già accumulate oggi. In alternativa scrivi gli ingredienti.</div>
   <textarea id="fridgeIn" placeholder="…oppure scrivi: zucchine, uova, ricotta…"></textarea>
@@ -940,6 +1042,17 @@ function renderSport(){const el=document.getElementById("pg-sport");const ti=vie
   <button class="btn" onclick="addW()">Aggiungi allenamento</button>
   <button class="btn ghost" onclick="addSportType()">+ Nuovo sport (stima MET con AI)</button>
   <div class="hint">Allenamenti "alta" o >45 min alzano l'obiettivo acqua di quel giorno (+2 💧).</div></div>`;
+  h+=`<div class="card"><h2>🚶 Passi (separati dagli sport)</h2>
+  <div class="row3"><div><label>Giorno</label><select id="stDay">`;
+  PLAN.forEach((d,di)=>h+=`<option value="${di}" ${di===yIdx()?"selected":""}>${esc(d.day)}</option>`);
+  h+=`</select></div><div><label>Passi</label><input type="number" id="stN" placeholder="es. 8500"></div>
+  <div><label>&nbsp;</label><button class="btn small" style="width:100%" onclick="saveSteps()">Salva</button></div></div>
+  <div class="hint">Leggili dall'orologio e riportali qui. Contano nel deficit solo i passi OLTRE i 5000 (quelli sotto sono già inclusi nel tuo fabbisogno da sedentario, per non contarli due volte).</div>`;
+  let anySt=false;
+  PLAN.forEach((d,di)=>{const s=S.week.days[di].steps;if(s>0){anySt=true;
+    h+=`<div class="wline"><span>${esc(d.day)} · ${s.toLocaleString("it-IT")} passi</span><b style="color:var(--salvia)">~${stepsKcal(di)} kcal extra</b></div>`;}});
+  if(!anySt)h+=`<div class="hint">Ancora nessun giorno con passi inseriti.</div>`;
+  h+=`</div>`;
   h+=`<div class="card"><h2>Allenamenti della settimana</h2>`;
   let tot=0,anyw=false;
   PLAN.forEach((d,di)=>{const ws=S.week.days[di].workouts;if(ws.length){anyw=true;
@@ -949,6 +1062,9 @@ function renderSport(){const el=document.getElementById("pg-sport");const ti=vie
   if(!anyw)h+=`<div class="hint">Ancora nessun allenamento questa settimana.</div>`;
   h+=`<div class="daytotal" style="margin-top:8px">Totale settimana: <span>~${tot} kcal bruciate</span></div></div>`;
   el.innerHTML=h;}
+window.saveSteps=()=>{const di=+document.getElementById("stDay").value;
+  S.week.days[di].steps=Math.max(0,parseInt(document.getElementById("stN").value)||0);
+  save();render(cur);};
 window.addW=()=>{const di=+document.getElementById("wDay").value;
   S.week.days[di].workouts.push({sport:document.getElementById("wSport").value,
     min:+document.getElementById("wMin").value||30,int:document.getElementById("wInt").value});
@@ -990,6 +1106,8 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   h+=`</table><div class="stat3"><div><div class="v">${w.avgEat}</div><div class="l">kcal medie</div></div>
   <div><div class="v">${w.avgProt} g</div><div class="l">prot medie</div></div>
   <div><div class="v">−${w.avgDef}</div><div class="l">deficit medio</div></div></div>
+  ${S.history.length?(()=>{const L=S.history[S.history.length-1];const d1=w.avgDef-L.avgDef,d2=w.avgProt-L.avgProt,d3=Math.round((S.profile.w-L.weight)*10)/10;
+    return `<div class="hint">📈 vs settimana scorsa: deficit ${d1>=0?"+":""}${d1} kcal · proteine ${d2>=0?"+":""}${d2} g · peso ${d3>0?"+":""}${d3} kg</div>`;})():""}
   <div class="hint">Medie calcolate sui <b>${w.nDone}</b> giorni completati (tutti i pasti spuntati ✓/✗); i giorni ⏳ sono ancora aperti e non distorcono i conti.</div>
   <button class="btn" onclick="closeWeek()">Salva settimana e ricomincia</button>
   <button class="btn ghost" onclick="waWeek()">📤 WhatsApp</button>
@@ -1017,6 +1135,7 @@ function drawCharts(){
   if(ws.length){new Chart(document.getElementById("chWeight"),{type:"line",
     data:{labels:ws.map(x=>new Date(x.d).toLocaleDateString("it-IT",{day:"numeric",month:"short"})),
       datasets:[{label:"Peso (kg)",data:ws.map(x=>x.w),tension:.3,borderColor:"#2F7D3B",pointRadius:3},
+        ...(S.profile.goalW?[{label:"Obiettivo",data:ws.map(()=>S.profile.goalW),borderColor:"#2F5FA6",borderDash:[6,5],pointRadius:0}]:[]),
         {label:"Massa grassa (%)",data:ws.map(x=>x.fat??null),tension:.3,borderColor:"#C77A15",pointRadius:3,spanGaps:true,yAxisID:"y2"}]},
     options:{plugins:{legend:{labels:{boxWidth:12}}},scales:{y2:{position:"right",grid:{drawOnChartArea:false}}}}});}
   if(S.history.length){new Chart(document.getElementById("chDef"),{type:"line",
@@ -1134,14 +1253,14 @@ async function wizGenerate(){
       JSON.stringify({eta:wizAge(),genere:d.gen,altezza:d.h,peso:d.w,bmi:t.bmi,massa_grassa_pct:d.fat,stile_di_vita:d.vita,sport:d.sport,
       intolleranze:d.intol,cibi_vietati:d.no,cibi_amati:d.si,pasti_liberi_desiderati:d.liberi,preferenza_semplice_pronto:d.pronto,
       pasti_al_giorno:d.nPasti,colazione:d.colaz,obiettivo:d.goal,target_kcal_giorno:t.kcal,target_proteine_g:t.prot})+
-      '. REGOLE: ogni giorno deve avvicinarsi a '+t.kcal+' kcal (±5%) e ad almeno '+t.prot+' g di proteine; rispetta intolleranze e cibi vietati; usa i cibi amati; includi i pasti liberi richiesti come type "free"; se lo stile di vita cita mensa/ufficio usa type "mensa" per quei pranzi; piatti '+(d.pronto==="pronto"?"semplicissimi e in gran parte pronti":"semplici")+' con grammature; cucina italiana/mediterranea con componenti separate nel piatto. Rispondi SOLO JSON, questo schema esatto: [{"day":"Lunedì","ctx":"breve contesto","meals":[{"n":"nome fascia tra Colazione, Metà mattina, Pranzo, Metà pomeriggio, Aperitivo, Cena, Dopo cena","t":"orario ~HH:MM","type":"norm|free|mensa","o":[{"d":"descrizione con grammature","k":kcal,"p":proteine}]}]}] con esattamente 7 giorni.';
+      '. REGOLE: ogni giorno deve avvicinarsi a '+t.kcal+' kcal (±5%) e ad almeno '+t.prot+' g di proteine; rispetta intolleranze e cibi vietati; usa i cibi amati; includi i pasti liberi richiesti come type "free"; se lo stile di vita cita mensa/ufficio usa type "mensa" per quei pranzi; piatti '+(d.pronto==="pronto"?"semplicissimi e in gran parte pronti":"semplici")+' con grammature; cucina italiana/mediterranea con componenti separate nel piatto. Rispondi SOLO JSON, questo schema esatto: [{"day":"Lunedì","ctx":"breve contesto","meals":[{"n":"nome fascia tra Colazione, Metà mattina, Pranzo, Metà pomeriggio, Aperitivo, Cena, Dopo cena","t":"orario ~HH:MM","type":"norm|free|mensa","o":[{"d":"descrizione con grammature","k":kcal,"p":proteine,"c":carboidrati,"f":grassi}]}]}] con esattamente 7 giorni.';
     const resp=await aiAsk(prompt);
     const plan=parseAIJSON(resp);
     if(!Array.isArray(plan)||plan.length!==7)throw new Error("formato piano");
     plan.forEach(day=>{day.day=String(day.day);day.ctx=String(day.ctx||"");
       if(!Array.isArray(day.meals)||!day.meals.length)throw new Error("formato pasti");
       day.meals.forEach(m=>{m.n=String(m.n);m.t=String(m.t||"");m.type=["norm","free","mensa"].includes(m.type)?m.type:"norm";
-        m.o=(m.o||[]).map(o=>({d:String(o.d),k:Math.round(+o.k)||0,p:Math.round(+o.p)||0}));if(!m.o.length)throw new Error("opzioni");});});
+        m.o=(m.o||[]).map(o=>({d:String(o.d),k:Math.round(+o.k)||0,p:Math.round(+o.p)||0,c:Math.round(+o.c)||null,f:Math.round(+o.f)||null}));if(!m.o.length)throw new Error("opzioni");});});
     WIZ.plan=plan;WIZ.step=4;renderSetup();
   }catch(e){box.textContent="";aiFail(e.message&&e.message.includes("formato")?new Error("La risposta AI non era nel formato giusto: riprova (Genera di nuovo)."):e);}}
 window.wizSet=(di,mi,f,v)=>{const o=WIZ.plan[di].meals[mi].o[0];
@@ -1245,7 +1364,10 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>📍→</td><td>I due menu spostano il pasto in un altro <b>giorno</b> e/o <b>fascia</b> (anche pranzo↔cena dello stesso giorno). Il badge rosso ricorda da dove viene.</td></tr>
 <tr><td>✏️</td><td><b>Modifica ingredienti</b>: cambi il testo e l'AI stima kcal/proteine.</td></tr>
 <tr><td>🎲</td><td><b>Alternativa</b>: l'AI inventa un piatto diverso con gli stessi macro; puoi renderla fissa o solo per questa settimana.</td></tr>
-<tr><td>🔁</td><td><b>Non ho un ingrediente</b>: l'AI propone 3 sostituti con grammature a parità di kcal/proteine; rispondi 1/2/3 per scegliere, <b>R</b> per altre proposte, <b>F</b> per fotografare quello che hai in casa e farti indicare il migliore.</td></tr>
+<tr><td>🔁</td><td><b>Non ho un ingrediente</b>: si apre un pannello con 3 proposte <b>cliccabili</b> (tocca per selezionare, poi OK). "🔄 Altre proposte" ne genera di nuove; "📸 Scatta foto del cibo che hai in casa" (anche più foto) e poi "🍳 Proponi dalla foto" ti fa suggerire il sostituto migliore tra ciò che possiedi.</td></tr>
+<tr><td>⭐</td><td><b>I miei piatti</b>: quando un piatto AI ti piace, salvalo con ⭐; lo ritrovi nel bottone "⭐ I miei piatti" (dentro Crea un piatto) e lo riusi con un tap, senza consumare AI.</td></tr>
+<tr><td>🚶</td><td><b>Passi</b> (in Sport, separati dagli allenamenti): riporta i passi dell'orologio; contano nel deficit solo quelli OLTRE i 5000, perché i primi sono già nel fabbisogno da sedentario. Il banner del mattino te li ricorda.</td></tr>
+<tr><td>🎯</td><td><b>Obiettivo peso</b> (in Io): imposta il traguardo e vedi la linea nel grafico + la data stimata di arrivo al ritmo attuale.</td></tr>
 <tr><td>↩️</td><td>Ripristina il pasto originale dopo ✏️, 🎲 o 🔁.</td></tr>
 <tr><td>🚑</td><td><b>Ribilancia</b>: se hai accumulato calorie in più, l'AI alleggerisce i pasti rimanenti (mai le proteine).</td></tr></table>
 <div class="gsec">Colori dei pasti</div><table class="gtable">
@@ -1256,10 +1378,12 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>📸</td><td>Foto + AI: <b>Analisi Piatto</b> (stima kcal di ciò che fotografi), <b>Selezionatore di menù</b> (sceglie dal menù il piatto compatibile col pasto di questo momento, compensando il surplus), <b>Crea un piatto</b> (più foto di frigo/congelatore/dispensa → ricetta su misura).</td></tr>
 <tr><td>📷</td><td>Barcode: scansiona un prodotto e compila l'extra da Open Food Facts (senza consumare AI).</td></tr>
 <tr><td>🔥</td><td><b>La serie, in parole semplici</b>: conta i giorni "buoni" di fila. Ogni mattina l'app guarda com'è andata IERI e si fa 3 domande: hai spuntato i pasti? sei rimasto dentro le calorie? gli extra erano al massimo 300 kcal? <b>Tre sì = fiamma +1. Anche un solo no = si riparte da 0.</b> Fa tutto da sola, non devi premere nulla; in 🏖️ vacanza si mette in pausa.</td></tr>
-<tr><td>💧</td><td>Acqua: obiettivo 8 bicchieri, <b>+2</b> nei giorni con allenamento intenso o oltre 45 minuti.</td></tr>
+<tr><td>💧</td><td>Acqua: obiettivo tarato sul tuo peso (35 ml/kg, in bicchieri da 250 ml), <b>+2</b> nei giorni con allenamento intenso o oltre 45 minuti.</td></tr>
 <tr><td>⭐</td><td>Sonno · Relax · Come ti senti: scala 1 basso → 5 alto. Alimentano le correlazioni AI di fine settimana.</td></tr>
 <tr><td>🏖️</td><td>Vacanza (in Io): congela deficit e 🔥; l'app resta un diario senza giudizio.</td></tr>
-<tr><td>🌅</td><td>Banner del mattino: se ieri hai pasti senza spunta o zero allenamenti, ti propone "Completa ieri" per chiudere la giornata.</td></tr>
+<tr><td>🌅</td><td>Banner del mattino: se ieri hai pasti senza spunta, zero allenamenti o passi non inseriti, ti propone "Completa ieri" e "Sport & Passi".</td></tr>
+<tr><td>🌓</td><td>Il bottone del tema cicla tra chiaro → scuro → <b>automatico</b> (segue le impostazioni del telefono).</td></tr>
+<tr><td>👆</td><td>Sulla pagina Oggi puoi <b>scorrere col dito</b> (swipe sinistra/destra) per cambiare giorno, oltre alle frecce ‹ ›.</td></tr>
 <tr><td>📅</td><td>Banner del lunedì: nuova settimana → controlla il recap e convalida la scorsa. <b>Dopo il salvataggio non è più modificabile.</b> Le medie del recap contano solo i giorni completati (i ⏳ sono esclusi).</td></tr>
 <tr><td>🔗</td><td><b>Link di ricerca Conad</b> (in cima a Spesa): Conad richiede di scegliere prima il negozio, quindi non c'è un link universale. Fai una ricerca sul sito col TUO negozio selezionato, copia l'indirizzo, sostituisci il termine cercato con <b>{q}</b> e incollalo nel campo — da quel momento ogni 🔗 della lista punta al tuo negozio.</td></tr>
 <tr><td>🛒</td><td><b>I miei prodotti Conad</b> (in Spesa): per un prodotto preciso, apri la sua pagina sul sito Conad, copia il link, poi "+ Aggiungi prodotto" → dai un nome e incolla il link. Da quel momento lo riapri con "🛒 Apri", senza passare dal modello di ricerca.</td></tr>
@@ -1286,6 +1410,20 @@ function compLine(p){const fat=parseFloat(p.fatp),mus=parseFloat(p.musp);
   if(mus>0){const mK=p.w*mus/100,rest=lbmK-mK;
     s+=" — della magra: muscolo "+mK.toFixed(1)+" kg, il resto ("+rest.toFixed(1)+" kg) è acqua extra-muscolare, ossa e organi";}
   return `<div class="hint" style="margin:2px 0 6px">${s}. I calcoli (Katch-McArdle) usano la magra derivata dalla % di grasso.</div>`;}
+/* Proiezione verso l'obiettivo: regressione lineare sulle ultime pesate */
+function goalProj(){const p=S.profile,ws=p.weights.slice(-8);
+  if(!p.goalW||ws.length<2)return "";
+  const t0=new Date(ws[0].d).getTime(),days=(new Date(ws[ws.length-1].d).getTime()-t0)/864e5;
+  if(days<5)return "";
+  const xs=ws.map(x=>(new Date(x.d).getTime()-t0)/864e5),ys=ws.map(x=>x.w);
+  const n=xs.length,mx=xs.reduce((a,b)=>a+b)/n,my=ys.reduce((a,b)=>a+b)/n;
+  let num=0,den=0;xs.forEach((x,i)=>{num+=(x-mx)*(ys[i]-my);den+=(x-mx)**2;});
+  const slope=den?num/den:0; // kg/giorno
+  if(slope>=-0.005)return "Il peso al momento non sta scendendo: la proiezione verso l'obiettivo apparirà quando ci sarà un trend in discesa.";
+  if(ys[ys.length-1]<=p.goalW)return "🎉 Obiettivo raggiunto!";
+  const dLeft=(ys[ys.length-1]-p.goalW)/(-slope);
+  const eta=new Date(Date.now()+dLeft*864e5);
+  return "Al ritmo attuale (~"+(slope*7).toFixed(1).replace("-","−")+" kg/settimana) dovresti raggiungere <b>"+p.goalW+" kg</b> intorno al <b>"+eta.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})+"</b>. Stima indicativa: il ritmo rallenta man mano che scendi.";}
 function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   let h=`<div class="card"><h2>I miei dati</h2>
   <div class="row2"><div><label>Nome</label><input type="text" id="pName" value="${p.name||""}"></div>
@@ -1299,6 +1437,8 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   ${compLine(p)}
   <div class="row2"><div><label>Pressione (opz.)</label><input type="text" id="pPa" placeholder="120/80"></div>
   <div><label>SpO2 % (opz.)</label><input type="number" id="pSpo2" placeholder="98"></div></div>
+  <div class="row2"><div><label>Obiettivo peso (kg, opz.)</label><input type="number" step="0.1" id="pGoal" value="${p.goalW||""}" placeholder="es. 98"></div>
+  <div><label>&nbsp;</label><div class="hint" style="margin-top:14px">Con l'obiettivo attivo vedi la linea nel grafico e la data stimata di arrivo.</div></div></div>
   <label>Attività di base (lavoro/vita, sport escluso)</label>
   <select id="pAct"><option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario (1.2)</option>
   <option value="1.25" ${p.act==1.25?"selected":""}>Sedentario− (1.25)</option>
@@ -1310,7 +1450,7 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div><div class="v">${age()||"—"}</div><div class="l">anni</div></div>
   <div><div class="v">${bmr()}</div><div class="l">BMR</div></div>
   <div><div class="v">${tdee()}</div><div class="l">TDEE base</div></div></div>
-  <div class="hint">${parseFloat(S.profile.fatp)>0?"BMR con Katch-McArdle sulla magra derivata dalla tua % di grasso: il metodo più preciso.":"BMR con formula Mifflin-St Jeor. Inserisci la % di massa grassa per un calcolo più preciso."} Gli allenamenti si sommano giorno per giorno.</div></div>`;
+  <div class="hint">${parseFloat(S.profile.fatp)>0?"BMR con Katch-McArdle sulla magra derivata dalla tua % di grasso: il metodo più preciso.":"BMR con formula Mifflin-St Jeor. Inserisci la % di massa grassa per un calcolo più preciso."} Gli allenamenti si sommano giorno per giorno.${goalProj()?"<br><br>🎯 "+goalProj():""}</div></div>`;
   // Vacanza
   h+=`<div class="card"><h2>🏖️ Modalità vacanza</h2>
   <button class="btn ${S.ui.vacanza?"warn":"ghost"}" onclick="toggleVacanza()">${S.ui.vacanza?"Disattiva vacanza":"Attiva vacanza"}</button>
@@ -1381,6 +1521,7 @@ window.saveProfile=()=>{const p=S.profile;
   if(nw!==p.w||fat||mus||pa||spo2||!p.weights.length)
     p.weights.push({d:new Date().toISOString(),w:nw,fat,mus,pa,spo2});
   p.w=nw;p.fatp=fat||p.fatp;p.musp=mus||p.musp;p.act=+document.getElementById("pAct").value;
+  p.goalW=parseFloat(document.getElementById("pGoal").value)||null;
   save();render("io");renderHeader();alert("Dati salvati.");};
 window.delWeight=i=>{S.profile.weights.splice(i,1);save();render("io");};
 window.saveAI=()=>{
@@ -1486,7 +1627,7 @@ function dayCompleted(di){return dayItems(di).length>0&&unmarkedOfDay(di)===0;}
 function needMorningBanner(){
   if(S.ui.vacanza)return false;
   if(S.ui.dismissMorning===iso(new Date()))return false;
-  return unmarkedOfDay(yIdx())>0||S.week.days[yIdx()].workouts.length===0;}
+  const Y=S.week.days[yIdx()];return unmarkedOfDay(yIdx())>0||Y.workouts.length===0||!Y.steps;}
 /* Settimana "scaduta": è iniziata prima del lunedì corrente e va convalidata */
 function weekStale(){const m=new Date();m.setHours(12,0,0,0);m.setDate(m.getDate()-wd(m));return S.week.started<iso(m);}
 function needWeekBanner(){return weekStale()&&S.ui.dismissWeek!==iso(new Date());}
@@ -1496,6 +1637,22 @@ window.goYesterday=()=>{VIEW=new Date();VIEW.setDate(VIEW.getDate()-1);VIEW.setH
 window.goSportY=()=>{show("sport");setTimeout(()=>{const s=document.getElementById("wDay");if(s)s.value=yIdx();},80);};
 window.dismissMorning=()=>{S.ui.dismissMorning=iso(new Date());save();render("oggi");};
 function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,storico:renderStorico,io:renderIo,guida:renderGuida,setup:renderSetup})[p]();renderHeader();}
+/* ══ PWA: manifest generato a runtime (URL assoluti) + service worker ══ */
+(function(){
+  try{
+    const ICON192="data:image/png;base64,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";
+    const ICON512="data:image/png;base64,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";
+    const man={name:"Diario Dieta & Sport",short_name:"Diario",display:"standalone",
+      start_url:location.href.split("#")[0],scope:location.href.replace(/[^/]*$/,""),
+      background_color:"#F4F7F2",theme_color:"#0F3D20",
+      icons:[{src:ICON192,sizes:"192x192",type:"image/png"},{src:ICON512,sizes:"512x512",type:"image/png"}]};
+    const l=document.createElement("link");l.rel="manifest";
+    l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(man));
+    document.head.appendChild(l);
+    if("serviceWorker" in navigator&&location.protocol!=="file:")
+      navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  }catch(e){}
+})();
 applyTheme();bumpStreak();renderHeader();tryDriveAuto();
 show(S.profile.dob?"oggi":"io");
 </script>
