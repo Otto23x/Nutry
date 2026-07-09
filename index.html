@@ -294,14 +294,14 @@ const INT={bassa:.8,media:1,alta:1.2};
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="3.0.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="3.1.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
 function defaultState(){return {
   profile:{name:"",gender:"m",dob:"",h:185,w:114,lbm:"",act:1.3,weights:[]},
   customSports:[],shop:{},links:[],permMeals:{},week:freshWeek(),history:[],
-  ai:{key:""},drive:{cid:"",akey:"",on:false},
+  ai:{key:""},drive:{cid:"",on:false},
   ui:{theme:"light",vacanza:false,lastOpen:"",lastMorning:""},
   streak:{count:0,last:""},meta:{updated:new Date().toISOString()}};}
 let S;
@@ -315,13 +315,14 @@ if(!S){ // migrazione dalla v1 se presente
 if(!S)S=defaultState();
 // retro-compatibilità morbida su tutti i rami
 S.ui=Object.assign({theme:"light",vacanza:false,lastOpen:"",lastMorning:""},S.ui||{});
-S.drive=Object.assign({cid:"",akey:"",on:false},S.drive||{});
+S.drive=Object.assign({cid:"",on:false},S.drive||{});
 S.ai=Object.assign({key:"",model:"auto"},S.ai||{});
 S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
 S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};
 S.meta=S.meta||{updated:new Date().toISOString()};
 S.conadTpl=S.conadTpl||"";
 S.recipes=S.recipes||[];
+S.progressLog=S.progressLog||[];
 S.diet=Object.assign({intol:"lattosio; colon irritabile",
   no:"aglio, cipolla, porro, pomodoro, arancia, ananas, caffè, peperoni, melanzane, cavoli e verza, carciofi, asparagi, avena",
   si:"pollo, patate, kefir, yogurt greco senza lattosio, uova, salmone, piselli, quinoa soffiata",
@@ -1086,7 +1087,7 @@ window.addSportType=async()=>{const n=prompt("Nome del nuovo sport? (es. canoa)"
    ═══════════════════════════════════════════════════════════════ */
 function weekSummary(){
   const days=PLAN.map((d,di)=>{const e=eatenOfDay(di);
-    return {day:d.day,eat:e.k,prot:e.p,burn:burnedOfDay(di),def:deficitOfDay(di),sk:skippedOfDay(di),
+    return {day:d.day,eat:e.k,prot:e.p,c:e.c,f:e.f,burn:burnedOfDay(di),def:deficitOfDay(di),sk:skippedOfDay(di),
       sgarri:extrasKcal(di),sleep:S.week.days[di].sleep,relax:S.week.days[di].relax,feel:S.week.days[di].feel,
       note:S.week.days[di].note||"",workouts:S.week.days[di].workouts.map(w=>w.sport+" "+w.min+"'")}});
   days.forEach((d,di)=>d.completed=dayCompleted(di));
@@ -1112,9 +1113,25 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   <button class="btn" onclick="closeWeek()">Salva settimana e ricomincia</button>
   <button class="btn ghost" onclick="waWeek()">📤 WhatsApp</button>
   <button class="btn ghost" onclick="printReport()">🖨️ Esporta Report PDF</button></div>`;
-  // Grafici
-  h+=`<div class="card"><h2>Grafici</h2><canvas id="chWeight" height="170"></canvas><div style="height:14px"></div><canvas id="chDef" height="150"></canvas>
-  <div class="hint" id="chHint"></div></div>`;
+  // Analisi: periodi, grafici multi-metrica, coaching AI
+  h+=`<div class="card"><h2>📊 Analisi</h2>
+  <div class="row2"><div><label>Periodo</label><select id="anMode" onchange="drawAnalysis()">
+  <option value="giorno" ${AN.mode==="giorno"?"selected":""}>Giornaliero (14 gg)</option>
+  <option value="settimana" ${AN.mode==="settimana"?"selected":""}>Settimanale (12 sett.)</option>
+  <option value="mese" ${AN.mode==="mese"?"selected":""}>Mensile (12 mesi)</option>
+  <option value="anno" ${AN.mode==="anno"?"selected":""}>Annuale</option>
+  <option value="manuale" ${AN.mode==="manuale"?"selected":""}>Periodo manuale</option>
+  </select></div>
+  <div id="anManual" class="row2" style="display:${AN.mode==="manuale"?"flex":"none"}">
+  <div><label>Da</label><input type="date" id="anFrom" onchange="drawAnalysis()"></div>
+  <div><label>A</label><input type="date" id="anTo" onchange="drawAnalysis()"></div></div></div>
+  <div class="hint" id="anHint"></div>
+  <div style="margin-top:12px"><div class="hint" style="margin:0 0 5px;font-weight:700;color:var(--bosco)">Calorie e deficit</div><canvas id="chAnCal" height="160"></canvas></div>
+  <div style="margin-top:18px"><div class="hint" style="margin:0 0 5px;font-weight:700;color:var(--bosco)">Peso e massa grassa</div><canvas id="chAnWeight" height="160"></canvas></div>
+  <div style="margin-top:18px"><div class="hint" style="margin:0 0 5px;font-weight:700;color:var(--bosco)">Macronutrienti</div><canvas id="chAnMacro" height="160"></canvas></div>
+  <button class="btn" style="margin-top:14px" onclick="askProgress()">🤖 Chiedi un'analisi dei progressi</button>
+  <div class="hint">Considera pasti, resoconti settimanali, sonno/relax/umore e allenamenti del periodo scelto sopra. Solo suggerimenti: nessun parametro viene cambiato in automatico.</div>
+  <div class="aibox" id="anAI" style="display:none"></div></div>`;
   // Storia
   h+=`<div class="card"><h2>Settimane passate</h2>`;
   if(!S.history.length)h+=`<div class="hint">Ancora nessuna settimana salvata.</div>`;
@@ -1127,22 +1144,146 @@ function renderStorico(){const el=document.getElementById("pg-storico");
     if(wk.ai&&wk.ai.report)h+=`<div class="aibox">🏋️ ${esc(wk.ai.report)}${wk.ai.corr?"\n\n🔍 "+esc(wk.ai.corr):""}</div>`;
     wk.days.forEach(d=>{if(d.note||d.workouts.length)h+=`<div style="margin-top:5px"><b>${d.day}:</b> ${esc(d.workouts.join(", "))}${d.note?" — 📝 "+esc(d.note):""}</div>`;});
     h+=`<button class="btn warn small" onclick="delWeek(${i})">Elimina</button></div></div>`;});
-  h+=`</div>`;el.innerHTML=h;drawCharts();}
-function drawCharts(){
-  const hint=document.getElementById("chHint");
+  h+=`</div>`;el.innerHTML=h;drawAnalysis();renderProgressBox();}
+/* ═══════════════════════════════════════════════════════════════
+   ANALISI STORICO: periodi (giorno/settimana/mese/anno/manuale),
+   grafici multi-metrica (calorie, peso, macro) + coaching AI
+   con cronologia a tendina (solo l'ultima analisi resta visibile).
+   ═══════════════════════════════════════════════════════════════ */
+let AN={mode:"settimana"};
+let ANCH={cal:null,weight:null,macro:null};
+/* Tutti i giorni (storico + settimana in corso) con data reale calcolata */
+function flattenDiet(){
+  const out=[];
+  S.history.forEach(w=>{(w.days||[]).forEach((d,i)=>{
+    const dt=new Date(w.from+"T12:00:00");dt.setDate(dt.getDate()+i);
+    out.push({date:iso(dt),eat:d.eat||0,prot:d.prot||0,c:d.c||0,f:d.f||0,def:d.def||0,burn:d.burn||0,
+      sleep:d.sleep||0,relax:d.relax||0,feel:d.feel||0,note:d.note||"",workouts:d.workouts||[],
+      sgarri:d.sgarri||0,completed:!!d.completed});});});
+  const wkStart=new Date(S.week.started+"T12:00:00"),today=new Date();today.setHours(12,0,0,0);
+  PLAN.forEach((pd,di)=>{
+    const dt=new Date(wkStart);dt.setDate(dt.getDate()+di);
+    if(dt>today)return;
+    const e=eatenOfDay(di);
+    out.push({date:iso(dt),eat:e.k,prot:e.p,c:e.c||0,f:e.f||0,def:deficitOfDay(di),burn:burnedOfDay(di),
+      sleep:S.week.days[di].sleep||0,relax:S.week.days[di].relax||0,feel:S.week.days[di].feel||0,
+      note:S.week.days[di].note||"",workouts:S.week.days[di].workouts.map(w=>w.sport+" "+w.min+"'"),
+      sgarri:extrasKcal(di),completed:dayCompleted(di)});});
+  out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  return out;}
+function periodBounds(mode){
+  const today=new Date();today.setHours(12,0,0,0);
+  const back=n=>{const d=new Date(today);d.setDate(d.getDate()-n);return d;};
+  if(mode==="giorno")return{from:back(13),to:today,bucket:"day"};
+  if(mode==="settimana")return{from:back(83),to:today,bucket:"week"};
+  if(mode==="mese")return{from:back(364),to:today,bucket:"month"};
+  if(mode==="anno")return{from:back(365*5),to:today,bucket:"year"};
+  const f=document.getElementById("anFrom"),t=document.getElementById("anTo");
+  const fromD=f&&f.value?new Date(f.value+"T12:00:00"):back(30);
+  const toD=t&&t.value?new Date(t.value+"T12:00:00"):today;
+  const days=(toD-fromD)/864e5;
+  return{from:fromD,to:toD,bucket:days>75?"month":"day"};}
+function bucketKey(d,bucket){
+  if(bucket==="day")return d.date;
+  if(bucket==="year")return d.date.slice(0,4);
+  if(bucket==="month")return d.date.slice(0,7);
+  const dt=new Date(d.date+"T12:00:00");const day=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-day);
+  return iso(dt);}
+function bucketLabel(key,bucket){
+  if(bucket==="year")return key;
+  if(bucket==="month"){const p=key.split("-");return new Date(+p[0],+p[1]-1,1).toLocaleDateString("it-IT",{month:"short",year:"2-digit"});}
+  const dt=new Date(key+"T12:00:00");
+  return dt.toLocaleDateString("it-IT",{day:"numeric",month:"short"});}
+function aggregateDiet(mode){
+  const {from,to,bucket}=periodBounds(mode);
+  const all=flattenDiet().filter(d=>{const dt=new Date(d.date+"T12:00:00");return dt>=from&&dt<=to;});
+  const buckets={};
+  all.forEach(d=>{const k=bucketKey(d,bucket);(buckets[k]=buckets[k]||[]).push(d);});
+  const keys=Object.keys(buckets).sort();
+  const rows=keys.map(k=>{const arr=buckets[k];const n=arr.length;
+    const avg=fld=>Math.round(arr.reduce((a,x)=>a+(x[fld]||0),0)/n);
+    return{key:k,label:bucketLabel(k,bucket),n,eat:avg("eat"),prot:avg("prot"),c:avg("c"),f:avg("f"),def:avg("def"),burn:avg("burn")};});
+  return {rows,all,from,to,bucket};}
+function aggregateWeight(mode){
+  const {from,to,bucket}=periodBounds(mode);
+  const ws=S.profile.weights.filter(x=>{const dt=new Date(x.d);return dt>=from&&dt<=to;});
+  if(bucket==="day")return ws.map(x=>({label:new Date(x.d).toLocaleDateString("it-IT",{day:"numeric",month:"short"}),w:x.w,fat:x.fat}));
+  const buckets={};
+  ws.forEach(x=>{const dstr=iso(new Date(x.d));let k;
+    if(bucket==="year")k=dstr.slice(0,4);else if(bucket==="month")k=dstr.slice(0,7);
+    else{const dt=new Date(dstr+"T12:00:00");const day=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-day);k=iso(dt);}
+    (buckets[k]=buckets[k]||[]).push(x);});
+  const keys=Object.keys(buckets).sort();
+  return keys.map(k=>{const arr=buckets[k];const n=arr.length;
+    const avgw=arr.reduce((a,x)=>a+x.w,0)/n;
+    const fats=arr.filter(x=>x.fat!=null);const avgf=fats.length?fats.reduce((a,x)=>a+x.fat,0)/fats.length:null;
+    return{label:bucketLabel(k,bucket),w:Math.round(avgw*10)/10,fat:avgf!=null?Math.round(avgf*10)/10:null};});}
+function drawAnalysis(){
+  const modeSel=document.getElementById("anMode");if(modeSel)AN.mode=modeSel.value;
+  const manual=document.getElementById("anManual");if(manual)manual.style.display=AN.mode==="manuale"?"flex":"none";
+  const hint=document.getElementById("anHint");
   if(window._noChart||typeof Chart==="undefined"){if(hint)hint.textContent="Grafici non disponibili offline (Chart.js si carica da internet al primo avvio).";return;}
-  const ws=S.profile.weights;
-  if(ws.length){new Chart(document.getElementById("chWeight"),{type:"line",
-    data:{labels:ws.map(x=>new Date(x.d).toLocaleDateString("it-IT",{day:"numeric",month:"short"})),
-      datasets:[{label:"Peso (kg)",data:ws.map(x=>x.w),tension:.3,borderColor:"#2F7D3B",pointRadius:3},
-        ...(S.profile.goalW?[{label:"Obiettivo",data:ws.map(()=>S.profile.goalW),borderColor:"#2F5FA6",borderDash:[6,5],pointRadius:0}]:[]),
-        {label:"Massa grassa (%)",data:ws.map(x=>x.fat??null),tension:.3,borderColor:"#C77A15",pointRadius:3,spanGaps:true,yAxisID:"y2"}]},
-    options:{plugins:{legend:{labels:{boxWidth:12}}},scales:{y2:{position:"right",grid:{drawOnChartArea:false}}}}});}
-  if(S.history.length){new Chart(document.getElementById("chDef"),{type:"line",
-    data:{labels:S.history.map(w=>new Date(w.to).toLocaleDateString("it-IT",{day:"numeric",month:"short"})),
-      datasets:[{label:"Deficit medio settimanale (kcal/g)",data:S.history.map(w=>w.avgDef),tension:.3,borderColor:"#2F5FA6",fill:true,backgroundColor:"rgba(47,95,166,.12)"}]},
-    options:{plugins:{legend:{labels:{boxWidth:12}}}}});}
-  else if(hint)hint.textContent="Il grafico del deficit apparirà dopo la prima settimana salvata.";}
+  const {rows}=aggregateDiet(AN.mode);
+  const wrows=aggregateWeight(AN.mode);
+  if(hint)hint.textContent=rows.length?"":"Nessun dato nel periodo selezionato.";
+  [ANCH.cal,ANCH.weight,ANCH.macro].forEach(c=>{if(c)c.destroy();});
+  const calEl=document.getElementById("chAnCal");
+  if(calEl&&rows.length)ANCH.cal=new Chart(calEl,{type:"line",
+    data:{labels:rows.map(r=>r.label),datasets:[
+      {label:"Kcal mangiate",data:rows.map(r=>r.eat),tension:.3,borderColor:"#2F7D3B",pointRadius:2},
+      {label:"Deficit",data:rows.map(r=>r.def),tension:.3,borderColor:"#B23B3B",pointRadius:2,borderDash:[5,4]}]},
+    options:{plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},scales:{x:{ticks:{font:{size:9}}}}}});
+  const wEl=document.getElementById("chAnWeight");
+  if(wEl&&wrows.length)ANCH.weight=new Chart(wEl,{type:"line",
+    data:{labels:wrows.map(r=>r.label),datasets:[
+      {label:"Peso (kg)",data:wrows.map(r=>r.w),tension:.3,borderColor:"#2F7D3B",pointRadius:2},
+      ...(S.profile.goalW?[{label:"Obiettivo",data:wrows.map(()=>S.profile.goalW),borderColor:"#2F5FA6",borderDash:[6,5],pointRadius:0}]:[]),
+      {label:"Grasso %",data:wrows.map(r=>r.fat),tension:.3,borderColor:"#C77A15",pointRadius:2,spanGaps:true,yAxisID:"y2"}]},
+    options:{plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},scales:{x:{ticks:{font:{size:9}}},y2:{position:"right",grid:{drawOnChartArea:false}}}}});
+  const mEl=document.getElementById("chAnMacro");
+  if(mEl&&rows.length)ANCH.macro=new Chart(mEl,{type:"line",
+    data:{labels:rows.map(r=>r.label),datasets:[
+      {label:"Proteine (g)",data:rows.map(r=>r.prot),tension:.3,borderColor:"#2F7D3B",pointRadius:2},
+      {label:"Carboidrati (g)",data:rows.map(r=>r.c),tension:.3,borderColor:"#C77A15",pointRadius:2},
+      {label:"Grassi (g)",data:rows.map(r=>r.f),tension:.3,borderColor:"#2F5FA6",pointRadius:2}]},
+    options:{plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},scales:{x:{ticks:{font:{size:9}}}}}});}
+window.drawAnalysis=drawAnalysis;
+/* 🤖 Analisi dei progressi: SOLO testo/suggerimenti, nessuna modifica automatica ai parametri */
+window.askProgress=async()=>{
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const {all}=aggregateDiet(AN.mode);
+  if(!all.length)return alert("Non ci sono ancora dati nel periodo selezionato.");
+  const wrows=aggregateWeight(AN.mode);
+  const avg=fld=>Math.round(all.reduce((a,x)=>a+(x[fld]||0),0)/all.length);
+  const workoutsCount={};all.forEach(d=>d.workouts.forEach(w=>{const sport=w.split(" ")[0];workoutsCount[sport]=(workoutsCount[sport]||0)+1;}));
+  const notes=all.map(d=>d.note).filter(Boolean).slice(-6);
+  const {from,to}=periodBounds(AN.mode);
+  const weekReports=S.history.filter(w=>{const dt=new Date(w.to);return dt>=from&&dt<=to;})
+    .map(w=>w.ai&&w.ai.report).filter(Boolean).slice(-4);
+  const payload={periodo:AN.mode,giorni_analizzati:all.length,
+    kcal_medie:avg("eat"),proteine_medie:avg("prot"),carboidrati_medi:avg("c"),grassi_medi:avg("f"),deficit_medio:avg("def"),
+    peso_inizio_periodo:wrows.length?wrows[0].w:null,peso_fine_periodo:wrows.length?wrows[wrows.length-1].w:null,
+    sonno_medio:avg("sleep")||null,relax_medio:avg("relax")||null,umore_medio:avg("feel")||null,
+    allenamenti_per_tipo:workoutsCount,note_recenti:notes,resoconti_settimanali_precedenti:weekReports};
+  const box=document.getElementById("anAI");if(box){box.style.display="block";box.textContent="🧑‍⚕️ Sto analizzando i tuoi progressi…";}
+  try{
+    const t=await aiAsk("Sei un coach nutrizionale onesto e diretto. Analizza questi dati del periodo scelto dall'utente: "+JSON.stringify(payload)+
+      ". Considera insieme: alimentazione (kcal/macro/deficit), andamento del peso, come si sente (sonno/relax/umore) e attività fisica svolta. Rispondi in italiano, MASSIMO 5-6 frasi, diretto e concreto, senza elenchi puntati e senza markdown. Se noti che i risultati non stanno arrivando, PROPONI (mai imporre) un possibile aggiustamento generico, lasciando esplicitamente all'utente la decisione se e dove applicarlo nell'app; se i dati sono pochi per giudicare, dillo chiaramente invece di inventare conclusioni.");
+    S.progressLog.push({t:new Date().toISOString(),period:AN.mode,text:t});save();renderProgressBox();
+  }catch(e){if(box)box.style.display="none";aiFail(e);}};
+/* Mostra solo l'ultima analisi; le precedenti restano in un menu a tendina */
+function renderProgressBox(){
+  const box=document.getElementById("anAI");if(!box)return;
+  const log=S.progressLog||[];
+  if(!log.length){box.style.display="none";return;}
+  box.style.display="block";
+  const last=log[log.length-1];
+  let h=`<div style="font-size:11px;color:var(--grigio);margin-bottom:4px">${new Date(last.t).toLocaleString("it-IT",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>${esc(last.text)}`;
+  if(log.length>1){
+    h+=`<details style="margin-top:10px"><summary style="cursor:pointer;color:var(--bosco);font-weight:700;font-size:12.5px">Cronologia analisi precedenti (${log.length-1})</summary>`;
+    log.slice(0,-1).slice().reverse().forEach(e=>{h+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--linea)"><div style="font-size:11px;color:var(--grigio);margin-bottom:3px">${new Date(e.t).toLocaleString("it-IT",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>${esc(e.text)}</div>`;});
+    h+=`</details>`;}
+  box.innerHTML=h;}
 window.closeWeek=async()=>{
   if(!confirm("Salvo la settimana nello storico e azzero la nuova?\n\n⚠️ ATTENZIONE: una volta salvata, la settimana NON potrà più essere modificata."))return;
   const wk=weekSummary();
@@ -1394,9 +1535,44 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 
 <div class="card"><h2>Backup & aggiornamenti</h2>
 <div class="hint"><b>Dove sono i dati:</b> nel browser di questo dispositivo (non nel file). Per questo <b>aggiornare l'app non li tocca</b>: quando pubblichi una nuova versione su Git, riapri e ritrovi tutto (la versione in uso è scritta in Io).<br><br>
-<b>Drive</b> (Io → Sincronizzazione): dopo "Connetti", telefono e PC condividono gli stessi dati automaticamente. <b>Esporta</b> = salva su Drive · <b>Importa</b> = scarica da Drive (sovrascrive il locale) · <b>Cancella</b> = elimina il backup remoto.<br><br>
+<b>Drive</b> (Io → Sincronizzazione): dopo "Connetti", telefono e PC condividono gli stessi dati automaticamente. <b>Esporta</b> = salva su Drive · <b>Importa</b> = scarica da Drive (sovrascrive il locale) · <b>Cancella</b> = elimina il backup remoto. I dati vivono in una cartella privata riservata a quest'app (non tra i tuoi file visibili di Drive): è una scelta di sicurezza, così nessun'altra app o cartella tua può leggerli o mescolarsi.<br><br>
 <b>In locale</b>: Esporta/Importa = file .json sul dispositivo · Cancella = azzera tutto e ricomincia.<br><br>
 <b>Se cambi indirizzo del sito</b>: i dati non seguono da soli — Esporta su Drive dal vecchio, Importa dal nuovo.</div></div>
+
+<div class="card"><h2>🔧 Configurazione API: Google Drive e Gemini</h2>
+<div class="gsec">Parte 1 — Google Drive</div>
+<div class="hint">
+<b>A) Progetto e API</b><br>
+1. Vai su <b>console.cloud.google.com</b><br>
+2. Crea un progetto (in alto a sinistra → "Nuovo progetto") o apri quello dell'app<br>
+3. Menu ☰ → "API e servizi" → "Libreria"<br>
+4. Cerca <b>"Google Drive API"</b> → Abilita<br><br>
+<b>B) Consenso OAuth e utente di test</b><br>
+Finché l'app è in "Testing", Google blocca le email non autorizzate:<br>
+1. Menu ☰ → "API e servizi" → "Schermata di consenso OAuth"<br>
+2. Tipo <b>"Esterno"</b> → compila Nome App e la tua Email<br>
+3. Scorri fino a "Utenti di test" → <b>"+ ADD USERS"</b><br>
+4. Digita la <b>tua</b> email Google (quella con cui userai l'app)<br>
+5. <b>Fondamentale:</b> clicca SALVA per confermare<br><br>
+<b>C) Credenziali</b><br>
+1. Menu ☰ → "API e servizi" → "Credenziali"<br>
+2. "Crea credenziali" → <b>"ID client OAuth"</b><br>
+3. Tipo di applicazione: <b>"App web"</b><br>
+4. In "Origini JavaScript autorizzate" incolla <b>solo il dominio</b> del tuo sito (es. <code>https://tuonome.github.io</code>) — niente percorsi, niente slash finale<br>
+5. Salva: ottieni un <b>Client ID</b> (es. <code>123456-abc.apps.googleusercontent.com</code>). Copialo<br><br>
+<b>D) Collegare l'app</b><br>
+1. Vai su <b>Io → Sincronizzazione Google Drive</b><br>
+2. Incolla il Client ID nel campo <b>CLIENT_ID</b> (non serve nessun'altra chiave)<br>
+3. "Connetti & sincronizza" → autorizzi col tuo account (ora sbloccato)
+</div>
+<div class="gsec">Parte 2 — Google Gemini</div>
+<div class="hint">
+1. Vai su <b>aistudio.google.com/apikey</b><br>
+2. Clicca "Crea chiave"<br>
+3. Scegli o crea un progetto<br>
+4. Copia la chiave e incollala in <b>Io → Motore AI (Gemini)</b>
+</div>
+<div class="hint" style="margin-top:6px;color:var(--rosso)">⚠️ Non condividere né pubblicare mai queste chiavi (Client ID incluso è meglio tenerlo privato); se il repository è pubblico, evita di scrivere email o chiavi reali nei commit.</div></div>
 
 <div class="card"><div class="hint">⚠️ Le stime di calorie, proteine e consumi sono <b>indicative</b>: l'app è un diario, non un medico. Il piano va validato col tuo professionista.</div>
 <button class="btn ghost small" onclick="show('oggi')">← Torna a Oggi</button></div>`;}
@@ -1490,13 +1666,12 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   // Drive
   h+=`<div class="card"><h2>☁️ Sincronizzazione Google Drive</h2>
   <label>CLIENT_ID (Google Cloud)</label><input type="text" id="dCid" value="${S.drive.cid||""}" placeholder="xxxx.apps.googleusercontent.com">
-  <label>API_KEY (Google Cloud)</label><input type="text" id="dKey" value="${S.drive.akey||""}" placeholder="AIza…">
   <div class="mtools"><button class="btn small" onclick="driveConnect()">Connetti & sincronizza</button></div>
   <div class="mtools"><button class="btn ghost small" onclick="driveUpload()">Esporta</button>
   <button class="btn ghost small" onclick="driveImport()">Importa</button>
   <button class="btn warn small" onclick="driveDelete()">Cancella</button></div>
   <div class="hint" id="driveStatus">${S.drive.on?"Configurato: a ogni avvio l'app si riconnette da sola, confronta i timestamp e carica la versione più recente (telefono e PC condividono così gli stessi dati). Auto-save attivo.":"Non connesso."}
-  <br>Ora che l'app è pubblicata (https) l'OAuth funziona: registra l'origine del tuo sito nel progetto Google Cloud (scope drive.appdata). Al primo accesso su ogni dispositivo Google chiede il consenso una volta; poi la sincronizzazione è silenziosa.</div></div>`;
+  <br>Configurazione (Client ID + progetto Google Cloud): spiegata passo passo nella <b>❓ Guida</b>. Salva su una cartella privata di Drive dedicata solo a quest'app (nessuna cartella tua è coinvolta). Al primo accesso su ogni dispositivo Google chiede il consenso una volta; poi la sincronizzazione è silenziosa.</div></div>`;
   // Backup
   h+=`<div class="card"><h2>Dati & backup in locale</h2>
   <button class="btn ghost" onclick="exportData()">Esporta</button>
@@ -1547,8 +1722,7 @@ function loadGSI(cb){if(window.google&&google.accounts)return cb();
   const s=document.createElement("script");s.src="https://accounts.google.com/gsi/client";
   s.onload=cb;s.onerror=()=>alert("Impossibile caricare Google Identity (offline?).");document.head.appendChild(s);}
 window.driveConnect=()=>{
-  S.drive.cid=document.getElementById("dCid").value.trim();
-  S.drive.akey=document.getElementById("dKey").value.trim();save();
+  S.drive.cid=document.getElementById("dCid").value.trim();save();
   if(!S.drive.cid)return alert("Inserisci il CLIENT_ID.");
   if(location.protocol==="file:")return alert("L'OAuth Google non funziona da file:// — pubblica l'app su https (es. GitHub Pages) e registra l'origine nel progetto Google Cloud.");
   loadGSI(()=>{
@@ -1640,8 +1814,8 @@ function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:r
 /* ══ PWA: manifest generato a runtime (URL assoluti) + service worker ══ */
 (function(){
   try{
-    const ICON192="data:image/png;base64,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";
-    const ICON512="data:image/png;base64,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";
+    const ICON192="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAE/UlEQVR42u3dwXXTQBSFYTKHPSwoADqgAKA0FpSWkwLoIA2wSAew59iRI1nSm3e/f5sQj97cf95IHpuHD98//30HhDKUAAQACAAQACAAQACAAAABAAIABAAIABAAIABAAIAAAAEAAgAEAAgA1Oe9EuzLy+Pz5r/x8ccXhdyJBx+KrxFychBA4AlBAKEnAwGEngwEEHoyEEDwiUAAwScCAQSfCAQQfCIQQPCJQADBJ8I9GMKP5Dq27ACCrxvEdgDhV99YAYRfnSO3QIJvSxTbAYRf/WMFEH7zECuA8JuPWAGE37zECiD85idWAOE3T7ECCD8JYgUQfhLECiD8JIgVQPhJECuA8JPgCEqeBeoY/q8/v7353/z+9dSuDtXODpUToEP414Q9SYpKEvh26OKBX3qtjl0itgPMtvofGfxunaFKFygjwCzhrxT62WWoIEEJAWYI/9bgrwnlGa+ZJgEBdgjhnsHr9jQpXoAu4T8jZNXHN4MEpwpQNfy3BqtSqGYccwUJ7iLAy+PznwsX9GlGAW4JUuXVdNbxLwmwNmO7C3BpYLcMcMbwz/SoccZruSbB2oztLsBrA1saYCUBOgV/5mu7JMCWjN3C2DP8135P+I9jafyV3tf4PxdbMra7AB3oHv4ZJTiacbblFcP/+9dTuzM2S9dURYKj8xHZAZbC35kZJGgrQIXVPzn8s0hwZE6iOoDw6wSnCVD5yEPqmfrK131UXmI6wLVVLf0DJdeuP6ULjE42Cz8JdADhJwEBAAJY/XWBXAGEnwS2QMKvTokCJB/uUlcCWP3VK1cAq7/66gBWf3UjABAmwKX2bPW/fxfotA3SAaADuDlDar1bdwDbH3W0BQIIADQWwNOfc7ZBHe4DdADoAAABAAIABHADjJgbYR0AOgBAAIAAAAEAAgAEAAgAEAAgAEAAgAAAAUrQ/XtrKtHx4KEOAB0AIABAAIAAboQRcQOsA0AHUAIQIKhtQx1bCuCbINRbBwCSBfA06JjtT6duqwNAB3ATh9S6tRPAzbD66gC6gHolC6ALqKsOoAuoU7IA11YrEqwLf9euGvn/BJNA+CO3QECcALqA1f90AT7++EIC4dcBSCD8sQKc3QXWhCA1/BU4Ki9RN8GvrWppErx2vUlvJI6OVpNg7vAfmZPIx6DJElj5Txagyr3AkgTdRFi6pirhPzofY8NAP93z96pJ0KkbLF1H1ZX/iIyNPQd47eeVngh1l2Cm8F/KxdqM3crDh++f/24d+Mvj85+3Duzl8VlYXMvNC+OajB0mwAZxpgtOdRFmHf9ZuwICbNj2VArSjGOOF6CyBG/d/58RrOrjqx7+EgJ0kuCIsFUbz8zhJ8DOwdsawjNekwAk2DWURzDL06oKj8PLCDCTBBVlmO0YQ5X3gkoJMKMEZ4sw4/mdSm+Evn+Hu4dwTyF851HzDjBrF9ijS3QMe7UPRpUUoKsE6VT8VOBQLCTP51A0JM/jUDwkz99QRCTP21BMJM/XUFQkz9NQXCTPz1BkJM/LUGwkz8dQdCTPw1B8JNe/7FmgNTg/JPhxHUA3UGcCkEB9bYFsiQRfB9AN1FEH0A0EnwBEEHwCEEHwCUAEwScAEQSfAEQQfAJkyiD0BIiTQegJECeD0BMgSgiBJ0B7OYScAMAuDCUAAQACAAQACAAQACAAQACAAAABAAIABAAIABAAIABAAIAAAAGASfgHQkDJZa3hObwAAAAASUVORK5CYII=";
+    const ICON512="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAO6ElEQVR42u3dzVErSxKAUaRgLxYYIDzAAIRpLDCNwAA8wAEWeKC7gs0FQaOu7vw5x4B5MVJX5tcl3sxmd9gfLwCAVrY+AgAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAAAgAAAAAQAACAAAQAAAAAIAABAAAIAAAAAEAAAgAAAAAQAACAAAQAAAAAIAABAAAIAAAAAEAAAgAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAADgw6WPAPJ7f3pd/J95dX/jg4fENrvD/uhjAItdKIAAACx5cQACALDohQEIAMCyFwUgAMCyt+xFAQgAsPARBCAAwNJHDIAAAAsfQQACACx9xAAIALD0EQMgAMDSRwyAAABLHzEAAgAsfoQACACw9BEDIACw+EEIgADA0gcxAAIAix+EAAJAAGDxgxBAAIClD2IAAQAWPwgBBABY/CAEEABg8YMQQACAxQ9CgBy2PgIsf/D84wYADD5wG4AAAIsfhAACACx+EAKU4G8AsPzBucENABhg4DYAAQAWPwgBSvITAJY/OF+4AQCDCdwGIADA4gchQEl+AsDyB+cQAQCGDjiPdOAnAAwaKMRPArgBwPIH5xTcAGCggNsAcAOA5Q/OLwIADA9wjunFTwAYGNCEnwRwA4DlD843AgAMB3DO6cZPABgI0JSfBNwAYPkDzj8CAIcfMAcQADj0gHlAOf4GwEEH+OTvAtwAYPkD5gQCAIcaMC8QADjMgLmBAMAhBswPBAAOL2COIABwaAHzBAGAwwqYKwgAHFLAfEEA4HAC5gwCAIcSMG8QADiMgLmDAMAhBMwfBIDDB2AOIQAcOgDzCAHgsAGYSwgAhwzAfBIAOFwA5pQAwKECMK8EAA4TgLklAHCIAMwvAYDDA2COCQAcGgDzTADgsACYawIAhwQw3xAAAMAqNrvD/uhjUMfUcftwN+w/++Xx2QfM2a7ub3wIAgDLn0gLXiAgAgQAlj8WvTBABAgALH8sfEGACKjk0kcAFv7a/90FAbgB8PaPhY8gcAuAALD8sfTFgBgQAQgAyx9LXwwgApiFvwEASz/l5ywGwA2At38sfrcCuAVAAFj+WPpiABGAALD8sfiFACKA//gbALD4y35nQgDcAHj7x+J3I4BbAASA5Y/FLwQQAb35CQAKLv4Ri67C5+OnAXAD4O2f1Ist4gLzOeIWQABg+Vv8lpTPGBEgACx/LCaLyGePCBAAAgDLx+LxfSAABIDlT7dFY8H4nhABAkAA0GSpWCa+NwSAALD8abJALA/fJSJAAFj+NFoYloXvFREgAAQAjZaEBeE7RgAIAMufJkvBQvC9IwIEgACg0RKwADwDngEBIADWX75vJx6Oa8vf4Df0PQ+eBxGQdccIgAlfyJJflOVv0OP58HzUi4AoO0YAnPmljPySBED94W6we1Y8K30CINqOGW3bafnP/J/j1BnoJLDU91jp/046mznmcbQd4wZg4Ad6bqUJgLrL3+L3/Hh+et0CRNwxAmBwTf31C7L8aw5vg9uz5FnqFwERd4wAuFjmKuUvX5AA8NaG58pzlT8Aou6Y9gGw5O8oU74gy9+bGp4xz1j+CIi6Y5a09bh48zeY6Wz0c+CPA81pNwBB3/6nFJoHq8byt/jx3PW+BYi6Y9wAqEpD2BCm4G2AmwDzWgCA5Y8IgNWF+wlgzf8Rhe+uaNRk7uVv8eOZ7OmrnwIi7hg3ABi0Bi1NbgPcBCAAEvD2b/kjAkSA+S0AwPJHBIgABIB6JNrwe3l8tvwZFgEjni0RYI4LAPDWj+cMBADe/g1lukSAWwAEQCCujSx/EAHmuQAAyx9EAAJALWL5gwgw1wUAWP6IABGAAFCJ5Bq24Lk03wUABH/7N2TpEgFuARAAWP6WPyIABMBIrocsfxABCAAoOEzBcwsCgCRv/+A8OU8IAJoNK29RuAUQAQgALH8QASAAMDTB8wwCgDJv/4YlIsAtAAKAZssfcN4QAHhLAs83CACqv40YjogAtwAIAAxF8LyDAKD62z/g/CEAaDZ8vA3hFkAEIAAwBMHzDwKA6m//gPOIAMDbDzgHIACo/LZh6MG858EtAAIAABAAePsHtwAgAAAAAYC3f3ALgACA8MMNnBMQACR7+wecVwQA3moA5wUBgLcJwLlFAOBtBpwbHwICAG8RgPOLAMBbDDg/IAAAAAHAbM69PvT2AuvfAvgZAAEAAAgAvDWA84wAgJm5/gfnCQEAAAgAovPHf1DvFsDPAAgAAEAAEOstBXC+EACswDUhON8IAABAAMBprifBOUMAkJDrQXDOEQAAgACA01xLgvOGAAAABAAZ+F0QnHcEAAAgAOA0v0eCc4cAAAAEABn4PRCcewQATOIaEpw/BAAAIAAAAAFASH4HBOcfAQAACAA4zR8ggXOIAAAABAAAIAAAAAFADP4CGDAHBABM4g+PwHlEAAAAAgAAEAAAgAAAAAQAACAAAAABwDD+3V/APBAAMIl/5xicSwQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAACAAPARAIAAAAAEAAAgAAAAAQAACAAAQAAAAAKAMm4f7nwI4FwiAMjo5fHZhwCYBwIAABAAAIAAAAAEAAAgAAAAAQAACABq8u8cg/OIACAp/+4vYA4IAABAAAAAAgAAEABwceEPj8A5RAAAAAKAPPwFMDj/CAAAQAAAAAIAvuAPkMD5QwCQlN8BwblHAAAAAgB+5hoSnDsEAAAgAMjC74HgvCMAAAABAD/zeyQ4bwgAAEAAkIXfBcE5RwDAZK4lwTlDAAAAAoAsXA+C840AgMlcT4LzhQAAAAQAWZx7TegtBeK9/bv+RwAAAAKAmG8rgPOEAGAFrgvBeUYAAAACAG8Nv+PaEs7nj/8QAACAAKDH2ws4PyAAWIHrQ3B+EQDgLQacGwQA3iIA5xYBAN5mwHlBAOBtAnBeEQDgrQacEwQAXd8qDDcYez68/SMAAAABgFsA8PYPAgAABAC4BQBv/wgASDP0wDkAAUCyWwDAeUQA4O0HPP8gAOj01mEIYvl7+0cA0DQCAOcPAYC3IfC8gwCgy1uIoYjl7+0fAYDhCJ5vEAB0uQUAnDcEAE2HkrckvP1b/ggADEvwPIMAoMstgKGJ5e/tHwGACADL3/JHANAtAsB5cp4QAHiLAs8tCIB5Xd3f+BCCvrUYpnRd/t7+EQCIABGA5Q8CABEAlj8IgNn4GaDXkAXPpfkuACDJLYBhS/Xl7+0fAaASRYAIwPLHXBcAiAARgOUPAkAtigARgOWPeS4AEAFg+YMAwFAGzxkIgL9wbZTrFuBjOBvQjFr8I54tb//muABABHhLo9lbv+WPAFCPIkAEYPljfvcOgKv7m+tO/1xEAJY/dowAUJEiYNAQFwJEeWYsf3NbAMDCw1EEsPZzYvkjAH4ut+to/zw1KQKw/C3/Gm//EXeMAICFIkAIsOQzYfkjAAIW05R/jluAOhHgNoClngPLP9bbf+Qds7TN7rA/Rv4y359e36J9Me9Pr05ZoQFtSHuuPFe9ln/0HSMABn9B53wxAsCbGp4lz1KNAIi4YwTAwC9oji9GBHhrw/Pj+cm//KPuGAEw4Aua64sRALWHuEHumfHM9AqAaDtGAMz4JY34UkSAgY5nxbNSY/lH3DEC4IwvavQXIgB6DHbD3fPh+egVAFF2jACIHyA+BIMezwMFl391AkAEGPoGv2fAM2D5CwAEgAVgCfjefe8CQAAgAiwES8F37Du2/AUAAsCCsCR8rwgAAYAIsCwsDN8llr8AQARYHhaI7w3LXwAIACwTS8X3hAAQACIAC8ai8X1g+QsAAYDF03T5+OwRAAJABGARFV9MPmMsfwEgArCkii8snyOWvwBABAiBgovN54PlLwAQAEIAix8BIAAQAUIAix/LXwAgAoQAFj+Wf3iXPgL43RIRAhY/uAHALYAbASx+vP0LAESAGMDSx/IXAIgAIYDFj+UfnL8BgJmXkRiw9MENAG4B3Az4ECx9vP0LAESAGMDSx/IXAIgAQYCFb/n7EFbibwAgyNLrFAQWPrgBwC0ADW4ILHy8/QsARACFw8Cix/IXAIgACgaCBY/lLwAQAQCWf2JbHwEACADUMYD5JgBwSADMNQGAwwJgngkAHBoAc0wA4PAAmF8CAIcIMLcQADhMgHmFAMChAswpBAAOF2A+IQBwyABzCQGAwwaYRwgAHDrAHEIAOHwA5g8CwCEEMHcQAA4jgHmDAHAoAcwZBIDDCWC+CAAcUgBzRQDgsAKYJwIAhxYwRxAAOLyA+YEAwCEGzA0EAA4zYF4gAHCoAXOCSDa7w/7oY+jn/enVhwBY/G4AcNgB8wABgEMPmAMIABx+wPmnFn8DwCd/FwAWP24AMBQA5xwBgOEAON9U4icAvuUnAbD4cQOAoQE4xwgADA/A+SUzPwHwa34SAIsfNwAYKoBzihsA3AYAFj9uADBsAOcRAYChAziHxOInAGbhJwGw+BEACAHA4ic4PwFgOIHzhRsAcBsAFj8CAIQAWPyU5CcADDFwbnADAG4DwOJHAIAQAIsfAQBCACx+avA3ABh+4PnHDQC4DQCLHwEAQgAsfgQACAGw+BEAIATA4kcAgBgASx8BAEIAix8EAAgBLH4QACAGsPRBAIAQwOIHAQBiAEsfBAAIASx+EAAgBrD0QQCAGMDSBwEAYgBLHwQAiAEsfRAAIAgsfEAAgBiw9EEAAILAwgcBAIgCyx4EACAKLHsQAIAwsOhBAADiwJIHAQBUDwWLHQQAAJDM1kcAAAIAABAAAIAAAAAEAAAgAAAAAQAACAAAQAAAAAIAABAAAIAAAAAEAAAgAAAAAQAACAAAQAAAAAIAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAACAAAAABAAAIAABAAAAAAgAAEAAAgAAAAAQAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAAAEAAAgAAEAAAAACAAAQAACAAAAABAAAIAAAgG/8A5KkanT2HuMVAAAAAElFTkSuQmCC";
     const man={name:"Diario Dieta & Sport",short_name:"Diario",display:"standalone",
       start_url:location.href.split("#")[0],scope:location.href.replace(/[^/]*$/,""),
       background_color:"#F4F7F2",theme_color:"#0F3D20",
