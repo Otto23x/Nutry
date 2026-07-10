@@ -40,6 +40,7 @@ h1,h2,.dayname,.ringnum{font-family:Georgia,'Noto Serif',serif}
 header{background:linear-gradient(130deg,var(--hdr1),var(--hdr2));color:#fff;padding:12px 14px 10px;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .hrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 header h1{font-size:18px;font-weight:700}
+.logo-badge{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#fff;color:var(--hdr1,#0F3D20);font-weight:800;font-size:18px;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.25);flex:0 0 auto}
 .hbtns{display:flex;gap:6px;align-items:center}
 .hbtn{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:9px;padding:6px 9px;font-size:15px;cursor:pointer}
 .streak{background:rgba(255,255,255,.15);border-radius:9px;padding:6px 9px;font-size:13px;font-weight:700}
@@ -191,11 +192,13 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
 
 <header>
   <div class="hrow">
-    <h1 id="hTitle">Nutri</h1>
+    <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+      <span class="logo-badge" aria-hidden="true">N</span>
+      <h1 id="hTitle">Nutri</h1>
+    </div>
     <div class="hbtns">
       <span class="streak" id="hStreak" title="Giorni in target consecutivi">🔥 0</span>
       <button class="hbtn" onclick="show('guida')" title="Guida rapida">❓</button>
-      <button class="hbtn" id="themeBtn" onclick="toggleTheme()" title="Tema chiaro/scuro">🌙</button>
     </div>
   </div>
   <!-- Scorrimento date: frecce per navigare i giorni -->
@@ -261,7 +264,9 @@ const BASE_PLAN=[
    {n:"Pranzo",t:"12:30",type:"mensa",o:[{d:"MENSA: secondo di carne o pesce + verdura/insalata + pane + frutta",k:600,p:38,c:60,f:24}]},
    {...POM,t:"16:00 (portatile)"},
    {n:"Cena",t:"19:30",type:"norm",o:[{d:"Pollo 200g + verdura + patate al forno 200g + EVO 10g"+ADD,k:630,p:52,c:38,f:28}]},
-   {n:"Dopo cena",t:"21:30",type:"free",o:[{d:"LIBERO: gelato 1 pallina o dolcetto",k:150,p:3,c:18,f:7}]}]},
+   {n:"Dopo cena",t:"21:30",type:"free",o:[
+     {d:"LIBERO: gelato 1 pallina o dolcetto",k:150,p:3,c:18,f:7},
+     {d:"Tisana senza zucchero e frutta",k:70,p:0,c:16,f:0}]}]},
  {day:"Venerdì",ctx:"A casa (smart)",meals:[MM,
    {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Pasta 100g + tonno 120g + parmigiano 15g + verdura + EVO 10g"+ADD,k:780,p:52,c:72,f:32}]},
    {n:"Aperitivo",t:"17:30",type:"free",o:[
@@ -270,7 +275,9 @@ const BASE_PLAN=[
    {n:"Cena",t:"20:00",type:"norm",o:[{d:"3 uova + piselli 220g + patate 100g",k:520,p:39,c:42,f:22}]},DC]},
  {day:"Sabato",ctx:"Weekend — flessibile",meals:[MM,
    {n:"Pranzo",t:"12:30",type:"norm",o:[{d:"Caprino 100g + piselli 240g + verdura + patate 100g + EVO 10g"+ADD,k:800,p:45,c:48,f:46}]},POM,
-   {n:"Cena",t:"20:00",type:"free",o:[{d:"LIBERO: pizza, burger o grigliata non eccessivi, poche patatine",k:900,p:30,c:110,f:36}]},DC]},
+   {n:"Cena",t:"20:00",type:"free",o:[
+     {d:"LIBERO: pizza, burger o grigliata non eccessivi, poche patatine",k:900,p:30,c:110,f:36},
+     {d:"Branzino 250g + verdura + patate 180g + EVO 10g",k:520,p:51,c:34,f:20}]},DC]},
  {day:"Domenica",ctx:"Weekend — flessibile",meals:[
    {n:"Colazione",t:"09:30",type:"free",o:[
      {d:"LIBERO: 1 cornetto + succo senza zucchero",k:350,p:4,c:45,f:16},
@@ -340,14 +347,10 @@ function save(){S.meta.updated=new Date().toISOString();
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   // Auto-save su Drive (debounce 4s) se connesso
   if(DTOKEN&&S.drive.on){clearTimeout(driveTimer);driveTimer=setTimeout(driveUpload,4000);}}
-function toggleTheme(){S.ui.theme=({light:"dark",dark:"auto",auto:"light"})[S.ui.theme]||"light";applyTheme();save();}
+function toggleTheme(){/* tema unico chiaro: nessuna alternanza */}
 function applyTheme(){
-  const eff=S.ui.theme==="auto"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):S.ui.theme;
-  document.documentElement.dataset.theme=eff;
-  const b=document.getElementById("themeBtn");
-  b.textContent=({light:"🌙",dark:"☀️",auto:"🌓"})[S.ui.theme];
-  b.title="Tema: "+({light:"chiaro",dark:"scuro",auto:"automatico (segue il sistema)"})[S.ui.theme];}
-try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(S.ui.theme==="auto")applyTheme();});}catch(e){}
+  S.ui.theme="light";
+  document.documentElement.dataset.theme="light";}
 
 /* ═══════════════════════════════════════════════════════════════
    3. DATA VISUALIZZATA (scorrimento giorni) + utilità date
@@ -398,9 +401,14 @@ function stepsKcal(di){const s=S.week.days[di].steps||0;
   return Math.round(Math.max(0,s-5000)*S.profile.w*0.00045);} // solo i passi OLTRE la vita sedentaria già nel TDEE
 function burnedOfDay(di){return S.week.days[di].workouts.reduce((a,w)=>a+workoutKcal(w),0)+stepsKcal(di);}
 function deficitOfDay(di){return tdee()+burnedOfDay(di)-eatenOfDay(di).k;}
-/* Obiettivo acqua dinamico: +2 bicchieri se allenamento intenso o >45' */
+/* Proposta obiettivo acqua in base al peso (~35 ml/kg), in litri, arrotondata a 0,5 L */
+function waterSuggestL(){return Math.min(5,Math.max(1.5,Math.round(S.profile.w*0.035*2)/2));}
+/* Obiettivo acqua: l'utente lo sceglie in IO (litri/giorno); se non impostato
+   si usa la proposta in base al peso. +2 bicchieri se allenamento intenso o >45'.
+   1 bicchiere = 250 ml. */
 function waterGoal(di){const hard=S.week.days[di].workouts.some(w=>w.int==="alta"||w.min>45);
-  const base=Math.min(20,Math.max(8,Math.round(S.profile.w*0.14))); // ~35 ml/kg in bicchieri da 250 ml
+  const litri=(+S.profile.waterGoalL>0)?+S.profile.waterGoalL:waterSuggestL();
+  const base=Math.min(24,Math.max(4,Math.round(litri*4))); // bicchieri da 250 ml
   return base+(hard?2:0);}
 
 /* ═══════════════════════════════════════════════════════════════
@@ -587,7 +595,7 @@ function mealCard(pdi,mi){
     <div class="mbody">
       <div class="mtop"><span class="mname">${esc(dispName)}${st.skip?" (saltato)":""}</span><span class="mtime">${m.t}</span></div>
       <div class="mdesc">${esc(o.d)}</div>
-      <div class="mkcal">~${o.k} kcal · ~${o.p} g prot${o.c!=null?` · C ${o.c}g`:""}${o.f!=null?` · Gr ${o.f}g`:""} ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
+      <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""} ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
   if(PLAN[pdi].meals[mi].o.length>1&&!st.custom){h+=`<div class="mopts">`+m.o.map((x,oi)=>
     `<button class="${oi===st.opt?"sel":""}" onclick="setOpt(${pdi},${mi},${oi})">Opzione ${oi+1}</button>`).join("")+`</div>`;}
   h+=`<div class="mtools">
@@ -819,22 +827,48 @@ window.menuAI=async(di)=>{
 /* ═══════════════════════════════════════════════════════════════
    9. PAGINA PIANO
    ═══════════════════════════════════════════════════════════════ */
+/* Il piano è un MODELLO statico: niente spunte, niente extra (quelli stanno in
+   Oggi). Le modifiche fatte qui (opzione / ✏️ / 🎲) sono PERMANENTI: restano
+   effettive anche nelle settimane successive, perché vivono in S.permMeals. */
+function templateOpt(pdi,mi){const perm=S.permMeals[pdi+"_"+mi];if(perm)return perm;return PLAN[pdi].meals[mi].o[0];}
+function plannedTemplateOfDay(di){let k=0,p=0;PLAN[di].meals.forEach((m,mi)=>{const o=templateOpt(di,mi);k+=o.k;p+=o.p;});return{k,p};}
+function mealCardStatic(pdi,mi){const m=PLAN[pdi].meals[mi];const o=templateOpt(pdi,mi);
+  const permObj=S.permMeals[pdi+"_"+mi];const isCustom=!!permObj;
+  let h=`<div class="meal"><div class="mbody">
+    <div class="mtop"><span class="mname">${esc(m.n)}</span><span class="mtime">${m.t}</span></div>
+    <div class="mdesc">${esc(o.d)}</div>
+    <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""} ${isCustom?'<span class="badge ai">modificato</span>':""}</div>`;
+  if(m.o.length>1){h+=`<div class="mopts">`+m.o.map((x,oi)=>{
+      const sel=isCustom?(permObj.d===x.d):(oi===0);
+      return `<button class="${sel?"sel":""}" onclick="setPermOpt(${pdi},${mi},${oi})">Opzione ${oi+1}</button>`;}).join("")+`</div>`;}
+  h+=`<div class="mtools" style="margin-top:4px">
+    <button class="ibtn" title="Modifica permanente" onclick="editMealPerm(${pdi},${mi})">✏️</button>
+    <button class="ibtn" title="Alternativa AI a parità di macro (permanente)" onclick="altMealPerm(${pdi},${mi})">🎲</button>`;
+  if(isCustom)h+=`<button class="ibtn" title="Ripristina originale" onclick="resetPerm(${pdi},${mi})">↩️</button>`;
+  h+=`</div></div></div>`;return h;}
+window.setPermOpt=(d,m,oi)=>{const o=PLAN[d].meals[m].o[oi];
+  if(oi===0)delete S.permMeals[d+"_"+m];else S.permMeals[d+"_"+m]={d:o.d,k:o.k,p:o.p,c:o.c!=null?o.c:null,f:o.f!=null?o.f:null};
+  save();render("piano");};
+window.resetPerm=(d,m)=>{delete S.permMeals[d+"_"+m];save();render("piano");};
+window.editMealPerm=async(d,m)=>{const o=templateOpt(d,m);const nd=prompt("Modifica permanente del piano (resta effettiva sempre):",o.d);
+  if(nd==null||!nd.trim())return;let k=o.k,p=o.p,c=o.c,f=o.f;
+  if(aiOn()&&confirm("Vuoi che l'AI ristimi kcal e macro del pasto modificato?")){
+    try{const t=await aiAsk('Stima calorie e macro di questo pasto: "'+nd+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero}');
+      const j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);c=Math.round(j.carb)||null;f=Math.round(j.gras)||null;}catch(e){aiFail(e);return;}}
+  S.permMeals[d+"_"+m]={d:nd.trim(),k,p,c,f};save();render("piano");};
+window.altMealPerm=async(d,m)=>{if(!aiOn())return aiFail(new Error("nokey"));const o=templateOpt(d,m);
+  try{const t=await aiAsk('Genera UN piatto completamente diverso da "'+o.d+'" ma con circa '+o.k+' kcal e '+o.p+' g di proteine. '+dietStr()+' Ingredienti comuni in Italia con grammature. Rispondi SOLO JSON: {"piatto":"descrizione con grammature","kcal":numero,"prot":numero,"carb":numero,"gras":numero}');
+    const j=parseAIJSON(t);
+    if(!confirm("Alternativa permanente:\n"+j.piatto+"\n~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g P\n\nOK = usala sempre nel piano"))return;
+    S.permMeals[d+"_"+m]={d:j.piatto,k:Math.round(j.kcal),p:Math.round(j.prot),c:Math.round(j.carb)||null,f:Math.round(j.gras)||null};save();render("piano");}catch(e){aiFail(e);}};
 function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(new Date());
   let h=`<div class="card"><h2>La tua settimana</h2>
-  <div class="legend"><span><b style="color:var(--salvia)">✓</b> mangiato</span><span><b style="color:var(--rosso)">✗</b> saltato</span><span><b>○</b> da fare</span></div>
-  <div class="hint">I due menu spostano il pasto in un altro <b>giorno</b> e/o in un'altra <b>fascia</b> (anche nello stesso giorno). ✏️ modifica con stima AI · 🎲 alternativa AI a parità di macro.</div></div>`;
+  <div class="hint">Questo è il tuo <b>piano</b>: un modello fisso. Le modifiche qui (opzione · ✏️ · 🎲) restano <b>sempre effettive</b>, anche nelle settimane successive. Spunte, extra e tracciamento del giorno si fanno in <b>Oggi</b>.</div></div>`;
   PLAN.forEach((d,di)=>{
     h+=`<div class="dayname">${d.day}${di===ti?'<span class="todaytag">OGGI</span>':""}</div><div class="dayctx">${d.ctx}</div>`;
-    dayItems(di).forEach(it=>h+=mealCard(it.pdi,it.mi));
-    S.week.days[di].extras.forEach((e,ei)=>{h+=`<div class="meal"><div class="chk c" onclick="delExtra(${di},${ei})">✕</div>
-      <div class="mbody"><div class="mtop"><span class="mname">Extra</span></div>
-      <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ~${e.p||0} g prot</div></div></div>`;});
-    const pl=plannedOfDay(di);
-    h+=`<div class="mtools" style="margin:2px 0 6px">
-      <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
-      <button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia</button></div>`;
-    h+=`<textarea placeholder="Note del giorno…" onchange="setNote(${di},this.value)">${esc(S.week.days[di].note||"")}</textarea>`;
-    h+=`<div class="daytotal">Pianificato: <span>~${pl.k} kcal · ~${pl.p} g prot</span></div>`;
+    d.meals.forEach((m,mi)=>h+=mealCardStatic(di,mi));
+    const pl=plannedTemplateOfDay(di);
+    h+=`<div class="daytotal">Pianificato: <span>~${pl.k} kcal · ${pl.p} g P</span></div>`;
   });
   el.innerHTML=h;}
 
@@ -860,8 +894,11 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <button class="btn small" onclick="show('storico')">Vai al recap</button>
     <button class="ibtn" onclick="dismissWeek()" title="Nascondi per oggi">✕</button></div>`;
   if(needMorningBanner()){const um=unmarkedOfDay(yIdx()),nw=S.week.days[yIdx()].workouts.length,ns=S.week.days[yIdx()].steps;
-    const parts=[];if(um>0)parts.push(um+" past"+(um===1?"o":"i")+" senza spunta");if(nw===0)parts.push("nessun allenamento");if(!ns)parts.push("passi non inseriti");
-    let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>): "+parts.join(", ")+". Chiudi la giornata?";
+    let reason;
+    if(nw===0||!ns)reason="nessun allenamento o passi inseriti";
+    else if(um>0)reason=um+" past"+(um===1?"o":"i")+" da spuntare";
+    else reason="da confermare";
+    let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>): "+reason+". Chiudi la giornata?";
     h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
     <div style="flex:1;font-size:13.5px">${txt}</div>
     <button class="btn small" onclick="goYesterday()">Completa ieri</button>
@@ -877,7 +914,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}</div>
     ${ring(eat.k/Math.max(1,target),def)}
     <div class="gnums"><span>Mangiate <b>${eat.k}</b></span><span>Fabbisogno <b>${t}</b></span><span>Sport <b>+${burn}</b></span></div>
-    <div class="gnums" style="margin-top:4px"><span>Prot <b>${eat.p}g</b></span><span>Carbo <b>${eat.c}g</b></span><span>Grassi <b>${eat.f}g</b></span></div>
+    <div class="gnums" style="margin-top:4px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span></div>
     <div class="stat3"><div><div class="v">${eat.p} g</div><div class="l">proteine</div></div>
     <div><div class="v">${skippedOfDay(di)}</div><div class="l">pasti saltati</div></div>
     <div><div class="v">🔥 ${S.streak.count}</div><div class="l">giorni in target</div></div></div></div>`;}
@@ -885,7 +922,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   const goal=waterGoal(di);
   h+=`<div class="card"><h2>Acqua</h2><div class="water">`;
   for(let i=0;i<goal;i++)h+=`<span class="${i<S.week.days[di].water?"f":""}" onclick="setWater(${di},${i})">💧</span>`;
-  h+=`</div><div class="hint">Obiettivo: ${goal} bicchieri (~${(goal/4).toFixed(1)} L, tarato sul tuo peso: 35 ml/kg)${S.week.days[di].workouts.some(w=>w.int==="alta"||w.min>45)?" · allenamento intenso: +2 💧":""}.</div></div>`;
+  h+=`</div><div class="hint">Obiettivo: ${goal} bicchieri (~${(goal/4).toFixed(1)} L${(+S.profile.waterGoalL>0)?", scelto in Io":", proposto sul peso"})${S.week.days[di].workouts.some(w=>w.int==="alta"||w.min>45)?" · allenamento intenso: +2 💧":""}.</div></div>`;
   // Sonno & Stress
   h+=`<div class="card"><h2>Come stai</h2>
   <label>Sonno (notte scorsa)</label>${stars(di,"sleep")}
@@ -899,7 +936,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   else h+=`<div class="hint">Nessun pasto assegnato a questo giorno.</div>`;
   S.week.days[di].extras.forEach((e,ei)=>{h+=`<div class="meal"><div class="chk c" onclick="delExtra(${di},${ei})">✕</div>
     <div class="mbody"><div class="mtop"><span class="mname">Extra</span></div>
-    <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ~${e.p||0} g prot</div></div></div>`;});
+    <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ${e.p||0} g P${e.c!=null?` · ${e.c} g C`:""}${e.f!=null?` · ${e.f} g G`:""}</div></div></div>`;});
   h+=`<div class="mtools" style="margin-top:4px">
     <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
     <button class="btn ghost small" onclick="extraPhoto(${di})">📸 Analisi</button>
@@ -907,7 +944,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia</button></div>
   <div id="scanbox"><div id="scanreader"></div><button class="btn warn small" onclick="stopScan()">Chiudi scanner</button></div>`;
   // Svuota-frigo
-  h+=`<div class="card"><h2>🍲 Crea un piatto con quello che hai</h2>
+  h+=`<div class="card" style="margin-top:18px"><h2>🍲 Crea un piatto con quello che hai</h2>
   ${mealSelHtml("frTarget",di)}
   <div class="mtools">
     <button class="btn small" onclick="frAdd()">📸 Fotografa (<span id="frN">${FR.length}</span>)</button>
@@ -1117,9 +1154,9 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   // Analisi: periodi, grafici multi-metrica, coaching AI
   h+=`<div class="card"><h2>📊 Analisi</h2>
   <div class="row2"><div><label>Periodo</label><select id="anMode" onchange="drawAnalysis()">
-  <option value="giorno" ${AN.mode==="giorno"?"selected":""}>Giornaliero (14 gg)</option>
-  <option value="settimana" ${AN.mode==="settimana"?"selected":""}>Settimanale (12 sett.)</option>
-  <option value="mese" ${AN.mode==="mese"?"selected":""}>Mensile (12 mesi)</option>
+  <option value="giorno" ${AN.mode==="giorno"?"selected":""}>Giornaliero</option>
+  <option value="settimana" ${AN.mode==="settimana"?"selected":""}>Settimanale</option>
+  <option value="mese" ${AN.mode==="mese"?"selected":""}>Mensile</option>
   <option value="anno" ${AN.mode==="anno"?"selected":""}>Annuale</option>
   <option value="manuale" ${AN.mode==="manuale"?"selected":""}>Periodo manuale</option>
   </select></div>
@@ -1178,13 +1215,23 @@ function flattenDiet(){
       sgarri:extrasKcal(di),completed:dayCompleted(di)});});
   out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
   return out;}
-function periodBounds(mode){
+/* Quante colonne mostrare: le calcoliamo in base alla LARGHEZZA del grafico,
+   puntando a ~12 (così i mesi mostrano di fatto l'ultimo anno "rolling"), ma
+   adattandoci a schermi più larghi/stretti invece di usare un numero fisso. */
+function bucketsToShow(){
+  const el=document.getElementById("chAnCal");
+  let w=el&&el.clientWidth?el.clientWidth:0;
+  if(!w){const pg=document.querySelector(".page.active");w=(pg&&pg.clientWidth)||document.body.clientWidth||340;}
+  const perCol=26; // px per colonna leggibile
+  return Math.max(6,Math.min(24,Math.round(w/perCol)));}
+function periodBounds(mode,n){
+  if(!n)n=bucketsToShow();
   const today=new Date();today.setHours(12,0,0,0);
-  const back=n=>{const d=new Date(today);d.setDate(d.getDate()-n);return d;};
-  if(mode==="giorno")return{from:back(13),to:today,bucket:"day"};
-  if(mode==="settimana")return{from:back(83),to:today,bucket:"week"};
-  if(mode==="mese")return{from:back(364),to:today,bucket:"month"};
-  if(mode==="anno")return{from:back(365*5),to:today,bucket:"year"};
+  const back=d=>{const x=new Date(today);x.setDate(x.getDate()-d);return x;};
+  if(mode==="giorno")return{from:back(n-1),to:today,bucket:"day"};
+  if(mode==="settimana")return{from:back((n-1)*7),to:today,bucket:"week"};
+  if(mode==="mese"){const f=new Date(today.getFullYear(),today.getMonth()-(n-1),1);f.setHours(12,0,0,0);return{from:f,to:today,bucket:"month"};}
+  if(mode==="anno"){const f=new Date(today.getFullYear()-(n-1),0,1);f.setHours(12,0,0,0);return{from:f,to:today,bucket:"year"};}
   const f=document.getElementById("anFrom"),t=document.getElementById("anTo");
   const fromD=f&&f.value?new Date(f.value+"T12:00:00"):back(30);
   const toD=t&&t.value?new Date(t.value+"T12:00:00"):today;
@@ -1652,7 +1699,8 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div class="row2"><div><label>Pressione (opz.)</label><input type="text" id="pPa" placeholder="120/80"></div>
   <div><label>SpO2 % (opz.)</label><input type="number" id="pSpo2" placeholder="98"></div></div>
   <div class="row2"><div><label>Obiettivo peso (kg, opz.)</label><input type="number" step="0.1" id="pGoal" value="${p.goalW||""}" placeholder="es. 98"></div>
-  <div><label>&nbsp;</label><div class="hint" style="margin-top:14px">Con l'obiettivo attivo vedi la linea nel grafico e la data stimata di arrivo.</div></div></div>
+  <div><label>Obiettivo acqua (L/giorno)</label><input type="number" step="0.5" id="pWater" value="${p.waterGoalL||""}" placeholder="proposto: ${waterSuggestL()} L"></div></div>
+  <div class="hint" style="margin-top:2px">Acqua: se lasci vuoto usa la proposta in base al peso (${waterSuggestL()} L). Con l'obiettivo peso attivo vedi la linea nel grafico e la data stimata di arrivo.</div>
   <label>Attività di base (lavoro/vita, sport escluso)</label>
   <select id="pAct"><option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario (1.2)</option>
   <option value="1.25" ${p.act==1.25?"selected":""}>Sedentario− (1.25)</option>
@@ -1707,8 +1755,11 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div class="mtools"><button class="btn small" onclick="driveConnect()">Connetti & sincronizza</button></div>
   <div class="mtools"><button class="btn ghost small" onclick="driveUpload()">Esporta</button>
   <button class="btn ghost small" onclick="driveImport()">Importa</button>
-  <button class="btn warn small" onclick="driveDelete()">Cancella</button></div>
+  <button class="btn ghost small" onclick="driveDisconnect()">Scollega dispositivo</button>
+  <button class="btn warn small" onclick="driveDelete()">Elimina backup</button></div>
+  <div class="mtools"><button class="btn ghost small" onclick="importTapisWorkouts()">🏃 Importa allenamenti da Tapis</button></div>
   <div class="hint" id="driveStatus">${S.drive.on?"Configurato: a ogni avvio l'app si riconnette da sola, confronta i timestamp e carica la versione più recente (telefono e PC condividono così gli stessi dati). Auto-save attivo.":"Non connesso."}
+  <br><b>Scollega dispositivo</b> = stacca solo QUESTO dispositivo, il backup su Drive e gli altri dispositivi restano intatti. <b>Elimina backup</b> = cancella il file su Drive: sparisce da TUTTI i dispositivi (con conferma).
   <br>Configurazione (Client ID + progetto Google Cloud): spiegata passo passo nella <b>❓ Guida</b>. Salva su una cartella privata di Drive dedicata solo a quest'app (nessuna cartella tua è coinvolta). Al primo accesso su ogni dispositivo Google chiede il consenso una volta; poi la sincronizzazione è silenziosa.</div></div>`;
   // Backup
   h+=`<div class="card"><h2>Dati & backup in locale</h2>
@@ -1735,6 +1786,7 @@ window.saveProfile=()=>{const p=S.profile;
     p.weights.push({d:new Date().toISOString(),w:nw,fat,mus,pa,spo2});
   p.w=nw;p.fatp=fat||p.fatp;p.musp=mus||p.musp;p.act=+document.getElementById("pAct").value;
   p.goalW=parseFloat(document.getElementById("pGoal").value)||null;
+  p.waterGoalL=parseFloat(document.getElementById("pWater").value)||null;
   save();render("io");renderHeader();alert("Dati salvati.");};
 window.delWeight=i=>{S.profile.weights.splice(i,1);save();render("io");};
 window.saveAI=()=>{
@@ -1747,8 +1799,15 @@ window.exportData=()=>{const blob=new Blob([JSON.stringify(S)],{type:"applicatio
 window.importData=()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".json";
   inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
     r.onload=()=>{try{S=JSON.parse(r.result);save();location.reload();}catch(x){alert("File non valido.");}};r.readAsText(f);};inp.click();};
-window.wipeAll=async()=>{if(!(confirm("Cancellare DAVVERO tutto?")&&confirm("Sicuro? Non si torna indietro.")))return;
-  if(DTOKEN&&confirm("Vuoi eliminare anche il backup su Google Drive, per ricominciare da capo ovunque?"))await driveDelete(true);
+window.wipeAll=async()=>{if(!(confirm("Cancellare DAVVERO tutto su QUESTO dispositivo?")&&confirm("Sicuro? Non si torna indietro.")))return;
+  let alsoDrive=false;
+  if(DTOKEN&&S.drive.on){
+    alsoDrive=confirm("Vuoi eliminare ANCHE il backup su Google Drive?\n\nOK = elimina il backup: i dati spariscono da TUTTI i dispositivi collegati.\nAnnulla = azzera solo questo dispositivo; il backup su Drive e gli altri dispositivi restano intatti.");
+    if(alsoDrive)await driveDelete(true);
+  }
+  // Se NON elimino il backup remoto, scollego questo dispositivo così, ricominciando
+  // da zero, non ricarico né sovrascrivo i dati che vivono su Drive (e sugli altri dispositivi).
+  if(!alsoDrive){driveClearToken();try{localStorage.removeItem(SYNCED_ONCE_KEY);}catch(e){}}
   localStorage.removeItem(KEY);location.reload();};
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1837,10 +1896,53 @@ window.driveImport=async()=>{
     const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
     S=await r.json();localStorage.setItem(KEY,JSON.stringify(S));try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}location.reload();
   }catch(e){alert("Errore importazione: "+e.message);}};
-/* Elimina il backup da Drive (per ricominciare da capo ovunque) */
+/* Importa gli allenamenti da Tapis. Funziona SOLO se Tapis e Nutri usano lo
+   STESSO account Google e lo STESSO CLIENT_ID: in quel caso condividono la
+   stessa cartella dati privata su Drive (appDataFolder) e Nutri può leggere il
+   backup di Tapis (bcube_backup.json). "Lo stesso utente" si identifica proprio
+   col login allo stesso account Drive. Chiede sempre conferma e da quale data. */
+window.importTapisWorkouts=async()=>{
+  if(!DTOKEN)return alert("Collega prima Google Drive (stesso account e stesso CLIENT_ID di Tapis).");
+  let f;
+  try{const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27bcube_backup.json%27&fields=files(id,modifiedTime)",{headers:{Authorization:"Bearer "+DTOKEN}});
+    if(r.status===401){driveClearToken();return alert("Sessione Drive scaduta: riconnettiti e riprova.");}
+    const j=await r.json();f=j.files&&j.files[0];}catch(e){return alert("Errore Drive: "+e.message);}
+  if(!f)return alert("Non trovo i dati di Tapis su Drive.\n\nPerché l'import funzioni, Tapis e Nutri devono usare lo STESSO account Google e lo STESSO CLIENT_ID (così condividono la cartella dati privata). Controlla il CLIENT_ID in Io → Sincronizzazione in entrambe le app.");
+  let tapis;
+  try{const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});tapis=await r.json();}catch(e){return alert("Errore lettura: "+e.message);}
+  const hist=(tapis&&tapis.history)||[];
+  if(!hist.length)return alert("Nessun allenamento trovato nel backup di Tapis.");
+  const wkStart=new Date(S.week.started+"T12:00:00");
+  const ds=prompt("Trovati "+hist.length+" allenamenti in Tapis.\nImportare a partire da quale data? (AAAA-MM-GG)\n\nVengono aggiunti ai giorni della settimana corrente; quelli più vecchi vengono ignorati.",iso(wkStart));
+  if(ds==null)return;
+  const from=new Date((ds||iso(wkStart))+"T00:00:00");
+  let added=0,skippedOld=0;
+  hist.forEach(s=>{
+    const dt=new Date(s.dateISO||s.date||0);if(isNaN(dt.getTime()))return;
+    if(dt<from)return;
+    const dayIdx=Math.round((new Date(iso(dt)+"T12:00:00")-wkStart)/864e5);
+    if(dayIdx<0||dayIdx>6){skippedOld++;return;}
+    const min=Math.max(1,Math.round((+s.durationSec||0)/60));
+    const spd=+s.avgSpeed||0;
+    const sport=spd>=7?"Corsa":"Camminata";
+    const int=spd>=9?"alta":spd>=6?"media":"bassa";
+    if(S.week.days[dayIdx].workouts.some(w=>w._tapis&&w.sport===sport&&w.min===min))return;
+    S.week.days[dayIdx].workouts.push({sport,min,int,_tapis:true});added++;});
+  save();render(cur);
+  alert("Import da Tapis completato: "+added+" allenamenti aggiunti"+(skippedOld?(" · "+skippedOld+" fuori dalla settimana corrente (ignorati)"):"")+".");};
+/* Scollega SOLO questo dispositivo: non tocca il backup su Drive né gli altri
+   dispositivi. Ferma la sincronizzazione qui e dimentica il token locale. */
+window.driveDisconnect=async()=>{
+  if(!confirm("Scollegare SOLO questo dispositivo da Drive?\n\nIl backup su Drive e gli altri dispositivi restano intatti. Potrai ricollegarti quando vuoi."))return;
+  driveClearToken();
+  try{localStorage.removeItem(SYNCED_ONCE_KEY);}catch(e){}
+  S.drive.on=false;save();
+  const st=document.getElementById("driveStatus");if(st)st.textContent="Dispositivo scollegato da Drive (il backup remoto è intatto).";
+  render("io");};
+/* Elimina il backup da Drive: azione che riguarda TUTTI i dispositivi collegati */
 window.driveDelete=async(silent)=>{
   if(!DTOKEN){if(!silent)alert("Connettiti prima a Drive.");return;}
-  if(!silent&&!confirm("Eliminare il backup diario_backup.json da Google Drive?"))return;
+  if(!silent&&!confirm("Eliminare il backup da Google Drive?\n\nATTENZIONE: sparirà da TUTTI i dispositivi collegati a questo account, non solo da questo. I dati locali di questo dispositivo restano finché non li cancelli a parte."))return;
   try{const f=await driveFind();
     if(f)await fetch("https://www.googleapis.com/drive/v3/files/"+f.id,{method:"DELETE",headers:{Authorization:"Bearer "+DTOKEN}});
     if(!silent){const st=document.getElementById("driveStatus");if(st)st.textContent="🗑️ Backup eliminato da Drive.";alert("Backup eliminato da Drive.");}
