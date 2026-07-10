@@ -40,7 +40,7 @@ h1,h2,.dayname,.ringnum{font-family:Georgia,'Noto Serif',serif}
 header{background:linear-gradient(130deg,var(--hdr1),var(--hdr2));color:#fff;padding:12px 14px 10px;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .hrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 header h1{font-size:18px;font-weight:700}
-.logo-badge{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#fff;color:var(--hdr1,#0F3D20);font-weight:800;font-size:18px;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.25);flex:0 0 auto}
+.logo-badge{display:inline-block;background:#fff;color:var(--bosco,#14532D);padding:4px 12px;border-radius:7px;font-weight:900;font-size:19px;letter-spacing:-.5px;line-height:1.15;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .hbtns{display:flex;gap:6px;align-items:center}
 .hbtn{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:9px;padding:6px 9px;font-size:15px;cursor:pointer}
 .streak{background:rgba(255,255,255,.15);border-radius:9px;padding:6px 9px;font-size:13px;font-weight:700}
@@ -193,8 +193,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
 <header>
   <div class="hrow">
     <div style="display:flex;align-items:center;gap:9px;min-width:0;">
-      <span class="logo-badge" aria-hidden="true">N</span>
-      <h1 id="hTitle">Nutri</h1>
+      <span class="logo-badge" id="hTitle">Nutri</span>
     </div>
     <div class="hbtns">
       <span class="streak" id="hStreak" title="Giorni in target consecutivi">🔥 0</span>
@@ -326,7 +325,7 @@ S.ui=Object.assign({theme:"light",vacanza:false,lastOpen:"",lastMorning:""},S.ui
 S.drive=Object.assign({cid:"",on:false},S.drive||{});
 S.ai=Object.assign({key:"",model:"auto"},S.ai||{});
 S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
-S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};
+S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};S.tapisWorkouts=S.tapisWorkouts||{};
 S.meta=S.meta||{updated:new Date().toISOString()};
 S.conadTpl=S.conadTpl||"";
 S.recipes=S.recipes||[];
@@ -831,7 +830,7 @@ window.menuAI=async(di)=>{
    Oggi). Le modifiche fatte qui (opzione / ✏️ / 🎲) sono PERMANENTI: restano
    effettive anche nelle settimane successive, perché vivono in S.permMeals. */
 function templateOpt(pdi,mi){const perm=S.permMeals[pdi+"_"+mi];if(perm)return perm;return PLAN[pdi].meals[mi].o[0];}
-function plannedTemplateOfDay(di){let k=0,p=0;PLAN[di].meals.forEach((m,mi)=>{const o=templateOpt(di,mi);k+=o.k;p+=o.p;});return{k,p};}
+function plannedTemplateOfDay(di){let k=0,p=0,c=0,f=0;PLAN[di].meals.forEach((m,mi)=>{const o=templateOpt(di,mi);k+=o.k;p+=o.p;c+=(o.c||0);f+=(o.f||0);});return{k,p,c,f};}
 function mealCardStatic(pdi,mi){const m=PLAN[pdi].meals[mi];const o=templateOpt(pdi,mi);
   const permObj=S.permMeals[pdi+"_"+mi];const isCustom=!!permObj;
   let h=`<div class="meal"><div class="mbody">
@@ -868,7 +867,7 @@ function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(
     h+=`<div class="dayname">${d.day}${di===ti?'<span class="todaytag">OGGI</span>':""}</div><div class="dayctx">${d.ctx}</div>`;
     d.meals.forEach((m,mi)=>h+=mealCardStatic(di,mi));
     const pl=plannedTemplateOfDay(di);
-    h+=`<div class="daytotal">Pianificato: <span>~${pl.k} kcal · ${pl.p} g P</span></div>`;
+    h+=`<div class="daytotal">Pianificato: <span>~${pl.k} kcal · ${pl.p} g P · ${pl.c} g C · ${pl.f} g G</span></div>`;
   });
   el.innerHTML=h;}
 
@@ -893,23 +892,25 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div style="flex:1;font-size:13.5px">📅 <b>Nuova settimana!</b> Controlla il recap della scorsa e, se è tutto a posto, convalidala. <b>Dopo il salvataggio non sarà più modificabile.</b></div>
     <button class="btn small" onclick="show('storico')">Vai al recap</button>
     <button class="ibtn" onclick="dismissWeek()" title="Nascondi per oggi">✕</button></div>`;
-  if(needMorningBanner()){const um=unmarkedOfDay(yIdx()),nw=S.week.days[yIdx()].workouts.length,ns=S.week.days[yIdx()].steps;
+  if(needMorningBanner()){const um=unmarkedOfDay(yIdx()),nwk=S.week.days[yIdx()].workouts.length,ns=S.week.days[yIdx()].steps;
+    const missMeals=um>0,missSport=(nwk===0||!ns);
     let reason;
-    if(nw===0||!ns)reason="nessun allenamento o passi inseriti";
-    else if(um>0)reason=um+" past"+(um===1?"o":"i")+" da spuntare";
-    else reason="da confermare";
-    let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>): "+reason+". Chiudi la giornata?";
+    if(missMeals&&missSport)reason="Non hai completato alimentazione e sport.";
+    else if(missMeals)reason="Manca ancora qualche pasto da completare.";
+    else reason="Nessun allenamento o passi inseriti.";
+    let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>): "+reason;
     h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
     <div style="flex:1;font-size:13.5px">${txt}</div>
-    <button class="btn small" onclick="goYesterday()">Completa ieri</button>
+    <button class="btn ghost small" onclick="goYesterday()">Alimentazione</button>
     <button class="btn ghost small" onclick="goSportY()">Sport & Passi</button>
-    <button class="ibtn" onclick="dismissMorning()" title="Nascondi per oggi">✕</button></div>`;}
+    <button class="btn small" onclick="dismissMorning()">Completa</button></div>`;}
   if(S.ui.vacanza){
     h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
     <div class="hint">Deficit e serie 🔥 congelati. L'app resta un diario di annotazione: spunta e scrivi liberamente, senza giudizio. Disattiva la vacanza dalla pagina Io.</div>
     <div class="stat3"><div><div class="v">${eat.k}</div><div class="l">kcal segnate</div></div>
     <div><div class="v">${eat.p} g</div><div class="l">proteine</div></div>
-    <div><div class="v">${burn}</div><div class="l">kcal sport</div></div></div></div>`;
+    <div><div class="v">${burn}</div><div class="l">kcal sport</div></div></div>
+    <div class="gnums" style="margin-top:8px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span></div></div>`;
   }else{
     h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}</div>
     ${ring(eat.k/Math.max(1,target),def)}
@@ -1186,9 +1187,89 @@ function renderStorico(){const el=document.getElementById("pg-storico");
       <span class="pill">${wk.avgEat} kcal medie</span><span class="pill">${wk.avgProt} g prot</span>
       <span class="pill">${wk.totBurn} kcal sport</span><span class="pill">peso ${wk.weight} kg</span>`;
     if(wk.ai&&wk.ai.report)h+=`<div class="aibox">🏋️ ${esc(wk.ai.report)}${wk.ai.corr?"\n\n🔍 "+esc(wk.ai.corr):""}</div>`;
-    wk.days.forEach(d=>{if(d.note||d.workouts.length)h+=`<div style="margin-top:5px"><b>${d.day}:</b> ${esc(d.workouts.join(", "))}${d.note?" — 📝 "+esc(d.note):""}</div>`;});
-    h+=`<button class="btn warn small" onclick="delWeek(${i})">Elimina</button></div></div>`;});
+    if(editWeekIdx===i){h+=renderWeekEditForm(i,wk);}
+    else{
+      wk.days.forEach(d=>{if(d.note||d.workouts.length)h+=`<div style="margin-top:5px"><b>${d.day}:</b> ${esc(d.workouts.join(", "))}${d.note?" — 📝 "+esc(d.note):""}</div>`;});
+      h+=`<div class="mtools" style="margin-top:8px">
+        <button class="btn ghost small" onclick="toggleEditWeek(${i})">✏️ Modifica</button>
+        <button class="btn warn small" onclick="delWeek(${i})">Elimina</button></div>`;}
+    h+=`</div></div>`;});
   h+=`</div>`;el.innerHTML=h;drawAnalysis();renderProgressBox();}
+/* ── Modifica settimane passate ──────────────────────────────────────────
+   Le settimane chiuse archiviano solo dati aggregati per giorno (kcal, prot,
+   carbo, grassi, sport bruciato, sonno/relax/umore, note, allenamenti come
+   testo): qui si possono correggere. Il deficit e le medie della settimana
+   vengono RICALCOLATI da questi valori al salvataggio (stesso TDEE usato
+   all'epoca, salvato in wk.tdee). Include un merge rapido degli allenamenti
+   importati da Tapis per le date di questa settimana, se presenti in attesa
+   (S.tapisWorkouts): una volta uniti qui, vengono tolti da lì per non essere
+   conteggiati due volte nei grafici. */
+let editWeekIdx=null;
+let _mergedTapisPending=[];
+window.toggleEditWeek=(i)=>{editWeekIdx=(editWeekIdx===i?null:i);_mergedTapisPending=[];render("storico");
+  setTimeout(()=>{const el=document.getElementById("hw"+i);if(el)el.classList.add("open");},0);};
+function renderWeekEditForm(i,wk){
+  const from=new Date(wk.from+"T12:00:00");
+  let h=`<div class="hint" style="margin-top:8px">Modifica i valori dei singoli giorni. Al salvataggio il deficit e le medie della settimana vengono ricalcolati.</div>`;
+  wk.days.forEach((d,di)=>{
+    const dateKey=iso(new Date(from.getFullYear(),from.getMonth(),from.getDate()+di,12));
+    const pend=S.tapisWorkouts&&S.tapisWorkouts[dateKey];
+    h+=`<div style="border:1px solid var(--bordo);border-radius:10px;padding:8px;margin-top:8px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${d.day} <span style="font-weight:400;color:var(--grigio);font-size:11px">(${dateKey})</span>
+      <label style="float:right;font-weight:400;font-size:11px"><input type="checkbox" id="we_${i}_${di}_ok" ${d.completed?"checked":""}> completato</label></div>
+      <div class="row2"><div><label>Mangiate (kcal)</label><input type="number" id="we_${i}_${di}_eat" value="${d.eat}"></div>
+      <div><label>Prot (g)</label><input type="number" id="we_${i}_${di}_prot" value="${d.prot}"></div></div>
+      <div class="row2"><div><label>Carb (g)</label><input type="number" id="we_${i}_${di}_c" value="${d.c||0}"></div>
+      <div><label>Grassi (g)</label><input type="number" id="we_${i}_${di}_f" value="${d.f||0}"></div></div>
+      <div class="row2"><div><label>Sport bruciato (kcal)</label><input type="number" id="we_${i}_${di}_burn" value="${d.burn||0}"></div>
+      <div><label>Sgarri (kcal)</label><input type="number" id="we_${i}_${di}_sgarri" value="${d.sgarri||0}"></div></div>
+      <div class="row2"><div><label>Sonno/Relax/Umore (1-5)</label><div style="display:flex;gap:4px">
+        <input type="number" min="1" max="5" id="we_${i}_${di}_sleep" value="${d.sleep||""}" style="width:33%">
+        <input type="number" min="1" max="5" id="we_${i}_${di}_relax" value="${d.relax||""}" style="width:33%">
+        <input type="number" min="1" max="5" id="we_${i}_${di}_feel" value="${d.feel||""}" style="width:33%"></div></div>
+      <div><label>Allenamenti (uno per riga)</label></div></div>
+      <textarea id="we_${i}_${di}_workouts" rows="2" style="width:100%;box-sizing:border-box">${esc(d.workouts.join("\n"))}</textarea>
+      <div style="margin-top:4px"><label>Note</label><input type="text" id="we_${i}_${di}_note" value="${esc(d.note||"")}" style="width:100%;box-sizing:border-box"></div>
+      ${pend&&pend.length?`<div class="hint" id="we_${i}_${di}_pendhint" style="margin-top:6px;color:var(--zaff)">🏃 Trovati ${pend.length} allenamenti Tapis non ancora inclusi (~${pend.reduce((a,w)=>a+workoutKcal(w),0)} kcal). <button class="btn ghost small" onclick="mergeTapisIntoWeekDay(${i},${di},'${dateKey}')">Aggiungi al giorno</button></div>`:""}
+      </div>`;});
+  h+=`<div class="mtools" style="margin-top:10px">
+    <button class="btn small" onclick="saveWeekEdit(${i})">✅ Ricalcola e salva</button>
+    <button class="btn ghost small" onclick="toggleEditWeek(${i})">Annulla</button></div>`;
+  return h;}
+window.mergeTapisIntoWeekDay=(i,di,dateKey)=>{
+  const pend=(S.tapisWorkouts&&S.tapisWorkouts[dateKey])||[];if(!pend.length)return;
+  const add=pend.reduce((a,w)=>a+workoutKcal(w),0);
+  const burnEl=document.getElementById(`we_${i}_${di}_burn`);
+  burnEl.value=(parseFloat(burnEl.value)||0)+add;
+  const woEl=document.getElementById(`we_${i}_${di}_workouts`);
+  const lines=pend.map(w=>w.sport+" "+w.min+"'");
+  woEl.value=(woEl.value.trim()?woEl.value.trim()+"\n":"")+lines.join("\n");
+  if(!_mergedTapisPending.includes(dateKey))_mergedTapisPending.push(dateKey);
+  const hintEl=document.getElementById(`we_${i}_${di}_pendhint`);if(hintEl)hintEl.style.display="none";};
+window.saveWeekEdit=(i)=>{
+  const wk=S.history[i];
+  wk.days.forEach((d,di)=>{
+    d.eat=parseFloat(document.getElementById(`we_${i}_${di}_eat`).value)||0;
+    d.prot=parseFloat(document.getElementById(`we_${i}_${di}_prot`).value)||0;
+    d.c=parseFloat(document.getElementById(`we_${i}_${di}_c`).value)||0;
+    d.f=parseFloat(document.getElementById(`we_${i}_${di}_f`).value)||0;
+    d.burn=parseFloat(document.getElementById(`we_${i}_${di}_burn`).value)||0;
+    d.sgarri=parseFloat(document.getElementById(`we_${i}_${di}_sgarri`).value)||0;
+    d.sleep=parseFloat(document.getElementById(`we_${i}_${di}_sleep`).value)||0;
+    d.relax=parseFloat(document.getElementById(`we_${i}_${di}_relax`).value)||0;
+    d.feel=parseFloat(document.getElementById(`we_${i}_${di}_feel`).value)||0;
+    d.note=document.getElementById(`we_${i}_${di}_note`).value||"";
+    d.workouts=document.getElementById(`we_${i}_${di}_workouts`).value.split("\n").map(x=>x.trim()).filter(Boolean);
+    d.completed=document.getElementById(`we_${i}_${di}_ok`).checked;
+    d.def=(wk.tdee||tdee())+d.burn-d.eat;});
+  const done=wk.days.filter(d=>d.completed);
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
+  wk.nDone=done.length;wk.avgEat=avg(done.map(d=>d.eat));wk.avgProt=avg(done.map(d=>d.prot));wk.avgDef=avg(done.map(d=>d.def));
+  wk.totBurn=wk.days.reduce((a,d)=>a+d.burn,0);
+  // Gli allenamenti Tapis appena uniti qui non vanno più sovrapposti nei grafici
+  // (altrimenti conterebbero due volte): li tolgo dall'archivio in sospeso.
+  _mergedTapisPending.forEach(k=>{if(S.tapisWorkouts)delete S.tapisWorkouts[k];});_mergedTapisPending=[];
+  S.history[i]=wk;save();editWeekIdx=null;render("storico");alert("Settimana ricalcolata e salvata.");};
 /* ═══════════════════════════════════════════════════════════════
    ANALISI STORICO: periodi (giorno/settimana/mese/anno/manuale),
    grafici multi-metrica (calorie, peso, macro) + coaching AI
@@ -1213,6 +1294,12 @@ function flattenDiet(){
       sleep:S.week.days[di].sleep||0,relax:S.week.days[di].relax||0,feel:S.week.days[di].feel||0,
       note:S.week.days[di].note||"",workouts:S.week.days[di].workouts.map(w=>w.sport+" "+w.min+"'"),
       sgarri:extrasKcal(di),completed:dayCompleted(di)});});
+  // Allenamenti importati da Tapis per date passate (archivio): li conteggiamo
+  // nel dispendio e nel deficit del giorno e li mostriamo tra gli allenamenti,
+  // senza aver toccato i riepiloghi settimanali già salvati.
+  if(S.tapisWorkouts)out.forEach(o=>{const tw=S.tapisWorkouts[o.date];
+    if(tw&&tw.length){let add=0;tw.forEach(w=>{add+=workoutKcal(w);o.workouts=o.workouts.concat([w.sport+" "+w.min+"'"]);});
+      o.burn=(o.burn||0)+add;o.def=(o.def||0)+add;}});
   out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
   return out;}
 /* Quante colonne mostrare: le calcoliamo in base alla LARGHEZZA del grafico,
@@ -1757,7 +1844,9 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <button class="btn ghost small" onclick="driveImport()">Importa</button>
   <button class="btn ghost small" onclick="driveDisconnect()">Scollega dispositivo</button>
   <button class="btn warn small" onclick="driveDelete()">Elimina backup</button></div>
-  <div class="mtools"><button class="btn ghost small" onclick="importTapisWorkouts()">🏃 Importa allenamenti da Tapis</button></div>
+  <div class="mtools"><button class="btn ghost small" onclick="importTapisWorkouts()">🏃 Importa allenamenti da Tapis (Drive)</button>
+  <button class="btn ghost small" onclick="importTapisFile()">📄 Importa da file Tapis</button></div>
+  <div class="hint" style="margin-top:2px">L'import da Drive funziona solo se Tapis e Nutri usano lo <b>stesso CLIENT_ID</b>. Con CLIENT_ID diversi usa <b>Importa da file</b>: esporta il backup da Tapis (Io → Esporta backup) e caricalo qui. In entrambi i casi scegli da quale data importare.</div>
   <div class="hint" id="driveStatus">${S.drive.on?"Configurato: a ogni avvio l'app si riconnette da sola, confronta i timestamp e carica la versione più recente (telefono e PC condividono così gli stessi dati). Auto-save attivo.":"Non connesso."}
   <br><b>Scollega dispositivo</b> = stacca solo QUESTO dispositivo, il backup su Drive e gli altri dispositivi restano intatti. <b>Elimina backup</b> = cancella il file su Drive: sparisce da TUTTI i dispositivi (con conferma).
   <br>Configurazione (Client ID + progetto Google Cloud): spiegata passo passo nella <b>❓ Guida</b>. Salva su una cartella privata di Drive dedicata solo a quest'app (nessuna cartella tua è coinvolta). Al primo accesso su ogni dispositivo Google chiede il consenso una volta; poi la sincronizzazione è silenziosa.</div></div>`;
@@ -1896,40 +1985,61 @@ window.driveImport=async()=>{
     const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
     S=await r.json();localStorage.setItem(KEY,JSON.stringify(S));try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}location.reload();
   }catch(e){alert("Errore importazione: "+e.message);}};
-/* Importa gli allenamenti da Tapis. Funziona SOLO se Tapis e Nutri usano lo
-   STESSO account Google e lo STESSO CLIENT_ID: in quel caso condividono la
-   stessa cartella dati privata su Drive (appDataFolder) e Nutri può leggere il
-   backup di Tapis (bcube_backup.json). "Lo stesso utente" si identifica proprio
-   col login allo stesso account Drive. Chiede sempre conferma e da quale data. */
+/* Import allenamenti da Tapis. Due strade, perché le app possono NON avere lo
+   stesso CLIENT_ID (in tal caso non condividono la cartella dati privata su
+   Drive e non possono leggersi a vicenda):
+   1) da Drive: funziona solo se stesso account E stesso CLIENT_ID;
+   2) da file .json: funziona SEMPRE (esporta il backup da Tapis → Io → "Esporta
+      backup", poi qui scegli il file). È la via giusta con due client diversi.
+   In entrambi i casi si sceglie da quale data importare; gli allenamenti del
+   periodo scelto vengono aggiunti alla settimana corrente e, per le date più
+   vecchie, salvati a parte (S.tapisWorkouts) così contano anche nello storico e
+   nelle analisi, senza toccare i riepiloghi settimanali già salvati. */
+function applyTapisImport(tapis){
+  const hist=(tapis&&tapis.history)||[];
+  if(!hist.length){alert("Nessun allenamento trovato nel backup di Tapis.");return;}
+  const dates=hist.map(s=>new Date(s.dateISO||s.date||0)).filter(d=>!isNaN(d.getTime())).sort((a,b)=>a-b);
+  const earliest=dates.length?iso(dates[0]):iso(new Date());
+  const ds=prompt("Trovati "+hist.length+" allenamenti in Tapis.\nImportare a partire da quale data? (AAAA-MM-GG)\n\nIl più vecchio è del "+earliest+". Lascia questa data per prenderli tutti.",earliest);
+  if(ds==null)return;
+  const from=new Date((ds||earliest)+"T00:00:00");
+  const wkStart=new Date(S.week.started+"T12:00:00");
+  S.tapisWorkouts=S.tapisWorkouts||{};
+  let added=0,archived=0;
+  hist.forEach(s=>{
+    const dt=new Date(s.dateISO||s.date||0);if(isNaN(dt.getTime()))return;
+    if(dt<from)return;
+    const min=Math.max(1,Math.round((+s.durationSec||0)/60));
+    const spd=+s.avgSpeed||0;
+    const sport=spd>=7?"Corsa":"Camminata";
+    const int=spd>=9?"alta":spd>=6?"media":"bassa";
+    const key=iso(dt);
+    const dayIdx=Math.round((new Date(key+"T12:00:00")-wkStart)/864e5);
+    if(dayIdx>=0&&dayIdx<=6){ // settimana corrente → nel diario, così si vede in Sport/Oggi
+      if(S.week.days[dayIdx].workouts.some(w=>w._tapis&&w.sport===sport&&w.min===min))return;
+      S.week.days[dayIdx].workouts.push({sport,min,int,_tapis:true});added++;
+    }else{ // date più vecchie → archivio Tapis (contano in analisi/storico)
+      const arr=S.tapisWorkouts[key]=S.tapisWorkouts[key]||[];
+      if(arr.some(w=>w.sport===sport&&w.min===min))return;
+      arr.push({sport,min,int});archived++;
+    }});
+  save();render(cur);
+  alert("Import da Tapis completato: "+added+" nella settimana corrente"+(archived?(" · "+archived+" nello storico"):"")+".");}
 window.importTapisWorkouts=async()=>{
   if(!DTOKEN)return alert("Collega prima Google Drive (stesso account e stesso CLIENT_ID di Tapis).");
   let f;
   try{const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27bcube_backup.json%27&fields=files(id,modifiedTime)",{headers:{Authorization:"Bearer "+DTOKEN}});
     if(r.status===401){driveClearToken();return alert("Sessione Drive scaduta: riconnettiti e riprova.");}
     const j=await r.json();f=j.files&&j.files[0];}catch(e){return alert("Errore Drive: "+e.message);}
-  if(!f)return alert("Non trovo i dati di Tapis su Drive.\n\nPerché l'import funzioni, Tapis e Nutri devono usare lo STESSO account Google e lo STESSO CLIENT_ID (così condividono la cartella dati privata). Controlla il CLIENT_ID in Io → Sincronizzazione in entrambe le app.");
+  if(!f)return alert("Non trovo i dati di Tapis nella cartella Drive condivisa.\n\nSuccede quando Tapis e Nutri usano CLIENT_ID diversi: in quel caso le due cartelle dati sono separate. Usa invece \"Importa da file Tapis\": esporta il backup da Tapis (Io → Esporta backup) e caricalo qui.");
   let tapis;
   try{const r=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});tapis=await r.json();}catch(e){return alert("Errore lettura: "+e.message);}
-  const hist=(tapis&&tapis.history)||[];
-  if(!hist.length)return alert("Nessun allenamento trovato nel backup di Tapis.");
-  const wkStart=new Date(S.week.started+"T12:00:00");
-  const ds=prompt("Trovati "+hist.length+" allenamenti in Tapis.\nImportare a partire da quale data? (AAAA-MM-GG)\n\nVengono aggiunti ai giorni della settimana corrente; quelli più vecchi vengono ignorati.",iso(wkStart));
-  if(ds==null)return;
-  const from=new Date((ds||iso(wkStart))+"T00:00:00");
-  let added=0,skippedOld=0;
-  hist.forEach(s=>{
-    const dt=new Date(s.dateISO||s.date||0);if(isNaN(dt.getTime()))return;
-    if(dt<from)return;
-    const dayIdx=Math.round((new Date(iso(dt)+"T12:00:00")-wkStart)/864e5);
-    if(dayIdx<0||dayIdx>6){skippedOld++;return;}
-    const min=Math.max(1,Math.round((+s.durationSec||0)/60));
-    const spd=+s.avgSpeed||0;
-    const sport=spd>=7?"Corsa":"Camminata";
-    const int=spd>=9?"alta":spd>=6?"media":"bassa";
-    if(S.week.days[dayIdx].workouts.some(w=>w._tapis&&w.sport===sport&&w.min===min))return;
-    S.week.days[dayIdx].workouts.push({sport,min,int,_tapis:true});added++;});
-  save();render(cur);
-  alert("Import da Tapis completato: "+added+" allenamenti aggiunti"+(skippedOld?(" · "+skippedOld+" fuori dalla settimana corrente (ignorati)"):"")+".");};
+  applyTapisImport(tapis);};
+window.importTapisFile=()=>{
+  const inp=document.createElement("input");inp.type="file";inp.accept="application/json";
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{try{applyTapisImport(JSON.parse(r.result));}catch(x){alert("File non valido: serve il backup .json esportato da Tapis.");}};r.readAsText(f);};
+  inp.click();};
 /* Scollega SOLO questo dispositivo: non tocca il backup su Drive né gli altri
    dispositivi. Ferma la sincronizzazione qui e dimentica il token locale. */
 window.driveDisconnect=async()=>{
