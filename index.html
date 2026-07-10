@@ -400,6 +400,50 @@ function stepsKcal(di){const s=S.week.days[di].steps||0;
   return Math.round(Math.max(0,s-5000)*S.profile.w*0.00045);} // solo i passi OLTRE la vita sedentaria già nel TDEE
 function burnedOfDay(di){return S.week.days[di].workouts.reduce((a,w)=>a+workoutKcal(w),0)+stepsKcal(di);}
 function deficitOfDay(di){return tdee()+burnedOfDay(di)-eatenOfDay(di).k;}
+/* ── Obiettivi passi/allenamenti e PROIEZIONE non lineare del peso ──────────
+   Man mano che si dimagrisce il BMR cala (dipende dal peso), quindi il deficit
+   si riduce e il calo rallenta: la discesa NON è lineare. Simuliamo giorno per
+   giorno ricalcolando BMR sul peso corrente. Sport e passi vengono dagli
+   OBIETTIVI (media giornaliera), non dal singolo dato. */
+function bmrForWeight(w){const p=S.profile;const fat=parseFloat(p.fatp);
+  const lbm=fat>0?w*(1-fat/100):parseFloat(p.lbm);
+  if(lbm>0)return Math.round(370+21.6*lbm);
+  const base=10*w+6.25*p.h-5*age();return Math.round(p.gender==="m"?base+5:base-161);}
+function stepsBurnFor(steps,w){return Math.round(Math.max(0,(+steps||0)-5000)*w*0.00045);}
+function workoutBurnFor(sport,min,intensity,w){const sp=allSports().find(s=>s.name===sport)||{met:6};
+  return Math.round(sp.met*w*((+min||0)/60)*(INT[intensity]||1));}
+/* Dispendio EXTRA medio giornaliero dagli obiettivi (passi/giorno + N allenamenti/sett) */
+function plannedActivityBurnFor(w){let b=0;const p=S.profile;
+  if(p.goalSteps)b+=stepsBurnFor(p.goalSteps,w);
+  if(p.goalWorkouts&&p.goalSport)b+=Math.round(workoutBurnFor(p.goalSport,p.goalWorkoutMin||30,"media",w)*p.goalWorkouts/7);
+  return b;}
+/* Simulazione della discesa del peso a partire da (startW,startDate) fino
+   all'obiettivo, con deficit = TDEE(peso) + attività pianificata − intake dieta.
+   Ritorna i punti (campionati ~settimanalmente), i giorni stimati e la data. */
+function simulateWeightDescent(startW,startDate){
+  const p=S.profile,goal=p.goalW;
+  startW=startW||p.w;const start=startDate?new Date(startDate):new Date();start.setHours(12,0,0,0);
+  if(!goal||!startW||startW<=goal)return null;
+  const intake=plannedDietSummary().kcal_giorno;
+  const dailyDeficitStart=Math.round(bmrForWeight(startW)*p.act)+plannedActivityBurnFor(startW)-intake;
+  let w=startW;const pts=[{d:new Date(start),w:Math.round(w*10)/10}];
+  let day=0;const MAX=3650;let stalled=false;
+  while(w>goal&&day<MAX){day++;
+    const def=Math.round(bmrForWeight(w)*p.act)+plannedActivityBurnFor(w)-intake;
+    if(def<=0){stalled=true;break;}
+    w-=def/7700;if(w<goal)w=goal;
+    if(day%7===0||w<=goal){const dt=new Date(start);dt.setDate(dt.getDate()+day);pts.push({d:dt,w:Math.round(w*10)/10});}}
+  const reached=w<=goal+0.05&&!stalled;
+  const etaDate=new Date(start);etaDate.setDate(etaDate.getDate()+day);
+  return {points:pts,etaDays:day,etaDate,reached,stalled,dailyDeficitStart,intake};}
+/* Peso "ideale" proiettato a una certa data, partendo dalla prima pesata reale */
+function projectedWeightAt(dateISO){
+  const W=(S.profile.weights||[]).filter(x=>x.w).slice().sort((a,b)=>new Date(a.d)-new Date(b.d));
+  if(!W.length)return null;
+  const sim=simulateWeightDescent(W[0].w,W[0].d);if(!sim)return null;
+  const target=new Date(dateISO).getTime();let best=sim.points[0];
+  sim.points.forEach(pt=>{if(pt.d.getTime()<=target)best=pt;});
+  return best?best.w:null;}
 /* Proposta obiettivo acqua in base al peso (~35 ml/kg), in litri, arrotondata a 0,5 L */
 function waterSuggestL(){return Math.min(5,Math.max(1.5,Math.round(S.profile.w*0.035*2)/2));}
 /* Obiettivo acqua: l'utente lo sceglie in IO (litri/giorno); se non impostato
@@ -1171,6 +1215,11 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   <button class="btn" style="margin-top:14px" onclick="askProgress()">🤖 Chiedi un'analisi dei progressi</button>
   <div class="hint">Considera pasti, resoconti settimanali, sonno/relax/umore e allenamenti del periodo scelto sopra. Solo suggerimenti: nessun parametro viene cambiato in automatico.</div>
   <div class="aibox" id="anAI" style="display:none"></div></div>`;
+  // 🎯 Obiettivo e proiezione (curva non lineare vs peso reale)
+  h+=`<div class="card"><h2>🎯 Obiettivo e proiezione</h2>
+  <div class="hint" id="projText" style="margin-top:0"></div>
+  <canvas id="chGoalProj" height="170"></canvas>
+  <div class="hint">Curva ideale non lineare verso l'obiettivo (dieta + passi/allenamenti obiettivo) confrontata col peso reale registrato: il delta dice se sei avanti o indietro rispetto al piano.</div></div>`;
   // 💬 Chiedi all'AI: domande libere sui propri risultati/dati
   h+=`<div class="card"><h2>💬 Chiedi all'AI</h2>
   <div class="hint" style="margin-top:0">Domande sui tuoi risultati, alimentazione, peso e obiettivi (es. "sto mangiando in modo corretto?" oppure "in quanto tempo raggiungo l'obiettivo continuando così?"). Rispondo solo a domande inerenti ai tuoi dati.</div>
@@ -1194,7 +1243,7 @@ function renderStorico(){const el=document.getElementById("pg-storico");
         <button class="btn ghost small" onclick="toggleEditWeek(${i})">✏️ Modifica</button>
         <button class="btn warn small" onclick="delWeek(${i})">Elimina</button></div>`;}
     h+=`</div></div>`;});
-  h+=`</div>`;el.innerHTML=h;drawAnalysis();renderProgressBox();}
+  h+=`</div>`;el.innerHTML=h;drawAnalysis();drawGoalProjection();renderProgressBox();}
 /* ── Modifica settimane passate ──────────────────────────────────────────
    Le settimane chiuse archiviano solo dati aggregati per giorno (kcal, prot,
    carbo, grassi, sport bruciato, sonno/relax/umore, note, allenamenti come
@@ -1389,6 +1438,45 @@ function drawAnalysis(){
       {label:"Grassi (g)",data:rows.map(r=>r.f),tension:.3,borderColor:"#2F5FA6",pointRadius:2}]},
     options:{plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},scales:{x:{ticks:{font:{size:9}}}}}});}
 window.drawAnalysis=drawAnalysis;
+/* 🎯 Grafico proiezione: curva ideale non lineare (dalla prima pesata reale)
+   verso l'obiettivo, sovrapposta al peso reale; mostra ETA da oggi e il delta. */
+let GOALCH=null;
+function drawGoalProjection(){
+  const txt=document.getElementById("projText"),cv=document.getElementById("chGoalProj");
+  if(!cv)return;
+  const p=S.profile;
+  if(GOALCH){GOALCH.destroy();GOALCH=null;}
+  if(!p.goalW||!p.w){if(txt)txt.textContent="Imposta peso attuale e obiettivo peso in Io per vedere la proiezione.";return;}
+  if(window._noChart||typeof Chart==="undefined"){if(txt)txt.textContent="Grafico non disponibile offline (Chart.js si carica da internet).";return;}
+  const W=(p.weights||[]).filter(x=>x.w).slice().sort((a,b)=>new Date(a.d)-new Date(b.d));
+  const anchorW=W.length?W[0].w:p.w,anchorDate=W.length?new Date(W[0].d):new Date();
+  const sim=simulateWeightDescent(anchorW,anchorDate);      // curva ideale (dal primo dato reale)
+  const simNow=simulateWeightDescent(p.w,new Date());        // ETA da adesso
+  const ref=new Date(anchorDate);ref.setHours(12,0,0,0);
+  const dx=d=>Math.round((new Date(d)-ref)/864e5);
+  const realData=W.map(x=>({x:dx(x.d),y:x.w}));
+  const projData=sim?sim.points.map(pt=>({x:dx(pt.d),y:pt.y})):[];
+  const xs=realData.map(d=>d.x).concat(projData.map(d=>d.x));if(!xs.length)xs.push(0);
+  const xmin=Math.min(...xs),xmax=Math.max(...xs);
+  const goalLine=[{x:xmin,y:p.goalW},{x:xmax,y:p.goalW}];
+  GOALCH=new Chart(cv,{type:"line",
+    data:{datasets:[
+      {label:"Peso reale",data:realData,borderColor:"#2F7D3B",backgroundColor:"#2F7D3B",tension:.2,pointRadius:3,spanGaps:true},
+      {label:"Proiezione ideale",data:projData,borderColor:"#2F5FA6",borderDash:[6,4],tension:.2,pointRadius:0},
+      {label:"Obiettivo",data:goalLine,borderColor:"#C77A15",borderDash:[3,3],pointRadius:0}
+    ]},
+    options:{parsing:false,plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},
+      scales:{x:{type:"linear",ticks:{font:{size:9},callback:v=>{const d=new Date(ref);d.setDate(d.getDate()+v);return d.toLocaleDateString("it-IT",{month:"short",year:"2-digit"});}}},
+              y:{ticks:{font:{size:9}}}}}});
+  if(txt){const parts=[];
+    if(simNow){if(simNow.stalled)parts.push("Con dieta e obiettivi attuali il deficit si annulla prima di "+p.goalW+" kg: servirebbe mangiare meno o muoversi di più.");
+      else parts.push("Stima: <b>"+p.goalW+" kg</b> intorno al <b>"+simNow.etaDate.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})+"</b> (~"+simNow.etaDays+" giorni), ritmo non lineare.");}
+    else parts.push("Sei già all'obiettivo o sopra il peso attuale impostato.");
+    if(W.length){const last=W[W.length-1],proj=projectedWeightAt(last.d);
+      if(proj!=null){const delta=Math.round((last.w-proj)*10)/10;
+        parts.push("Delta: reale "+last.w+" kg vs ideale "+proj+" kg → "+(delta<=0?("<b>"+Math.abs(delta)+" kg in anticipo</b> ✅"):("<b>"+delta+" kg in ritardo</b>"))+".");}}
+    txt.innerHTML=parts.join(" ");}}
+window.drawGoalProjection=drawGoalProjection;
 /* 🤖 Analisi dei progressi: SOLO testo/suggerimenti, nessuna modifica automatica ai parametri */
 window.askProgress=async()=>{
   if(!aiOn())return aiFail(new Error("nokey"));
@@ -1501,6 +1589,14 @@ function buildDiaryContext(){
       ritmo_peso_kg_settimana:rateKgWeek},
     sonno_medio:avgOf(recent,"sleep")||null,relax_medio:avgOf(recent,"relax")||null,umore_medio:avgOf(recent,"feel")||null,
     allenamenti_per_tipo:workoutsCount,
+    obiettivi:{passi_giorno:S.profile.goalSteps||null,allenamenti_settimana:S.profile.goalWorkouts||null,sport:S.profile.goalSport||null,durata_min:S.profile.goalWorkoutMin||null,
+      dispendio_extra_medio_giornaliero_kcal:plannedActivityBurnFor(S.profile.w||70)},
+    proiezione:(()=>{const s=simulateWeightDescent(S.profile.w,new Date());if(!s)return null;
+      const Wt=(S.profile.weights||[]).filter(x=>x.w).slice().sort((a,b)=>new Date(a.d)-new Date(b.d));
+      let delta=null,ideale=null;if(Wt.length){const last=Wt[Wt.length-1];ideale=projectedWeightAt(last.d);if(ideale!=null)delta=Math.round((last.w-ideale)*10)/10;}
+      return {data_stimata:s.stalled?null:iso(s.etaDate),giorni_stimati:s.stalled?null:s.etaDays,deficit_iniziale_giorno:s.dailyDeficitStart,stallo:s.stalled,
+        peso_reale_ultimo:Wt.length?Wt[Wt.length-1].w:null,peso_ideale_stessa_data:ideale,delta_kg_vs_ideale:delta,
+        nota_delta:"delta>0 = sei indietro rispetto al piano; delta<0 = sei in anticipo"};})(),
     resoconti_settimanali:S.history.slice(-4).map(w=>({periodo:new Date(w.from).toLocaleDateString("it-IT")+"→"+new Date(w.to).toLocaleDateString("it-IT"),kcal_medie:w.avgEat,deficit_medio:w.avgDef,peso:w.weight}))
   };}
 window.askDiaryQuestion=async()=>{
@@ -1513,7 +1609,8 @@ window.askDiaryQuestion=async()=>{
   try{
     const t=await aiAsk("Sei l'assistente del diario alimentare/sportivo dell'utente. Rispondi alla sua domanda usando SOLO i dati qui sotto: "+JSON.stringify(ctx)+
       ". DOMANDA: \""+q+"\". REGOLE GENERALI: se la domanda NON riguarda alimentazione, peso, deficit, macronutrienti, allenamenti, obiettivi o progressi, rispondi ESATTAMENTE con la sola parola NON_PERTINENTE (in maiuscolo, senza altro). Altrimenti rispondi in italiano, massimo 5-6 frasi, diretta e concreta, senza elenchi puntati e senza markdown. "+
-      "REGOLE PER LE PROIEZIONI (tempo per raggiungere l'obiettivo di peso): 1 kg di grasso ≈ 7700 kcal, quindi giorni ≈ kg_da_perdere × 7700 / deficit_giornaliero. Per il deficit_giornaliero: (1) BASE = dieta. Se dati_reali.giorni_con_pasti_registrati è basso (meno di ~7) usa dieta_pianificata.deficit_dieta_giorno (= TDEE − intake, il valore affidabile ~900); NON usare dati_reali.deficit_medio_reale_kcal né il TDEE puro (i giorni senza pasti segnati danno deficit ~ TDEE ed è fuorviante). Con abbastanza dati reali preferisci dati_reali.ritmo_peso_kg_settimana osservato o dati_reali.deficit_medio_reale_kcal. (2) SPORT+PASSI = extra. Aggiungilo SOLO come dieta_pianificata.sport_passi_media_giornaliera_kcal (media giornaliera già calcolata sui giorni tracciati, riposo incluso) e SOLO se campione_sport_sufficiente è true; con pochi giorni consideralo occasionale e non gonfiare il deficit col dispendio di un singolo giorno. Dichiara che è una proiezione indicativa e che il ritmo rallenta scendendo di peso. Se manca l'obiettivo peso dillo.");
+      "REGOLE PER LE PROIEZIONI (tempo per raggiungere l'obiettivo di peso): 1 kg di grasso ≈ 7700 kcal, quindi giorni ≈ kg_da_perdere × 7700 / deficit_giornaliero. Per il deficit_giornaliero: (1) BASE = dieta. Se dati_reali.giorni_con_pasti_registrati è basso (meno di ~7) usa dieta_pianificata.deficit_dieta_giorno (= TDEE − intake, il valore affidabile ~900); NON usare dati_reali.deficit_medio_reale_kcal né il TDEE puro (i giorni senza pasti segnati danno deficit ~ TDEE ed è fuorviante). Con abbastanza dati reali preferisci dati_reali.ritmo_peso_kg_settimana osservato o dati_reali.deficit_medio_reale_kcal. (2) SPORT+PASSI = extra. Aggiungilo SOLO come dieta_pianificata.sport_passi_media_giornaliera_kcal (media giornaliera già calcolata sui giorni tracciati, riposo incluso) e SOLO se campione_sport_sufficiente è true; con pochi giorni consideralo occasionale e non gonfiare il deficit col dispendio di un singolo giorno. Dichiara che è una proiezione indicativa e che il ritmo rallenta scendendo di peso. Se manca l'obiettivo peso dillo. "+
+      "ANALISI COSA FUNZIONA: se l'utente chiede come sta andando o cosa migliorare, confronta proiezione.delta_kg_vs_ideale (reale vs curva ideale: >0 sei indietro, <0 sei in anticipo) con gli allenamenti_per_tipo e le kcal reali per capire dove agire (dieta poco rispettata, poco movimento, deficit troppo blando…), proponendo senza imporre.");
     if(String(t).trim().toUpperCase().startsWith("NON_PERTINENTE")){
       if(box)box.textContent="⚠️ Posso rispondere solo a domande sui tuoi dati: alimentazione, peso, allenamenti, obiettivi e progressi.";
       return;}
@@ -1850,7 +1947,15 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div><label>SpO2 % (opz.)</label><input type="number" id="pSpo2" placeholder="98"></div></div>
   <div class="row2"><div><label>Obiettivo peso (kg, opz.)</label><input type="number" step="0.1" id="pGoal" value="${p.goalW||""}" placeholder="es. 98"></div>
   <div><label>Obiettivo acqua (L/giorno)</label><input type="number" step="0.5" id="pWater" value="${p.waterGoalL||""}" placeholder="proposto: ${waterSuggestL()} L"></div></div>
-  <div class="hint" style="margin-top:2px">Acqua: se lasci vuoto usa la proposta in base al peso (${waterSuggestL()} L). Con l'obiettivo peso attivo vedi la linea nel grafico e la data stimata di arrivo.</div>
+  <div class="row2"><div><label>Obiettivo passi/giorno</label><input type="number" step="500" id="pSteps" value="${p.goalSteps||""}" placeholder="es. 10000"></div>
+  <div><label>Allenamenti/settimana</label><input type="number" step="1" min="0" id="pGw" value="${p.goalWorkouts||""}" placeholder="es. 3"></div></div>
+  <div class="row2"><div><label>Sport dell'obiettivo</label><select id="pGsport">${allSports().map(s=>`<option ${p.goalSport===s.name?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>
+  <div><label>Durata media (min)</label><input type="number" step="5" id="pGmin" value="${p.goalWorkoutMin||""}" placeholder="es. 45"></div></div>
+  <div class="hint" style="margin-top:2px">Acqua: se lasci vuoto usa la proposta in base al peso (${waterSuggestL()} L). Con l'obiettivo peso attivo vedi la <b>proiezione di dimagrimento</b> (curva non lineare) nel grafico in Storico e la data stimata di arrivo; passi e allenamenti obiettivo entrano nella stima come dispendio extra.</div>
+  ${(()=>{const sim=simulateWeightDescent(p.w,new Date());if(!sim)return p.goalW?"":"";
+    const burn=plannedActivityBurnFor(p.w);
+    if(sim.stalled)return `<div class="hint" style="color:var(--rosso)">🎯 Con la dieta pianificata e questi obiettivi il deficit si annulla prima di arrivare a ${p.goalW} kg: servirebbe mangiare meno o muoversi di più.</div>`;
+    return `<div class="hint" style="color:var(--bosco)">🎯 Al ritmo pianificato (deficit iniziale ~${sim.dailyDeficitStart} kcal/giorno, di cui ~${burn} da passi+allenamenti) raggiungeresti <b>${p.goalW} kg</b> intorno al <b>${sim.etaDate.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})}</b> (~${sim.etaDays} giorni). È una stima non lineare: rallenta scendendo di peso.</div>`;})()}
   <label>Attività di base (lavoro/vita, sport escluso)</label>
   <select id="pAct"><option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario (1.2)</option>
   <option value="1.25" ${p.act==1.25?"selected":""}>Sedentario− (1.25)</option>
@@ -1939,6 +2044,10 @@ window.saveProfile=()=>{const p=S.profile;
   p.w=nw;p.fatp=fat||p.fatp;p.musp=mus||p.musp;p.act=+document.getElementById("pAct").value;
   p.goalW=parseFloat(document.getElementById("pGoal").value)||null;
   p.waterGoalL=parseFloat(document.getElementById("pWater").value)||null;
+  p.goalSteps=parseInt(document.getElementById("pSteps").value,10)||null;
+  p.goalWorkouts=parseInt(document.getElementById("pGw").value,10)||null;
+  p.goalSport=document.getElementById("pGsport").value||null;
+  p.goalWorkoutMin=parseInt(document.getElementById("pGmin").value,10)||null;
   save();render("io");renderHeader();alert("Dati salvati.");};
 window.delWeight=i=>{S.profile.weights.splice(i,1);save();render("io");};
 window.saveAI=()=>{
