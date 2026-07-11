@@ -1002,11 +1002,12 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     else if(missMeals)reason="Manca ancora qualche pasto da completare.";
     else reason="Nessun allenamento o passi inseriti.";
     let txt="🌅 Ieri (<b>"+PLAN[yIdx()].day+"</b>): "+reason;
-    h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-    <div style="flex:1;font-size:13.5px">${txt}</div>
-    <button class="btn ghost small" onclick="goYesterday()">Alimentazione</button>
-    <button class="btn ghost small" onclick="goSportY()">Sport & Passi</button>
-    <button class="btn small" onclick="dismissMorning()">Completa</button></div>`;}
+    h+=`<div class="card" style="border-left:4px solid var(--zaff)">
+    <div style="font-size:13.5px;margin-bottom:10px">${txt}</div>
+    <div style="display:flex;gap:8px">
+    <button class="btn ghost small" style="flex:1" onclick="goYesterday()">Alimentazione</button>
+    <button class="btn ghost small" style="flex:1" onclick="goSportY()">Sport & Passi</button>
+    <button class="btn small" style="flex:1" onclick="dismissMorning()">Completa</button></div></div>`;}
   // 🔁 Recupero del giorno dopo: se ieri hai ecceduto (es. sgarro a cena), proponi di alleggerire oggi
   if(isToday()&&!S.ui.vacanza){const yi=yIdx(),ti=viewIdx(),ys=Math.round(surplusOfDay(yi));
     const alreadyReb=S.week.days[ti].rebalancedFrom===yi,dism=S.ui.dismissReb===iso(new Date());
