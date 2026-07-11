@@ -325,7 +325,9 @@ S.ui=Object.assign({theme:"light",vacanza:false,lastOpen:"",lastMorning:""},S.ui
 S.drive=Object.assign({cid:"",on:false},S.drive||{});
 S.ai=Object.assign({key:"",model:"auto"},S.ai||{});
 S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
-S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};S.tapisWorkouts=S.tapisWorkouts||{};
+S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};S.tapisWorkouts=S.tapisWorkouts||{};S.hardDays=S.hardDays||{};
+if(!S.profile.goalWorkoutList){S.profile.goalWorkoutList=[];
+  if(S.profile.goalWorkouts&&S.profile.goalSport)S.profile.goalWorkoutList.push({sport:S.profile.goalSport,perWeek:S.profile.goalWorkouts,min:S.profile.goalWorkoutMin||30});}
 S.meta=S.meta||{updated:new Date().toISOString()};
 S.conadTpl=S.conadTpl||"";
 S.recipes=S.recipes||[];
@@ -412,10 +414,10 @@ function bmrForWeight(w){const p=S.profile;const fat=parseFloat(p.fatp);
 function stepsBurnFor(steps,w){return Math.round(Math.max(0,(+steps||0)-5000)*w*0.00045);}
 function workoutBurnFor(sport,min,intensity,w){const sp=allSports().find(s=>s.name===sport)||{met:6};
   return Math.round(sp.met*w*((+min||0)/60)*(INT[intensity]||1));}
-/* Dispendio EXTRA medio giornaliero dagli obiettivi (passi/giorno + N allenamenti/sett) */
+/* Dispendio EXTRA medio giornaliero dagli obiettivi (passi/giorno + lista allenamenti/sett) */
 function plannedActivityBurnFor(w){let b=0;const p=S.profile;
   if(p.goalSteps)b+=stepsBurnFor(p.goalSteps,w);
-  if(p.goalWorkouts&&p.goalSport)b+=Math.round(workoutBurnFor(p.goalSport,p.goalWorkoutMin||30,"media",w)*p.goalWorkouts/7);
+  (p.goalWorkoutList||[]).forEach(g=>{if(g.sport&&g.perWeek)b+=Math.round(workoutBurnFor(g.sport,g.min||30,"media",w)*g.perWeek/7);});
   return b;}
 /* Simulazione della discesa del peso a partire da (startW,startDate) fino
    all'obiettivo, con deficit = TDEE(peso) + attività pianificata − intake dieta.
@@ -459,9 +461,10 @@ function waterGoal(di){const hard=S.week.days[di].workouts.some(w=>w.int==="alta
    ═══════════════════════════════════════════════════════════════ */
 function dayInTarget(di){const e=eatenOfDay(di);
   return e.k>0&&deficitOfDay(di)>=0&&extrasKcal(di)<=300;}
+function isHard(dISO){return !!(S.hardDays&&S.hardDays[dISO]);}
 function bumpStreak(){const y=new Date();y.setDate(y.getDate()-1);y.setHours(12,0,0,0);
   const yIso=iso(y);if(S.streak.last===yIso)return;
-  if(S.ui.vacanza){S.streak.last=yIso;save();return;} // vacanza: congela
+  if(S.ui.vacanza||isHard(yIso)){S.streak.last=yIso;save();return;} // vacanza o giornata difficile: congela
   const prev=new Date(y);prev.setDate(prev.getDate()-1);
   if(dayInTarget(wd(y))){S.streak.count=(S.streak.last===iso(prev)||S.streak.count===0)?S.streak.count+1:1;
     if(S.streak.count>0&&S.streak.count%7===0)setTimeout(()=>{confetti();toast("🔥 "+S.streak.count+" giorni in target di fila!");},600);}
@@ -797,13 +800,42 @@ window.extraPhoto=async(di)=>{
     else{const k=parseInt(prompt("Calorie?",Math.round(j.kcal)))||0,p=parseInt(prompt("Proteine (g)?",Math.round(j.prot)))||0;
       S.week.days[di].extras.push({d:j.nome,k,p});save();render(cur);}
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
+/* ✅📷 #2 — Spunta con foto: fotografi il pasto e l'AI capisce a quale pasto del
+   piano corrisponde (o se è un extra), lo spunta e, se lo scostamento è
+   rilevante, registra i valori reali della foto. */
+window.checkByPhoto=async(di)=>{
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const pending=dayItems(di).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];return !st.done&&!st.skip;});
+  if(!pending.length)return alert("Non ci sono pasti del piano ancora da spuntare in questo giorno.");
+  try{const ph=await snapPhoto();
+    const list=pending.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
+    const t=await aiAskVision('Ecco la FOTO di ciò che ho appena mangiato. Questi sono i pasti del mio piano di OGGI ancora da spuntare: '+JSON.stringify(list)+'. Determina a QUALE corrisponde (usa il valore esatto del campo "slot") oppure "extra" se non corrisponde a nessuno. Stima kcal e proteine REALI dalla foto. Rispondi SOLO JSON: {"slot":"<slot o extra>","nome":"nome breve del piatto","kcal":numero,"prot":numero}',[ph]);
+    const j=parseAIJSON(t);
+    if(j.slot&&j.slot!=="extra"){
+      const it=pending.find(r=>r.slot===j.slot);
+      if(!it)return alert("📷 Non sono riuscito ad abbinarlo a un pasto. Riprova o spunta a mano.");
+      const o=mealOpt(it.pdi,it.mi);const dev=Math.round((+j.kcal||0)-o.k);const big=Math.abs(dev)>80;
+      if(!confirm("📷 Sembra: "+it.slot+" — "+j.nome+"\n~"+Math.round(j.kcal)+" kcal · "+Math.round(j.prot)+" g prot\nPianificato ~"+o.k+" kcal (scostamento "+(dev>=0?"+":"")+dev+" kcal).\n\nOK = spunta"+(big?" con i valori reali della foto":"")+" · Annulla"))return;
+      const st=S.week.days[it.pdi].meals[it.mi];
+      if(big)st.custom={d:j.nome+" (da foto)",k:Math.round(j.kcal),p:Math.round(j.prot)};
+      st.done=true;st.skip=false;save();render(cur);
+    }else{
+      if(confirm("📷 Non corrisponde a un pasto del piano: "+j.nome+" ~"+Math.round(j.kcal)+" kcal. Lo aggiungo come extra?"))
+        {S.week.days[di].extras.push({d:j.nome,k:Math.round(j.kcal),p:Math.round(j.prot)});save();render(cur);}
+    }
+  }catch(e){if(e.message!=="annullato")aiFail(e);}};
 window.rebalance=async(di)=>{
   const sg=Math.max(0,surplusOfDay(di));
   if(sg<=50)return alert("Sei in linea col piano di oggi (surplus +"+sg+" kcal): non c'è nulla da ribilanciare.");
   if(!aiOn())return aiFail(new Error("nokey"));
   const remaining=dayItems(di).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
     return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm";});
-  if(!remaining.length)return alert("Non ci sono pasti normali ancora da consumare da ribilanciare.");
+  if(!remaining.length){
+    const ti=viewIdx(),tomorrow=ti+1;
+    if(isToday()&&tomorrow<=6){
+      if(confirm("Non ci sono più pasti da ribilanciare oggi. Vuoi recuperare DOMANI alleggerendo pranzo e cena?"))return rebalanceNextDay(ti,tomorrow);
+      return;}
+    return alert("Non ci sono pasti normali ancora da consumare da ribilanciare.");}
   const list=remaining.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
   try{
     const t=await aiAsk('Oggi ho accumulato '+sg+' kcal in più rispetto al piano. Questi sono i pasti rimanenti: '+JSON.stringify(list)+'. Riduci carboidrati e grassi (MAI le proteine) per assorbire circa '+sg+' kcal totali, mantenendo piatti realistici con grammature. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"...","kcal":n,"prot":n}]');
@@ -814,7 +846,34 @@ window.rebalance=async(di)=>{
       S.week.days[it.pdi].meals[it.mi].custom={d:a.desc+" (ribilanciato)",k:Math.round(a.kcal),p:Math.round(a.prot)};});
     save();render(cur);
   }catch(e){aiFail(e);}};
-/* 🧊 Svuota-frigo */
+/* 🔁 Recupero del GIORNO SUCCESSIVO: alleggerisce pranzo e cena di toDi per
+   assorbire l'eccesso (surplus) di fromDi. Avvisa, propone e applica solo se
+   l'utente conferma. Segna il giorno come già ribilanciato per non insistere. */
+window.rebalanceNextDay=async(fromDi,toDi)=>{
+  const sg=Math.max(0,Math.round(surplusOfDay(fromDi)));
+  if(sg<=50)return alert("Ieri non risulta un eccesso da recuperare.");
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const mains=dayItems(toDi).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
+    return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm"&&/Pranzo|Cena/i.test(it.slot);});
+  if(!mains.length)return alert("Non ci sono pranzo/cena ancora da consumare da alleggerire.");
+  const list=mains.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
+  try{
+    const t=await aiAsk('Ieri ho ecceduto di '+sg+' kcal. Alleggerisci i pasti principali di OGGI per recuperare circa '+sg+' kcal totali, riducendo carboidrati e grassi (MAI le proteine), piatti realistici con grammature, senza scendere sotto ~300 kcal a pasto. Pasti principali di oggi: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"...","kcal":n,"prot":n}]');
+    const arr=parseAIJSON(t);
+    let msg="Recupero di oggi per l'eccesso di ieri (~"+sg+" kcal):\n";arr.forEach(a=>msg+="\n• "+a.slot+": "+a.desc+" (~"+a.kcal+" kcal · "+a.prot+"p)");
+    if(!confirm(msg+"\n\nOK = applica a pranzo e cena di oggi"))return;
+    arr.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);if(it)
+      S.week.days[it.pdi].meals[it.mi].custom={d:a.desc+" (recupero)",k:Math.round(a.kcal),p:Math.round(a.prot)};});
+    S.week.days[toDi].rebalancedFrom=fromDi;save();render(cur);
+    alert("Fatto: pranzo e cena di oggi alleggeriti per recuperare l'eccesso di ieri.");
+  }catch(e){aiFail(e);}};
+window.dismissReb=()=>{S.ui.dismissReb=iso(new Date());save();render("oggi");};
+/* 🏳️ Giornate difficili: escluse dalle medie e dalle correlazioni AI, e non
+   spezzano lo streak (a differenza della vacanza che congela tutto). */
+window.toggleHardDay=(dISO)=>{S.hardDays=S.hardDays||{};if(S.hardDays[dISO])delete S.hardDays[dISO];else S.hardDays[dISO]=true;save();render("oggi");};
+window.markHardDays=()=>{const n=parseInt(prompt("Quanti giorni (a partire da oggi) segnare come 'difficili'?\nSaranno esclusi dalle medie e non spezzeranno lo streak.","3"),10);
+  if(!n||n<1)return;S.hardDays=S.hardDays||{};for(let i=0;i<n;i++){const d=new Date();d.setDate(d.getDate()+i);d.setHours(12,0,0,0);S.hardDays[iso(d)]=true;}
+  save();render("oggi");alert(n+" giorn"+(n===1?"o":"i")+" segnat"+(n===1?"o":"i")+" come difficil"+(n===1?"e":"i")+".");};
 window.fridge=async(di)=>{
   const ing=document.getElementById("fridgeIn").value.trim();
   if(!ing)return alert("Scrivi gli ingredienti, o usa le foto.");
@@ -948,6 +1007,18 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <button class="btn ghost small" onclick="goYesterday()">Alimentazione</button>
     <button class="btn ghost small" onclick="goSportY()">Sport & Passi</button>
     <button class="btn small" onclick="dismissMorning()">Completa</button></div>`;}
+  // 🔁 Recupero del giorno dopo: se ieri hai ecceduto (es. sgarro a cena), proponi di alleggerire oggi
+  if(isToday()&&!S.ui.vacanza){const yi=yIdx(),ti=viewIdx(),ys=Math.round(surplusOfDay(yi));
+    const alreadyReb=S.week.days[ti].rebalancedFrom===yi,dism=S.ui.dismissReb===iso(new Date());
+    if(yi<ti&&ys>200&&!alreadyReb&&!dism){
+      h+=`<div class="card" style="border-left:4px solid var(--rosso);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <div style="flex:1;font-size:13.5px">🔁 Ieri hai ecceduto di ~<b>${ys} kcal</b> (es. sgarro a cena). Vuoi recuperare <b>oggi</b> alleggerendo pranzo e cena?</div>
+      <button class="btn small" onclick="rebalanceNextDay(${yi},${ti})">Ribilancia oggi</button>
+      <button class="ibtn" onclick="dismissReb()" title="Nascondi per oggi">✕</button></div>`;}}
+  const _vd=iso(VIEW);
+  if(!S.ui.vacanza)h+=`<div class="mtools" style="margin:0 0 8px">
+    <button class="btn ghost small" onclick="toggleHardDay('${_vd}')">${isHard(_vd)?"✅ Giornata difficile — annulla":"🏳️ Segna giornata difficile"}</button>
+    <button class="btn ghost small" onclick="markHardDays()">Settimana difficile…</button></div>`;
   if(S.ui.vacanza){
     h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
     <div class="hint">Deficit e serie 🔥 congelati. L'app resta un diario di annotazione: spunta e scrivi liberamente, senza giudizio. Disattiva la vacanza dalla pagina Io.</div>
@@ -956,7 +1027,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div><div class="v">${burn}</div><div class="l">kcal sport</div></div></div>
     <div class="gnums" style="margin-top:8px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span></div></div>`;
   }else{
-    h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}</div>
+    h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}${isHard(_vd)?' · <span style="color:var(--zaff)">🏳️ giornata difficile (esclusa dalle medie)</span>':""}</div>
     ${ring(eat.k/Math.max(1,target),def)}
     <div class="gnums"><span>Mangiate <b>${eat.k}</b></span><span>Fabbisogno <b>${t}</b></span><span>Sport <b>+${burn}</b></span></div>
     <div class="gnums" style="margin-top:4px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span></div>
@@ -984,6 +1055,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ${e.p||0} g P${e.c!=null?` · ${e.c} g C`:""}${e.f!=null?` · ${e.f} g G`:""}</div></div></div>`;});
   h+=`<div class="mtools" style="margin-top:4px">
     <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
+    <button class="btn ghost small" onclick="checkByPhoto(${di})">✅📷 Spunta con foto</button>
     <button class="btn ghost small" onclick="extraPhoto(${di})">📸 Analisi</button>
     <button class="btn ghost small" onclick="startScan(${di})">📷 Barcode</button>
     <button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia</button></div>
@@ -1220,6 +1292,12 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   <div class="hint" id="projText" style="margin-top:0"></div>
   <canvas id="chGoalProj" height="170"></canvas>
   <div class="hint">Curva ideale non lineare verso l'obiettivo (dieta + passi/allenamenti obiettivo) confrontata col peso reale registrato: il delta dice se sei avanti o indietro rispetto al piano.</div></div>`;
+  // 🔎 Correlazioni: cosa influenza i risultati
+  h+=`<div class="card"><h2>🔎 Cosa influenza i tuoi risultati</h2>
+  <div class="hint" style="margin-top:0">Confronto tra sonno, umore e allenamento e il tuo deficit/sgarri (giorni difficili esclusi).</div>
+  ${correlationsSummaryHtml()}
+  <button class="btn" style="margin-top:10px" onclick="askCorrelations()">🔎 Analisi AI dei pattern</button>
+  <div class="aibox" id="corrAI" style="display:none"></div></div>`;
   // 💬 Chiedi all'AI: domande libere sui propri risultati/dati
   h+=`<div class="card"><h2>💬 Chiedi all'AI</h2>
   <div class="hint" style="margin-top:0">Domande sui tuoi risultati, alimentazione, peso e obiettivi (es. "sto mangiando in modo corretto?" oppure "in quanto tempo raggiungo l'obiettivo continuando così?"). Rispondo solo a domande inerenti ai tuoi dati.</div>
@@ -1333,7 +1411,7 @@ function flattenDiet(){
     const dt=new Date(w.from+"T12:00:00");dt.setDate(dt.getDate()+i);
     out.push({date:iso(dt),eat:d.eat||0,prot:d.prot||0,c:d.c||0,f:d.f||0,def:d.def||0,burn:d.burn||0,
       sleep:d.sleep||0,relax:d.relax||0,feel:d.feel||0,note:d.note||"",workouts:d.workouts||[],
-      sgarri:d.sgarri||0,completed:!!d.completed});});});
+      sgarri:d.sgarri||0,completed:!!d.completed,hard:isHard(iso(dt))});});});
   const wkStart=new Date(S.week.started+"T12:00:00"),today=new Date();today.setHours(12,0,0,0);
   PLAN.forEach((pd,di)=>{
     const dt=new Date(wkStart);dt.setDate(dt.getDate()+di);
@@ -1342,7 +1420,7 @@ function flattenDiet(){
     out.push({date:iso(dt),eat:e.k,prot:e.p,c:e.c||0,f:e.f||0,def:deficitOfDay(di),burn:burnedOfDay(di),
       sleep:S.week.days[di].sleep||0,relax:S.week.days[di].relax||0,feel:S.week.days[di].feel||0,
       note:S.week.days[di].note||"",workouts:S.week.days[di].workouts.map(w=>w.sport+" "+w.min+"'"),
-      sgarri:extrasKcal(di),completed:dayCompleted(di)});});
+      sgarri:extrasKcal(di),completed:dayCompleted(di),hard:isHard(iso(dt))});});
   // Allenamenti importati da Tapis per date passate (archivio): li conteggiamo
   // nel dispendio e nel deficit del giorno e li mostriamo tra gli allenamenti,
   // senza aver toccato i riepiloghi settimanali già salvati.
@@ -1450,33 +1528,81 @@ function drawGoalProjection(){
   if(window._noChart||typeof Chart==="undefined"){if(txt)txt.textContent="Grafico non disponibile offline (Chart.js si carica da internet).";return;}
   const W=(p.weights||[]).filter(x=>x.w).slice().sort((a,b)=>new Date(a.d)-new Date(b.d));
   const anchorW=W.length?W[0].w:p.w,anchorDate=W.length?new Date(W[0].d):new Date();
-  const sim=simulateWeightDescent(anchorW,anchorDate);      // curva ideale (dal primo dato reale)
-  const simNow=simulateWeightDescent(p.w,new Date());        // ETA da adesso
-  const ref=new Date(anchorDate);ref.setHours(12,0,0,0);
-  const dx=d=>Math.round((new Date(d)-ref)/864e5);
-  const realData=W.map(x=>({x:dx(x.d),y:x.w}));
-  const projData=sim?sim.points.map(pt=>({x:dx(pt.d),y:pt.y})):[];
-  const xs=realData.map(d=>d.x).concat(projData.map(d=>d.x));if(!xs.length)xs.push(0);
-  const xmin=Math.min(...xs),xmax=Math.max(...xs);
-  const goalLine=[{x:xmin,y:p.goalW},{x:xmax,y:p.goalW}];
+  const sim=simulateWeightDescent(anchorW,anchorDate);   // curva ideale dal primo dato reale
+  const simNow=simulateWeightDescent(p.w,new Date());     // ETA da adesso
+  // Timeline unificata (per giorno) tra pesate reali e punti proiettati
+  const realByKey={};W.forEach(x=>{realByKey[iso(new Date(x.d))]=x.w;});
+  const projByKey={};if(sim)sim.points.forEach(pt=>{projByKey[iso(pt.d)]=pt.w;});
+  const keys=Array.from(new Set([...Object.keys(realByKey),...Object.keys(projByKey)])).sort();
+  if(!keys.length){if(txt)txt.textContent="Aggiungi almeno una pesata per vedere la proiezione.";return;}
+  const labels=keys.map(k=>new Date(k+"T12:00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short",year:"2-digit"}));
+  const realData=keys.map(k=>realByKey[k]!=null?realByKey[k]:null);
+  const projData=keys.map(k=>projByKey[k]!=null?projByKey[k]:null);
+  const goalData=keys.map(()=>p.goalW);
+  // Media mobile a 7 giorni del peso reale (smussa le oscillazioni di acqua/glicogeno)
+  const mavgByKey={};W.forEach(x=>{const dt=new Date(x.d).getTime();
+    const win=W.filter(y=>{const t=new Date(y.d).getTime();return t<=dt&&t>=dt-7*864e5;});
+    mavgByKey[iso(new Date(x.d))]=Math.round(win.reduce((a,y)=>a+y.w,0)/win.length*10)/10;});
+  const mavgData=keys.map(k=>mavgByKey[k]!=null?mavgByKey[k]:null);
   GOALCH=new Chart(cv,{type:"line",
-    data:{datasets:[
-      {label:"Peso reale",data:realData,borderColor:"#2F7D3B",backgroundColor:"#2F7D3B",tension:.2,pointRadius:3,spanGaps:true},
-      {label:"Proiezione ideale",data:projData,borderColor:"#2F5FA6",borderDash:[6,4],tension:.2,pointRadius:0},
-      {label:"Obiettivo",data:goalLine,borderColor:"#C77A15",borderDash:[3,3],pointRadius:0}
+    data:{labels,datasets:[
+      {label:"Proiezione ideale",data:projData,borderColor:"#2F5FA6",borderDash:[6,4],pointRadius:0,tension:.25,spanGaps:true},
+      {label:"Peso reale",data:realData,borderColor:"#9CC3A6",backgroundColor:"#9CC3A6",pointRadius:2,tension:.2,spanGaps:true},
+      {label:"Media 7 gg",data:mavgData,borderColor:"#2F7D3B",borderWidth:2,pointRadius:0,tension:.3,spanGaps:true},
+      {label:"Obiettivo",data:goalData,borderColor:"#C77A15",borderDash:[3,3],pointRadius:0}
     ]},
-    options:{parsing:false,plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},
-      scales:{x:{type:"linear",ticks:{font:{size:9},callback:v=>{const d=new Date(ref);d.setDate(d.getDate()+v);return d.toLocaleDateString("it-IT",{month:"short",year:"2-digit"});}}},
-              y:{ticks:{font:{size:9}}}}}});
+    options:{plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},
+      scales:{x:{ticks:{font:{size:9},maxTicksLimit:8}},y:{ticks:{font:{size:9}}}}}});
   if(txt){const parts=[];
     if(simNow){if(simNow.stalled)parts.push("Con dieta e obiettivi attuali il deficit si annulla prima di "+p.goalW+" kg: servirebbe mangiare meno o muoversi di più.");
       else parts.push("Stima: <b>"+p.goalW+" kg</b> intorno al <b>"+simNow.etaDate.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})+"</b> (~"+simNow.etaDays+" giorni), ritmo non lineare.");}
-    else parts.push("Sei già all'obiettivo o sopra il peso attuale impostato.");
+    else parts.push("Sei già all'obiettivo o sotto: nessuna discesa da proiettare.");
+    // Delta reale-vs-ideale + tendenza (il divario si allarga o si chiude?)
+    let worsening=false;
     if(W.length){const last=W[W.length-1],proj=projectedWeightAt(last.d);
       if(proj!=null){const delta=Math.round((last.w-proj)*10)/10;
-        parts.push("Delta: reale "+last.w+" kg vs ideale "+proj+" kg → "+(delta<=0?("<b>"+Math.abs(delta)+" kg in anticipo</b> ✅"):("<b>"+delta+" kg in ritardo</b>"))+".");}}
+        const deltas=W.map(x=>{const pr=projectedWeightAt(x.d);return pr!=null?(x.w-pr):null;}).filter(v=>v!=null);
+        let trend="";
+        if(deltas.length>=3){const r3=deltas.slice(-3),diff=r3[r3.length-1]-r3[0];
+          if(diff>0.3){trend=" — divario in <b>aumento</b> ⚠️";worsening=true;}
+          else if(diff<-0.3)trend=" — divario in <b>diminuzione</b> ✅";
+          else trend=" — divario <b>stabile</b>";}
+        parts.push("Delta: reale "+last.w+" kg vs ideale "+proj+" kg → "+(delta<=0?("<b>"+Math.abs(delta)+" kg in anticipo</b>"):("<b>"+delta+" kg in ritardo</b>"))+trend+".");}}
+    if(worsening)parts.push("Il divario peggiora da qualche pesata: conviene chiedere all'AI un'analisi qui sotto per capire cosa aggiustare.");
     txt.innerHTML=parts.join(" ");}}
 window.drawGoalProjection=drawGoalProjection;
+/* 🔎 #1 — Correlazioni: cosa fa andare meglio/peggio deficit e sgarri.
+   Confronta gruppi di giorni (sonno alto/basso, con/senza allenamento, umore
+   alto/basso), escludendo i giorni difficili e quelli senza pasti registrati. */
+function computeCorrelations(){
+  const days=flattenDiet().filter(d=>!d.hard&&(d.eat||0)>0);
+  if(days.length<6)return {enough:false,n:days.length};
+  const mean=arr=>arr.length?Math.round(arr.reduce((a,x)=>a+x,0)/arr.length):null;
+  const goodSleep=days.filter(d=>d.sleep>=4),badSleep=days.filter(d=>d.sleep&&d.sleep<=2);
+  const wDays=days.filter(d=>(d.burn||0)>150),rDays=days.filter(d=>(d.burn||0)<=150);
+  const goodMood=days.filter(d=>d.feel>=4),badMood=days.filter(d=>d.feel&&d.feel<=2);
+  return {enough:true,n:days.length,
+    sonno:{n_alto:goodSleep.length,n_basso:badSleep.length,alto_def:mean(goodSleep.map(d=>d.def)),basso_def:mean(badSleep.map(d=>d.def)),alto_sgarri:mean(goodSleep.map(d=>d.sgarri)),basso_sgarri:mean(badSleep.map(d=>d.sgarri))},
+    allenamento:{n_con:wDays.length,n_senza:rDays.length,con_def:mean(wDays.map(d=>d.def)),senza_def:mean(rDays.map(d=>d.def)),con_sgarri:mean(wDays.map(d=>d.sgarri)),senza_sgarri:mean(rDays.map(d=>d.sgarri))},
+    umore:{n_alto:goodMood.length,n_basso:badMood.length,alto_def:mean(goodMood.map(d=>d.def)),basso_def:mean(badMood.map(d=>d.def)),alto_sgarri:mean(goodMood.map(d=>d.sgarri)),basso_sgarri:mean(badMood.map(d=>d.sgarri))}};}
+function correlationsSummaryHtml(){
+  const c=computeCorrelations();
+  if(!c.enough)return `<div class="hint">Servono almeno ~6 giorni con pasti registrati (esclusi i difficili) per calcolare i pattern: ne hai ${c.n}.</div>`;
+  const rows=[];
+  if(c.sonno.n_alto>=2&&c.sonno.n_basso>=2)rows.push(`💤 Sonno buono (≥4): deficit medio <b>${c.sonno.alto_def}</b> vs <b>${c.sonno.basso_def}</b> con poco sonno · sgarri ${c.sonno.alto_sgarri} vs ${c.sonno.basso_sgarri} kcal.`);
+  if(c.allenamento.n_con>=2&&c.allenamento.n_senza>=2)rows.push(`🏃 Con allenamento: deficit medio <b>${c.allenamento.con_def}</b> vs <b>${c.allenamento.senza_def}</b> nei giorni di riposo.`);
+  if(c.umore.n_alto>=2&&c.umore.n_basso>=2)rows.push(`🙂 Umore alto (≥4): deficit medio <b>${c.umore.alto_def}</b> vs <b>${c.umore.basso_def}</b> · sgarri ${c.umore.alto_sgarri} vs ${c.umore.basso_sgarri} kcal.`);
+  if(!rows.length)return `<div class="hint">Non ci sono ancora gruppi abbastanza numerosi da confrontare: continua a registrare sonno, umore e allenamenti.</div>`;
+  return rows.map(r=>`<div style="margin-top:6px;font-size:13px">${r}</div>`).join("");}
+window.askCorrelations=async()=>{
+  const box=document.getElementById("corrAI");const c=computeCorrelations();
+  if(!c.enough){if(box){box.style.display="block";box.textContent="Servono almeno ~6 giorni con pasti registrati (esclusi i difficili) per trovare correlazioni.";}return;}
+  if(!aiOn())return aiFail(new Error("nokey"));
+  if(box){box.style.display="block";box.textContent="🔎 Sto cercando i pattern…";}
+  try{
+    const t=await aiAsk("Sei un coach dati. Da questi confronti (medie di deficit e sgarri per gruppi di giorni: sonno alto/basso, con/senza allenamento, umore alto/basso) trova i PATTERN più utili e spiegali come CORRELAZIONI, non come causa certa. Italiano, max 5-6 frasi, niente elenchi puntati né markdown. Dati: "+JSON.stringify(c)+". Concludi con UN suggerimento pratico. Se un gruppo ha pochi giorni (n<3) dichiara che è solo un indizio.");
+    if(box)box.textContent=t;
+  }catch(e){if(box)box.style.display="none";aiFail(e);}};
 /* 🤖 Analisi dei progressi: SOLO testo/suggerimenti, nessuna modifica automatica ai parametri */
 window.askProgress=async()=>{
   if(!aiOn())return aiFail(new Error("nokey"));
@@ -1548,7 +1674,9 @@ function activityDailyAvg(recent){
     media_giornaliera_kcal:nDays?Math.round(totBurn/nDays):0,campione_sufficiente:nDays>=7};}
 function buildDiaryContext(){
   const all=flattenDiet();
-  const recent=all.slice(-30);
+  const recentAll=all.slice(-30);
+  const hardCount=recentAll.filter(d=>d.hard).length;
+  const recent=recentAll.filter(d=>!d.hard); // le giornate difficili non sporcano le medie
   const avgOf=(arr,f)=>arr.length?Math.round(arr.reduce((a,x)=>a+(x[f]||0),0)/arr.length):0;
   // REALE: solo i giorni in cui i pasti sono stati davvero registrati (eat>0).
   // I giorni senza pasti segnati mostrerebbero deficit ~ TDEE e falserebbero tutto.
@@ -1586,10 +1714,12 @@ function buildDiaryContext(){
       carboidrati_medi_g:withMeals.length?avgOf(withMeals,"c"):null,
       grassi_medi_g:withMeals.length?avgOf(withMeals,"f"):null,
       deficit_medio_reale_kcal:realDeficit,
-      ritmo_peso_kg_settimana:rateKgWeek},
+      ritmo_peso_kg_settimana:rateKgWeek,
+      giornate_difficili_escluse:hardCount},
     sonno_medio:avgOf(recent,"sleep")||null,relax_medio:avgOf(recent,"relax")||null,umore_medio:avgOf(recent,"feel")||null,
     allenamenti_per_tipo:workoutsCount,
-    obiettivi:{passi_giorno:S.profile.goalSteps||null,allenamenti_settimana:S.profile.goalWorkouts||null,sport:S.profile.goalSport||null,durata_min:S.profile.goalWorkoutMin||null,
+    obiettivi:{passi_giorno:S.profile.goalSteps||null,
+      allenamenti_settimana:(S.profile.goalWorkoutList||[]).map(g=>({sport:g.sport,volte_settimana:g.perWeek,minuti:g.min})),
       dispendio_extra_medio_giornaliero_kcal:plannedActivityBurnFor(S.profile.w||70)},
     proiezione:(()=>{const s=simulateWeightDescent(S.profile.w,new Date());if(!s)return null;
       const Wt=(S.profile.weights||[]).filter(x=>x.w).slice().sort((a,b)=>new Date(a.d)-new Date(b.d));
@@ -1665,8 +1795,28 @@ window.waWeek=()=>{const w=weekSummary();
   window.open("https://wa.me/?text="+t,"_blank");};
 /* Report PDF (Modalità Nutrizionista): costruisce una vista stampabile */
 window.printReport=()=>{const p=S.profile,w=weekSummary();
+  const fd=flattenDiet();const last30=fd.slice(-30).filter(d=>!d.hard);
+  const wm=last30.filter(d=>(d.eat||0)>0);
+  const avg=(arr,f)=>arr.length?Math.round(arr.reduce((a,x)=>a+(x[f]||0),0)/arr.length):"–";
+  const ws=(p.weights||[]).filter(x=>x.w);
+  const wchange=ws.length>=2?Math.round((ws[ws.length-1].w-ws[0].w)*10)/10:null;
+  const woCount=last30.reduce((a,d)=>a+((d.workouts||[]).length),0);
+  const sim=simulateWeightDescent(p.w,new Date());
+  let img="";try{if(typeof GOALCH!=="undefined"&&GOALCH&&GOALCH.toBase64Image){img='<h2>Andamento peso e proiezione</h2><img src="'+GOALCH.toBase64Image()+'" style="max-width:100%"/>';}}catch(e){}
   let h=`<h1>Report — ${esc(p.name||"Paziente")}</h1>
-  <div>${fmtDate(new Date())} · ${age()} anni · ${p.h} cm · ${p.w} kg${parseFloat(p.fatp)>0?" · grasso "+p.fatp+"% (magra "+(p.w*(1-p.fatp/100)).toFixed(1)+" kg)":""} · BMR ${bmr()} · TDEE ${tdee()}</div>
+  <div>${fmtDate(new Date())} · ${age()} anni · ${p.h} cm · ${p.w} kg${parseFloat(p.fatp)>0?" · grasso "+p.fatp+"% (magra "+(p.w*(1-p.fatp/100)).toFixed(1)+" kg)":""} · BMR ${bmr()} · TDEE ${tdee()}${p.goalW?" · obiettivo "+p.goalW+" kg (BMI "+bmiFor(p.goalW)+", "+bmiClass(bmiFor(p.goalW)).label+")":""}</div>
+  <h2>Riepilogo ultimi 30 giorni</h2><table>
+  <tr><th>Giorni con pasti registrati</th><td>${wm.length}${last30.filter(d=>d.hard).length?" (esclusi "+fd.slice(-30).filter(d=>d.hard).length+" giorni difficili)":""}</td></tr>
+  <tr><th>Kcal medie</th><td>${avg(wm,"eat")}</td></tr>
+  <tr><th>Proteine medie</th><td>${avg(wm,"prot")} g</td></tr>
+  <tr><th>Deficit medio (giorni reali)</th><td>${avg(wm,"def")} kcal</td></tr>
+  <tr><th>Dispendio sport medio</th><td>${avg(last30,"burn")} kcal/g</td></tr>
+  <tr><th>Allenamenti (30 gg)</th><td>${woCount}</td></tr>
+  <tr><th>Sonno / Umore medi</th><td>${avg(wm,"sleep")} / ${avg(wm,"feel")}</td></tr>
+  <tr><th>Variazione peso registrata</th><td>${wchange!=null?(wchange>0?"+":"")+wchange+" kg":"–"}</td></tr>
+  ${sim&&!sim.stalled?`<tr><th>Proiezione obiettivo</th><td>~${sim.etaDays} giorni (${sim.etaDate.toLocaleDateString("it-IT")})</td></tr>`:""}
+  </table>
+  ${img}
   <h2>Biometriche registrate</h2><table><tr><th>Data</th><th>Peso</th><th>Grasso %</th><th>Pressione</th><th>SpO2</th></tr>`;
   p.weights.forEach(x=>h+=`<tr><td>${new Date(x.d).toLocaleDateString("it-IT")}</td><td>${x.w} kg</td><td>${x.fat??"–"}</td><td>${esc(x.pa??"–")}</td><td>${x.spo2??"–"}</td></tr>`);
   h+=`</table><h2>Settimana in corso</h2><table><tr><th>Giorno</th><th>Kcal</th><th>Prot</th><th>Sport</th><th>Sonno</th><th>Relax</th><th>Umore</th><th>Deficit</th><th>Note</th></tr>`;
@@ -1947,10 +2097,19 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div><label>SpO2 % (opz.)</label><input type="number" id="pSpo2" placeholder="98"></div></div>
   <div class="row2"><div><label>Obiettivo peso (kg, opz.)</label><input type="number" step="0.1" id="pGoal" value="${p.goalW||""}" placeholder="es. 98"></div>
   <div><label>Obiettivo acqua (L/giorno)</label><input type="number" step="0.5" id="pWater" value="${p.waterGoalL||""}" placeholder="proposto: ${waterSuggestL()} L"></div></div>
+  ${(()=>{if(!p.goalW||!p.h)return"";const b=bmiFor(p.goalW),cur=bmiFor(p.w),cl=bmiClass(b);
+    return `<div class="hint" style="color:${cl.ok?"var(--bosco)":"var(--rosso)"}">⚖️ Obiettivo ${p.goalW} kg → BMI ${b} (${cl.label}). Ora sei a BMI ${cur} (${bmiClass(cur).label}).${cl.msg?" "+cl.msg:""}</div>`;})()}
   <div class="row2"><div><label>Obiettivo passi/giorno</label><input type="number" step="500" id="pSteps" value="${p.goalSteps||""}" placeholder="es. 10000"></div>
-  <div><label>Allenamenti/settimana</label><input type="number" step="1" min="0" id="pGw" value="${p.goalWorkouts||""}" placeholder="es. 3"></div></div>
-  <div class="row2"><div><label>Sport dell'obiettivo</label><select id="pGsport">${allSports().map(s=>`<option ${p.goalSport===s.name?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>
-  <div><label>Durata media (min)</label><input type="number" step="5" id="pGmin" value="${p.goalWorkoutMin||""}" placeholder="es. 45"></div></div>
+  <div><label>&nbsp;</label><div class="hint" style="margin-top:12px">I passi contano solo oltre i 5000 già inclusi nel TDEE.</div></div></div>
+  <label>Allenamenti obiettivo (a settimana) — puoi metterne più tipi</label>
+  <div id="goalWkList">${(p.goalWorkoutList||[]).map((g,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+    <select style="flex:2" onchange="setGoalWk(${i},'sport',this.value)">${allSports().map(s=>`<option ${g.sport===s.name?"selected":""}>${esc(s.name)}</option>`).join("")}</select>
+    <input style="flex:1;min-width:0" type="number" min="1" step="1" value="${g.perWeek||1}" onchange="setGoalWk(${i},'perWeek',this.value)" title="volte a settimana">
+    <span style="font-size:11px;color:var(--grigio)">×/sett</span>
+    <input style="flex:1;min-width:0" type="number" min="5" step="5" value="${g.min||30}" onchange="setGoalWk(${i},'min',this.value)" title="minuti a sessione">
+    <span style="font-size:11px;color:var(--grigio)">min</span>
+    <button class="btn ghost small" style="padding:4px 9px" onclick="delGoalWk(${i})">✕</button></div>`).join("")||`<div class="hint" style="margin:0 0 5px">Nessun allenamento obiettivo. Aggiungine uno (es. 2× Corsa, 1× Tennis).</div>`}</div>
+  <button class="btn ghost small" onclick="addGoalWk()">+ Aggiungi allenamento</button>
   <div class="hint" style="margin-top:2px">Acqua: se lasci vuoto usa la proposta in base al peso (${waterSuggestL()} L). Con l'obiettivo peso attivo vedi la <b>proiezione di dimagrimento</b> (curva non lineare) nel grafico in Storico e la data stimata di arrivo; passi e allenamenti obiettivo entrano nella stima come dispendio extra.</div>
   ${(()=>{const sim=simulateWeightDescent(p.w,new Date());if(!sim)return p.goalW?"":"";
     const burn=plannedActivityBurnFor(p.w);
@@ -2031,6 +2190,20 @@ window.saveDiet=()=>{S.diet.intol=document.getElementById("dIntol").value.trim()
   S.diet.note=document.getElementById("dNote").value.trim();S.diet.fodmap=document.getElementById("dFod").checked;
   save();alert("Caratteristiche salvate: da ora tutte le funzioni AI le rispettano.");};
 window.wizDiet=()=>{WIZ={step:2,mode:"diet",d:{intol:S.diet.intol,no:S.diet.no,si:S.diet.si,liberi:"",pronto:"semplice",nPasti:5,colaz:"entrambe"},plan:null,editOnly:false};show("setup");};
+/* BMI dell'obiettivo e classificazione (salubrità) */
+function bmiFor(w){const h=S.profile.h;if(!h||!w)return null;return Math.round(w/Math.pow(h/100,2)*10)/10;}
+function bmiClass(b){if(b==null)return{ok:true,label:"—",msg:""};
+  if(b<16)return{ok:false,label:"gravemente sottopeso",msg:"È un peso a rischio per la salute: sconsigliato."};
+  if(b<18.5)return{ok:false,label:"sottopeso",msg:"Sotto la soglia sana: valuta un obiettivo un po' più alto."};
+  if(b<25)return{ok:true,label:"normopeso",msg:"Rientra nella fascia sana."};
+  if(b<30)return{ok:true,label:"sovrappeso",msg:"Ancora sopra la fascia normopeso: obiettivo sensato."};
+  if(b<35)return{ok:true,label:"obesità I",msg:""};
+  if(b<40)return{ok:true,label:"obesità II",msg:""};
+  return{ok:true,label:"obesità III",msg:""};}
+window.addGoalWk=()=>{S.profile.goalWorkoutList=S.profile.goalWorkoutList||[];S.profile.goalWorkoutList.push({sport:allSports()[0].name,perWeek:1,min:30});save();render("io");};
+window.delGoalWk=(i)=>{S.profile.goalWorkoutList.splice(i,1);save();render("io");};
+window.setGoalWk=(i,f,v)=>{const g=(S.profile.goalWorkoutList||[])[i];if(!g)return;
+  g[f]=(f==="sport")?v:Math.max(1,parseInt(v,10)||(f==="min"?30:1));save();render("io");};
 window.saveProfile=()=>{const p=S.profile;
   p.name=document.getElementById("pName").value;p.gender=document.getElementById("pGen").value;
   p.dob=document.getElementById("pDob").value;p.h=+document.getElementById("pH").value||185;
@@ -2045,10 +2218,10 @@ window.saveProfile=()=>{const p=S.profile;
   p.goalW=parseFloat(document.getElementById("pGoal").value)||null;
   p.waterGoalL=parseFloat(document.getElementById("pWater").value)||null;
   p.goalSteps=parseInt(document.getElementById("pSteps").value,10)||null;
-  p.goalWorkouts=parseInt(document.getElementById("pGw").value,10)||null;
-  p.goalSport=document.getElementById("pGsport").value||null;
-  p.goalWorkoutMin=parseInt(document.getElementById("pGmin").value,10)||null;
-  save();render("io");renderHeader();alert("Dati salvati.");};
+  save();render("io");renderHeader();
+  let msg="Dati salvati.";
+  if(p.goalW&&p.h){const b=bmiFor(p.goalW),cl=bmiClass(b);if(!cl.ok)msg+="\n\n⚠️ Attenzione: l'obiettivo di "+p.goalW+" kg corrisponde a un BMI di "+b+" ("+cl.label+"). "+(cl.msg||"Valutalo con un medico/dietista.");}
+  alert(msg);};
 window.delWeight=i=>{S.profile.weights.splice(i,1);save();render("io");};
 window.saveAI=()=>{
   S.ai.key=document.getElementById("gKey").value.trim();
