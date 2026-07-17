@@ -339,7 +339,7 @@ enrichFiber(BASE_PLAN);
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="3.3.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="3.4.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -370,6 +370,10 @@ S.meta=S.meta||{updated:new Date().toISOString()};
 S.conadTpl=S.conadTpl||"";
 S.recipes=S.recipes||[];
 S.progressLog=S.progressLog||[];
+/* Periodi (Dieta 1, Periodo libero 1, Dieta 2, …): ogni periodo raggruppa i
+   dati tra una data di inizio e una di fine, con aspettativa iniziale (stelle),
+   giudizio finale (stelle), motivazioni e valutazione AI. */
+S.periods=S.periods||[];
 S.diet=Object.assign({intol:"",
   no:"",
   si:"",
@@ -1399,6 +1403,113 @@ function weekSummary(){
   return {from:S.week.started,to:iso(new Date()),tdee:tdee(),weight:S.profile.w,nDone:done.length,
     avgEat:avg(done.map(d=>d.eat)),avgProt:avg(done.map(d=>d.prot)),avgDef:avg(done.map(d=>d.def)),
     totBurn:days.reduce((a,d)=>a+d.burn,0),days,ai:null};}
+/* ═══════════════════════════════════════════════════════════════
+   PERIODI: Dieta 1 → Periodo libero 1 → Dieta 2 …
+   Ogni periodo ha inizio/fine, aspettativa iniziale (★), motivazione
+   di inizio, giudizio finale (★), motivazione di fine e — per i
+   periodi chiusi — una valutazione AI (★ + indicazioni) basata su
+   come hai mangiato, sugli allenamenti e sui risultati.
+   ═══════════════════════════════════════════════════════════════ */
+function activePeriod(){return S.periods.find(p=>!p.end)||null;}
+function periodLabel(p){return (p.type==="dieta"?"Dieta ":"Periodo libero ")+p.n;}
+function starsTxt(n){n=Math.max(0,Math.min(5,Math.round(+n||0)));return "★".repeat(n)+"☆".repeat(5-n);}
+function nextPeriodN(type){return S.periods.filter(p=>p.type===type).length+1;}
+function weightNear(dateISO,after){ // peso registrato più vicino alla data (after: primo dopo, altrimenti ultimo prima)
+  const ws=(S.profile.weights||[]).slice().sort((a,b)=>new Date(a.d)-new Date(b.d));
+  if(!ws.length)return null;const t=new Date(dateISO+"T12:00:00");
+  if(after){const x=ws.find(w=>new Date(w.d)>=t);return x?x.w:ws[ws.length-1].w;}
+  const before=ws.filter(w=>new Date(w.d)<=t);return before.length?before[before.length-1].w:ws[0].w;}
+function periodStats(p){
+  const endISO=p.end||iso(new Date());
+  const days=flattenDiet().filter(d=>d.date>=p.start&&d.date<=endISO);
+  const done=days.filter(d=>d.eat>0);
+  const n=done.length||1;
+  const avg=k=>Math.round(done.reduce((a,d)=>a+(d[k]||0),0)/n);
+  const workouts=days.reduce((a,d)=>a+((d.workouts||[]).length),0);
+  const w0=weightNear(p.start,true),w1=weightNear(endISO,false);
+  const dW=(w0!=null&&w1!=null)?Math.round((w1-w0)*10)/10:null;
+  const nDays=Math.max(1,Math.round((new Date(endISO+"T12:00:00")-new Date(p.start+"T12:00:00"))/864e5)+1);
+  return{nDays,nDone:done.length,avgEat:avg("eat"),avgProt:avg("prot"),avgFib:avg("fib"),avgDef:avg("def"),workouts,w0,w1,dW};}
+window.startPeriod=(type)=>{
+  if(activePeriod())return alert("C'è già un periodo aperto ("+periodLabel(activePeriod())+"). Chiudilo prima di iniziarne uno nuovo.");
+  const start=prompt("Data di inizio (AAAA-MM-GG):",iso(new Date()));if(!start)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(start))return alert("Formato data non valido.");
+  const exp=parseInt(prompt("Con che aspettativa di impegno parti? (1–5 stelle)","4"));
+  const note=prompt("Motivazione di inizio (perché cominci, cosa vuoi ottenere):","")||"";
+  S.periods.push({id:Date.now(),type,n:nextPeriodN(type),start,end:null,
+    expStars:Math.max(1,Math.min(5,exp||3)),expNote:note,endStars:null,endNote:"",aiStars:null,aiText:""});
+  save();render(cur);toast(periodLabel(S.periods[S.periods.length-1])+" iniziato ✓");};
+window.endPeriod=(id)=>{
+  const p=S.periods.find(x=>x.id===id);if(!p||p.end)return;
+  const end=prompt("Data di fine (AAAA-MM-GG):",iso(new Date()));if(!end)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<p.start)return alert("Data non valida (deve essere ≥ inizio).");
+  const st=parseInt(prompt("Come ti senti di essere andato/a davvero? (1–5 stelle)","3"));
+  const note=prompt("Motivazione di fine (com'è andata, cosa hai imparato):","")||"";
+  p.end=end;p.endStars=Math.max(1,Math.min(5,st||3));p.endNote=note;
+  save();render(cur);toast(periodLabel(p)+" chiuso ✓ Ora puoi chiedere la valutazione AI in Storico.");};
+window.editPeriod=(id)=>{
+  const p=S.periods.find(x=>x.id===id);if(!p)return;
+  const start=prompt("Data di inizio:",p.start);if(start&&/^\d{4}-\d{2}-\d{2}$/.test(start))p.start=start;
+  if(p.end){const end=prompt("Data di fine:",p.end);if(end&&/^\d{4}-\d{2}-\d{2}$/.test(end)&&end>=p.start)p.end=end;}
+  const en=prompt("Motivazione di inizio:",p.expNote||"");if(en!==null)p.expNote=en;
+  if(p.end){const xn=prompt("Motivazione di fine:",p.endNote||"");if(xn!==null)p.endNote=xn;}
+  save();render(cur);};
+window.delPeriod=(id)=>{const p=S.periods.find(x=>x.id===id);if(!p)return;
+  if(!confirm("Elimino "+periodLabel(p)+"? I dati giornalieri restano, sparisce solo il raggruppamento."))return;
+  S.periods=S.periods.filter(x=>x.id!==id);save();render(cur);};
+window.analyzePeriod=(id)=>{ // apre l'Analisi con il range del periodo
+  const p=S.periods.find(x=>x.id===id);if(!p)return;
+  AN.mode="manuale";AN.from=p.start;AN.to=p.end||iso(new Date());
+  render("storico");
+  const f=document.getElementById("anFrom"),t=document.getElementById("anTo");
+  if(f)f.value=AN.from;if(t)t.value=AN.to;drawAnalysis();
+  const card=document.getElementById("anMode");if(card)card.scrollIntoView({behavior:"smooth"});};
+window.aiRatePeriod=async(id)=>{
+  const p=S.periods.find(x=>x.id===id);if(!p||!p.end)return;
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const st=periodStats(p);
+  try{
+    const t=await aiAsk('Sei un coach nutrizionale. Valuta questo periodo "'+periodLabel(p)+'" ('+p.start+' → '+p.end+', '+st.nDays+' giorni).'
+      +' Dati: giorni tracciati '+st.nDone+', kcal medie '+st.avgEat+', proteine medie '+st.avgProt+' g, fibre medie '+st.avgFib+' g,'
+      +' deficit medio '+st.avgDef+' kcal, allenamenti totali '+st.workouts+','
+      +' peso da '+(st.w0!=null?st.w0+' kg':'n.d.')+' a '+(st.w1!=null?st.w1+' kg':'n.d.')+(st.dW!=null?' ('+(st.dW>0?'+':'')+st.dW+' kg)':'')+'.'
+      +' Aspettativa iniziale dell\'utente: '+p.expStars+'/5 ("'+(p.expNote||"")+'"). Autovalutazione finale: '+p.endStars+'/5 ("'+(p.endNote||"")+'").'
+      +' Dai un voto onesto in stelle (1-5) su come si è comportato davvero, e 3-4 indicazioni concrete e incoraggianti in italiano.'
+      +' Rispondi SOLO JSON: {"stelle":numero,"testo":"..."}');
+    const j=parseAIJSON(t);
+    p.aiStars=Math.max(1,Math.min(5,Math.round(j.stelle)||3));p.aiText=String(j.testo||"").trim();
+    save();render("storico");toast("Valutazione AI pronta ✓");
+  }catch(e){aiFail(e);}};
+function periodsCardHTML(forIo){
+  const ap=activePeriod();
+  let h=`<div class="card"><h2>📆 Periodi (dieta / libero)</h2>`;
+  if(ap){const st=periodStats(ap);
+    h+=`<div class="hint">In corso: <b>${periodLabel(ap)}</b> dal ${ap.start} · giorno ${st.nDays} · aspettativa ${starsTxt(ap.expStars)}${ap.expNote?` · <i>"${esc(ap.expNote)}"</i>`:""}</div>
+    <div class="mtools"><button class="btn small" onclick="endPeriod(${ap.id})">🏁 Chiudi ${periodLabel(ap)}</button>
+    <button class="btn ghost small" onclick="editPeriod(${ap.id})">✏️</button></div>`;
+  }else{
+    h+=`<div class="hint">Nessun periodo aperto. Aprine uno per raggruppare i dati: saprai sempre da quando è iniziato e potrai confrontare aspettativa, sensazione finale e comportamento reale.</div>
+    <div class="mtools"><button class="btn small" onclick="startPeriod('dieta')">🥗 Inizia Dieta ${nextPeriodN("dieta")}</button>
+    <button class="btn ghost small" onclick="startPeriod('libero')">🏖️ Inizia Periodo libero ${nextPeriodN("libero")}</button></div>`;}
+  if(!forIo){ // in Storico: lista completa con metriche e valutazione AI
+    const closed=S.periods.filter(p=>p.end).slice().reverse();
+    closed.forEach(p=>{const st=periodStats(p);
+      h+=`<div style="border-top:1px solid var(--linea);margin-top:10px;padding-top:8px">
+      <b>${periodLabel(p)}</b> <span style="color:var(--grigio);font-size:12px">${p.start} → ${p.end} (${st.nDays} gg)</span>
+      <div class="hint" style="margin-top:4px">🚀 Aspettativa: ${starsTxt(p.expStars)}${p.expNote?` · <i>"${esc(p.expNote)}"</i>`:""}<br>
+      🏁 Sensazione finale: ${starsTxt(p.endStars)}${p.endNote?` · <i>"${esc(p.endNote)}"</i>`:""}<br>
+      ${p.aiStars?`🤖 Valutazione AI: ${starsTxt(p.aiStars)}`:`🤖 Valutazione AI: non ancora richiesta`}</div>
+      ${p.aiText?`<div class="hint" style="background:var(--cardbg,#f6f4ef);border-radius:8px;padding:8px;margin-top:4px">${esc(p.aiText)}</div>`:""}
+      <div class="hint" style="margin-top:4px">📊 ${st.nDone} giorni tracciati · ${st.avgEat} kcal medie · ${st.avgProt} g prot · ${st.avgFib} g fibre · deficit medio ${st.avgDef} · ${st.workouts} allenamenti${st.dW!=null?` · peso ${st.dW>0?"+":""}${st.dW} kg`:""}</div>
+      <div class="mtools" style="margin-top:6px">
+      <button class="btn ghost small" onclick="aiRatePeriod(${p.id})">🤖 ${p.aiStars?"Rivaluta":"Valutazione AI"}</button>
+      <button class="btn ghost small" onclick="analyzePeriod(${p.id})">📊 Analizza</button>
+      <button class="btn ghost small" onclick="editPeriod(${p.id})">✏️</button>
+      <button class="btn ghost small" onclick="delPeriod(${p.id})">🗑️</button></div></div>`;});
+    if(!closed.length&&!ap)h+=`<div class="hint" style="margin-top:6px">Ancora nessun periodo registrato.</div>`;
+  }
+  h+=`</div>`;return h;}
+
 function renderStorico(){const el=document.getElementById("pg-storico");
   const w=weekSummary();
   let h=`<div class="card"><h2>Recap della settimana in corso</h2>
@@ -1416,6 +1527,8 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   <button class="btn" onclick="closeWeek()">Salva settimana e ricomincia</button>
   <button class="btn ghost" onclick="waWeek()">📤 WhatsApp</button>
   <button class="btn ghost" onclick="printReport()">🖨️ Esporta Report PDF</button></div>`;
+  // Periodi (Dieta 1, Libero 1, …) con metriche e valutazione AI
+  h+=periodsCardHTML(false);
   // Analisi: periodi, grafici multi-metrica, coaching AI
   h+=`<div class="card"><h2>📊 Analisi</h2>
   <div class="row2"><div><label>Periodo</label><select id="anMode" onchange="drawAnalysis()">
@@ -1426,8 +1539,8 @@ function renderStorico(){const el=document.getElementById("pg-storico");
   <option value="manuale" ${AN.mode==="manuale"?"selected":""}>Periodo manuale</option>
   </select></div>
   <div id="anManual" class="row2" style="display:${AN.mode==="manuale"?"flex":"none"}">
-  <div><label>Da</label><input type="date" id="anFrom" onchange="drawAnalysis()"></div>
-  <div><label>A</label><input type="date" id="anTo" onchange="drawAnalysis()"></div></div></div>
+  <div><label>Da</label><input type="date" id="anFrom" value="${AN.from||""}" onchange="drawAnalysis()"></div>
+  <div><label>A</label><input type="date" id="anTo" value="${AN.to||""}" onchange="drawAnalysis()"></div></div></div>
   <div class="hint" id="anHint"></div>
   <div style="margin-top:12px"><div class="hint" style="margin:0 0 5px;font-weight:700;color:var(--bosco)">Calorie e deficit</div><canvas id="chAnCal" height="160"></canvas></div>
   <div style="margin-top:18px"><div class="hint" style="margin:0 0 5px;font-weight:700;color:var(--bosco)">Peso e massa grassa</div><canvas id="chAnWeight" height="160"></canvas></div>
@@ -2282,6 +2395,8 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <option value="1.45" ${p.act==1.45?"selected":""}>Moderatamente attivo (1.45)</option></select>
   <button class="btn" onclick="saveProfile()">Salva dati e pesata</button>
   <div class="hint">Ogni salvataggio registra peso e biometriche nello storico (grafici in Storico).</div></div>`;
+  // Gestione periodi (inizio/fine dieta o periodo libero)
+  h+=periodsCardHTML(true);
   h+=`<div class="card"><h2>Il tuo motore</h2><div class="stat3">
   <div><div class="v">${age()||"—"}</div><div class="l">anni</div></div>
   <div><div class="v">${bmr()}</div><div class="l">BMR</div></div>
