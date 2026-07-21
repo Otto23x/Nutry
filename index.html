@@ -406,7 +406,7 @@ const SHOP=[
  ["FRUTTA (di stagione)",["Frutta di stagione (spuntino + dopo cena)","Frutti di bosco freschi o surgelati ~400 g","Limone"]],
  ["GRASSI, SEMI, DISPENSA",["Olio EVO","Semi oleosi misti ~150 g (con noci e lino)","Noci ~100 g (1 al giorno)","Avocado 1–2 (lun)","Olive 1 barattolo (opz.)","Tisane: finocchio, melissa, camomilla"]]
 ];
-const SPORTS_DEFAULT=[{name:"Camminata",met:3.5},{name:"Corsa",met:9.8},{name:"Tennis",met:7.3},{name:"Squash",met:9.0},{name:"Pesi",met:5.0},{name:"Trekking",met:6.0}];
+const SPORTS_DEFAULT=[{name:"Camminata",met:3.5},{name:"Corsa",met:9.8},{name:"Tennis",met:7.3},{name:"Squash",met:9.0},{name:"Pesi",met:5.0},{name:"Trekking",met:6.0},{name:"Lavori domestici — interno (faccende)",met:3.0},{name:"Lavori domestici — esterno (giardino)",met:4.3}];
 const INT={bassa:.8,media:1,alta:1.2};
 /* ── FIBRE (g): stima per ogni opzione del piano, se non già indicata ──────────
    Euristica per ingrediente (verdura, legumi, patate, frutta, cereali, semi…).
@@ -435,7 +435,7 @@ enrichFiber(BASE_PLAN);
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="5.0.1";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="5.0.2";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -891,16 +891,24 @@ window.moveDay=(d,m,v)=>{const st=S.week.days[d].meals[m];st.movedTo=parseInt(v)
 window.moveSlot=(d,m,v)=>{S.week.days[d].meals[m].movedAs=v;applyMove(d,m);};
 window.resetMeal=(d,m)=>{S.week.days[d].meals[m].custom=null;save();render(cur);};
 /* ✏️ Modifica pasto + stima AI */
-window.editMeal=async(d,m)=>{const o=mealOpt(d,m);
-  const nd=prompt("Modifica gli ingredienti del pasto:",o.d);if(!nd||nd===o.d)return;
+window.editMeal=async(d,m)=>{
+  const o=mealOpt(d,m); // funziona anche su pasti modificati/ribilanciati: parte dal testo attuale
+  const nd=prompt("Modifica gli ingredienti del pasto (OK anche senza cambiare nulla per ristimare):",o.d);
+  if(nd==null||!nd.trim())return;
+  const txt=nd.trim();
   let k=o.k,p=o.p,j=null;
-  if(!silent&&aiOn()){try{
-    const t=await aiAsk('Stima calorie e macro di questo pasto modificato: "'+nd+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero}');
-    j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
-    alert("Stima AI: ~"+k+" kcal · ~"+p+" g prot");
-  }catch(e){aiFail(e);k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}}
-  else{k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}
-  S.week.days[d].meals[m].custom={d:nd,k,p,c:(typeof j!=="undefined"&&j&&Math.round(j.carb))||null,f:(typeof j!=="undefined"&&j&&Math.round(j.gras))||null,fib:(typeof j!=="undefined"&&j&&Math.round(j.fibre))||estFiberOf(nd)};save();render(cur);};
+  if(aiOn()){
+    try{
+      const t=await aiAsk('Stima calorie e macro di questo pasto: "'+txt.replace(/"/g,"'")+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero}');
+      j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
+      alert("Stima AI: ~"+k+" kcal · ~"+p+" g prot");
+    }catch(e){aiFail(e);
+      k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}
+  }else{k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}
+  S.week.days[d].meals[m].custom={d:txt,k,p,
+    c:(j&&Math.round(j.carb))||null,f:(j&&Math.round(j.gras))||null,
+    fib:(j&&Math.round(j.fibre))||estFiberOf(txt)};
+  save();render(cur);};
 /* 🎲 Alternativa AI con macro identici */
 window.altMeal=async(d,m)=>{const o=mealOpt(d,m);
   if(!aiOn())return aiFail(new Error("nokey"));
@@ -997,6 +1005,7 @@ function renderSub(){
   m.innerHTML=inner;}
 window.setNote=(d,v)=>{S.week.days[d].note=v;save();};
 window.delExtra=(d,i)=>{S.week.days[d].extras.splice(i,1);save();render(cur);};
+window.delExtraAsk=(d,i)=>{if(confirm("Eliminare questo extra?\n(Se semplicemente non l'hai mangiato, basta la ✗)"))delExtra(d,i);};
 /* Extra/sgarro: AI o manuale */
 window.addExtra=(d)=>{ // v5.1: crea un extra VUOTO da compilare come preferisci
   S.week.days[d].extras.push({d:"Nuovo extra — compilalo con ✏️, 📸 o barcode",k:0,p:0,st:"done"});
@@ -1287,7 +1296,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
       <button class="ibtn" title="Modifica (ricalcola macro)" onclick="editExtra(${di},${ei})">✏️</button>
       <button class="ibtn" title="📸 Analisi da foto" onclick="extraPhotoFix(${di},${ei})">📸</button>
       <button class="ibtn" title="Barcode: scansiona i prodotti di questo extra" onclick="scanStart(${di},null,null,${ei})"><svg width="16" height="14" viewBox="0 0 24 20" style="vertical-align:-2px"><g fill="currentColor"><rect x="1" y="2" width="2" height="16"/><rect x="5" y="2" width="1" height="16"/><rect x="8" y="2" width="3" height="16"/><rect x="13" y="2" width="1" height="16"/><rect x="16" y="2" width="2" height="16"/><rect x="20" y="2" width="1" height="16"/><rect x="22" y="2" width="1.5" height="16"/></g></svg></button>
-      <button class="ibtn" title="Elimina definitivamente" onclick="if(confirm('Eliminare questo extra? (Se non l\'hai mangiato basta la ✗)'))delExtra(${di},${ei})">🗑</button>
+      <button class="ibtn" title="Elimina definitivamente" onclick="delExtraAsk(${di},${ei})">🗑</button>
     </div></div></div>`;});
   h+=`<div class="mtools" style="margin-top:4px">
     <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
@@ -2295,7 +2304,7 @@ function buildDiaryContext(){
       giornate_difficili_escluse:hardCount},
     sonno_medio:avgOf(recent,"sleep")||null,relax_medio:avgOf(recent,"relax")||null,umore_medio:avgOf(recent,"feel")||null,
     allenamenti_per_tipo:workoutsCount,
-    obiettivi:{passi_giorno_nota:"~5000 passi già inclusi nel TDEE, nessun obiettivo passi separato",
+    obiettivi:{passi_giorno_nota:"passi base ("+(((+S.profile.baseSteps>0)?+S.profile.baseSteps:3000))+"/giorno) già inclusi nel TDEE, nessun obiettivo passi separato",
       allenamenti_settimana:(S.profile.goalWorkoutList||[]).map(g=>({sport:g.sport,volte_settimana:g.perWeek,minuti:g.min})),
       dispendio_extra_medio_giornaliero_kcal:plannedActivityBurnFor(S.profile.w||70)},
     proiezione:(()=>{const s=simulateWeightDescent(S.profile.w,new Date());if(!s)return null;
@@ -2686,7 +2695,7 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div><label>Obiettivo acqua (L/giorno)</label><input type="number" step="0.5" id="pWater" value="${p.waterGoalL||""}" placeholder="proposto: ${waterSuggestL()} L"></div></div>
   ${(()=>{if(!p.goalW||!p.h)return"";const b=bmiFor(p.goalW),cur=bmiFor(p.w),cl=bmiClass(b);
     return `<div class="hint" style="color:${cl.ok?"var(--bosco)":"var(--rosso)"}">⚖️ Obiettivo ${p.goalW} kg → BMI ${b} (${cl.label}). Ora sei a BMI ${cur} (${bmiClass(cur).label}).${cl.msg?" "+cl.msg:""}</div>`;})()}
-  <div class="hint" style="margin-top:2px">🚶 I passi non hanno un obiettivo separato: nel calcolo delle calorie giornaliere (TDEE) sono <b>già considerati ~5000 passi</b>. Registra i passi extra nel giorno, in Sport.</div>
+  <div class="hint" style="margin-top:2px">🚶 I passi non hanno un obiettivo separato: nel calcolo delle calorie giornaliere (TDEE) sono <b>già considerati i tuoi passi base</b> (${(+S.profile.baseSteps>0)?(+S.profile.baseSteps).toLocaleString("it-IT"):"3.000"}, modificabili qui sopra). Le camminate vere si registrano in Sport.</div>
   <label>Allenamenti obiettivo (a settimana) — puoi metterne più tipi</label>
   <div id="goalWkList">${(p.goalWorkoutList||[]).map((g,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
     <select style="flex:2" onchange="setGoalWk(${i},'sport',this.value)">${allSports().map(s=>`<option ${g.sport===s.name?"selected":""}>${esc(s.name)}</option>`).join("")}</select>
