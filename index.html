@@ -68,32 +68,29 @@ html[data-theme="dark"]{
 html{scroll-behavior:smooth}
 body{font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--crema);color:var(--ink);font-size:15px;padding-bottom:96px;transition:background .3s,color .3s;position:relative;min-height:100vh}
 /* sfondo vivo: blob sfocati che fluttuano lentissimi */
-body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(90px);opacity:.5;pointer-events:none}
-body::before{width:46vw;height:46vw;min-width:300px;min-height:300px;background:radial-gradient(circle,#7BE2A0,transparent 65%);top:-12vh;right:-14vw;animation:blob1 26s ease-in-out infinite alternate}
-body::after{width:40vw;height:40vw;min-width:260px;min-height:260px;background:radial-gradient(circle,#B9E7FF,transparent 65%);bottom:-10vh;left:-12vw;animation:blob2 32s ease-in-out infinite alternate}
-html[data-theme="dark"] body::before{background:radial-gradient(circle,#134D2B,transparent 65%)}
-html[data-theme="dark"] body::after{background:radial-gradient(circle,#10263F,transparent 65%)}
-@keyframes blob1{to{transform:translate(-9vw,10vh) scale(1.18) rotate(24deg)}}
-@keyframes blob2{to{transform:translate(10vw,-8vh) scale(1.14) rotate(-18deg)}}
+/* v5.1: nessun blob animato/sfocato in sfondo (batteria) */
+body::before,body::after{display:none!important}
+
+
 h1,h2,.dayname,.ringnum{font-family:'Fraunces',Georgia,'Noto Serif',serif}
 ::selection{background:var(--salvia);color:#fff}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:var(--linea);border-radius:8px}
 ::-webkit-scrollbar-thumb:hover{background:var(--grigio)}
 /* ══ HEADER: aurora animata + shrink allo scroll ══ */
-header{background:linear-gradient(115deg,var(--hdr1),var(--hdr2),var(--hdr3),var(--hdr1));background-size:320% 320%;animation:aurora 16s ease infinite;color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:50;box-shadow:0 6px 24px -8px rgba(4,26,12,.55);transition:padding .3s var(--ease);backdrop-filter:saturate(1.2)}
+header{background:linear-gradient(115deg,var(--hdr1),var(--hdr2),var(--hdr3),var(--hdr1));background-size:320% 320%;color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:50;box-shadow:0 6px 24px -8px rgba(4,26,12,.55);transition:padding .3s var(--ease)}
 header.scrolled{padding:8px 16px 7px}
-@keyframes aurora{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
 .hrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 header h1{font-size:18px;font-weight:700;letter-spacing:.2px}
-.logo-badge{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:900;font-size:20px;letter-spacing:-.4px;line-height:1.15;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));transition:transform .25s var(--ease)}
+.logo-badge{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:900;font-size:20px;letter-spacing:-.4px;line-height:1.15);transition:transform .25s var(--ease)}
 .logo-badge:hover{transform:rotate(-2deg) scale(1.05)}
 .hbtns{display:flex;gap:6px;align-items:center}
-.hbtn{border:0;background:rgba(255,255,255,.16);backdrop-filter:blur(8px);color:#fff;border-radius:11px;padding:7px 10px;font-size:15px;cursor:pointer;transition:background .2s,transform .15s var(--ease)}
+.hbtn{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:11px;padding:7px 10px;font-size:15px;cursor:pointer;transition:background .2s,transform .15s var(--ease)}
 .hbtn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
 .hbtn:active{transform:scale(.92)}
-.streak{background:rgba(255,255,255,.16);backdrop-filter:blur(8px);border-radius:11px;padding:7px 10px;font-size:13px;font-weight:700;animation:streakGlow 3s ease-in-out infinite}
-@keyframes streakGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,200,80,0)}50%{box-shadow:0 0 14px 1px rgba(255,200,80,.45)}}
+.streak{background:rgba(255,255,255,.16);border-radius:11px;padding:7px 10px;font-size:13px;font-weight:700}
+
 /* ══ Scorrimento date ══ */
 .datebar{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:9px}
 .datebar button{border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;transition:transform .18s var(--ease),background .2s}
@@ -104,29 +101,26 @@ header h1{font-size:18px;font-weight:700;letter-spacing:.2px}
 .datebar .dt small{display:block;font-size:10px;opacity:.8}
 /* ══ PAGINE: transizione slide+fade ══ */
 .page{display:none;padding:16px;max-width:640px;margin:0 auto}
-.page.active{display:block;animation:pagein .42s var(--ease)}
-@keyframes pagein{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+.page.active{display:block}
+
 /* reveal on scroll (attivato da JS: body.fx) */
-body.fx .rvl{opacity:0;transform:translateY(22px) scale(.985)}
-body.fx .rvl.rv{opacity:1;transform:none;transition:opacity .6s var(--ease),transform .6s var(--ease)}
 /* ══ NAV: dock flottante in vetro ══ */
-.tabs{position:fixed;bottom:10px;left:10px;right:10px;background:var(--glass);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border:1px solid var(--linea);display:flex;z-index:60;padding:6px;border-radius:24px;box-shadow:var(--shadow-lift);margin-bottom:env(safe-area-inset-bottom)}
+.tabs{position:fixed;bottom:10px;left:10px;right:10px;background:var(--card);border:1px solid var(--linea);display:flex;z-index:60;padding:6px;border-radius:24px;box-shadow:var(--shadow-lift);margin-bottom:env(safe-area-inset-bottom)}
 .tabs button{flex:1;border:0;background:none;padding:8px 2px 6px;font-size:10.5px;color:var(--grigio);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:18px;transition:background .25s,color .25s,transform .2s var(--ease);position:relative}
 .tabs button .ic{font-size:20px;line-height:1;transition:transform .3s var(--ease)}
 .tabs button:hover .ic{transform:translateY(-2px)}
 .tabs button:active{transform:scale(.93)}
 .tabs button.on{color:#fff;font-weight:700;background:var(--grad);box-shadow:0 6px 16px -4px rgba(22,163,74,.55)}
-.tabs button.on .ic{animation:icpop .45s var(--ease)}
-@keyframes icpop{0%{transform:scale(.6)}60%{transform:scale(1.22)}100%{transform:scale(1)}}
+
 /* ══ CARD: vetro + lift al hover ══ */
-.card{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--linea);border-radius:var(--r-lg);padding:16px;margin-bottom:14px;box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
-@media(hover:hover){.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift)}}
+.card{background:var(--card);border:1px solid var(--linea);border-radius:var(--r-lg);padding:16px;margin-bottom:14px;box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+
 .card h2{font-size:16.5px;color:var(--bosco);margin-bottom:10px;letter-spacing:.1px}
 .dayname{font-size:23px;color:var(--bosco);margin:24px 0 2px;display:flex;align-items:center;gap:9px}
 .dayctx{font-size:12px;color:var(--grigio);font-style:italic;margin-bottom:10px}
 /* ══ PASTI ══ */
-.meal{background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--linea);border-left:4px solid var(--salvia);border-radius:16px;padding:13px 14px;margin-bottom:11px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s var(--ease),opacity .4s}
-@media(hover:hover){.meal:hover{transform:translateY(-2px) scale(1.006);box-shadow:var(--shadow-lift)}}
+.meal{background:var(--card);border:1px solid var(--linea);border-left:4px solid var(--salvia);border-radius:16px;padding:13px 14px;margin-bottom:11px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s var(--ease),opacity .4s}
+
 .meal.free{border-left-color:var(--zaff);background:linear-gradient(135deg,var(--zaffbg),var(--card))}
 .meal.mensa{border-left-color:var(--mensa);background:linear-gradient(135deg,var(--mensabg),var(--card))}
 .meal.done{opacity:.55;filter:saturate(.7)}.meal.done .mdesc{text-decoration:line-through}
@@ -136,11 +130,11 @@ body.fx .rvl.rv{opacity:1;transform:none;transition:opacity .6s var(--ease),tran
 .chk:hover{transform:scale(1.1)}
 .chk:active{transform:scale(.82)}
 .meal.free .chk{border-color:var(--zaff)}
-.chk.c{background:var(--salvia);border-color:var(--salvia);animation:chkpop .4s var(--ease);box-shadow:0 0 0 5px color-mix(in srgb,var(--salvia) 18%,transparent)}
+.chk.c{background:var(--salvia);border-color:var(--salvia);box-shadow:0 0 0 5px color-mix(in srgb,var(--salvia) 18%,transparent)}
 .meal.free .chk.c{background:var(--zaff);border-color:var(--zaff);box-shadow:0 0 0 5px color-mix(in srgb,var(--zaff) 18%,transparent)}
-.chk.s{background:var(--rosso)!important;border-color:var(--rosso)!important;animation:chkshake .4s}
-@keyframes chkpop{0%{transform:scale(.5)}55%{transform:scale(1.25)}100%{transform:scale(1)}}
-@keyframes chkshake{0%,100%{transform:none}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.chk.s{background:var(--rosso)!important;border-color:var(--rosso)!important}
+
+
 .mbody{flex:1;min-width:0}
 .mtop{display:flex;justify-content:space-between;gap:6px;font-size:12px;margin-bottom:2px}
 .mname{font-weight:700;color:var(--bosco)}
@@ -184,28 +178,28 @@ html[data-theme="dark"] .btn{color:#04170B}
 .row3{display:flex;gap:10px}.row3>*{flex:1;min-width:0}
 label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* ══ SPESA ══ */
-.shopcat{font-weight:700;color:#fff;background:var(--grad);background-size:200% 200%;animation:aurora 9s ease infinite;border-radius:16px 16px 0 0;padding:10px 14px;font-size:13.5px;margin-top:14px;letter-spacing:.2px}
-.shopitems{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--linea);border-top:0;border-radius:0 0 16px 16px;padding:4px 0;box-shadow:var(--shadow)}
+.shopcat{font-weight:700;color:#fff;background:var(--grad);background-size:200% 200%;border-radius:16px 16px 0 0;padding:10px 14px;font-size:13.5px;margin-top:14px;letter-spacing:.2px}
+.shopitems{background:var(--card);border:1px solid var(--linea);border-top:0;border-radius:0 0 16px 16px;padding:4px 0;box-shadow:var(--shadow)}
 .shopitem{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--linea);font-size:13.5px;transition:background .2s,opacity .3s}
 .shopitem:hover{background:color-mix(in srgb,var(--menta) 55%,transparent)}
 .shopitem:last-child{border-bottom:0}
 .shopitem.c{opacity:.42}.shopitem.c .st{text-decoration:line-through}
 .shopitem .box{min-width:23px;height:23px;border:2px solid var(--salvia);border-radius:8px;text-align:center;line-height:19px;color:#fff;font-size:13px;cursor:pointer;flex-shrink:0;transition:transform .2s var(--ease),background .25s}
 .shopitem .box:active{transform:scale(.8)}
-.shopitem.c .box{background:var(--salvia);animation:chkpop .35s var(--ease)}
+.shopitem.c .box{background:var(--salvia)}
 .shopitem .st{flex:1;cursor:pointer}
 .ibtn{border:1px solid var(--linea);background:var(--card);border-radius:9px;padding:4px 8px;font-size:13px;cursor:pointer;flex-shrink:0;transition:transform .18s var(--ease),border-color .2s,color .2s;text-decoration:none;color:var(--ink)}
 .ibtn:hover{transform:translateY(-1px) scale(1.06);border-color:var(--salvia)}
 .ibtn:active{transform:scale(.9)}
 /* ══ GAUGE / STATISTICHE ══ */
-.gaugecard{background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--linea);border-radius:22px;padding:18px;margin-bottom:13px;box-shadow:var(--shadow);text-align:center;transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
-@media(hover:hover){.gaugecard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift)}}
+.gaugecard{background:var(--card);border:1px solid var(--linea);border-radius:22px;padding:18px;margin-bottom:13px;box-shadow:var(--shadow);text-align:center;transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+
 .ringwrap{position:relative;width:176px;height:176px;margin:4px auto}
-.ringwrap svg{transform:rotate(-90deg);filter:drop-shadow(0 4px 10px rgba(22,163,74,.25))}
+.ringwrap svg{transform:rotate(-90deg))}
 .ringwrap svg circle{transition:stroke-dashoffset 1s var(--ease),stroke .4s}
 .ringnum{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.ringnum .v{font-size:31px;font-weight:800;animation:numin .7s var(--ease)}
-@keyframes numin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.ringnum .v{font-size:31px;font-weight:800}
+
 .ringnum .v.def{color:var(--salvia)}.ringnum .v.sur{color:var(--rosso)}
 .ringnum .l{font-size:11px;color:var(--grigio);margin-top:2px}
 .stat3{display:flex;gap:9px;margin-top:12px}
@@ -222,26 +216,26 @@ label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .water{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
 .water span{width:34px;height:38px;border:2px solid #B7CFEA;border-radius:8px 8px 13px 13px;cursor:pointer;font-size:17px;text-align:center;line-height:35px;transition:all .28s var(--ease)}
 .water span:hover{transform:translateY(-3px)}
-.water span.f{background:linear-gradient(180deg,#EAF4FF,#C8E1FB);border-color:var(--mensa);transform:translateY(-3px);box-shadow:0 6px 12px -4px rgba(37,99,235,.35);animation:splash .45s var(--ease)}
-@keyframes splash{0%{transform:translateY(2px) scale(.85)}60%{transform:translateY(-5px) scale(1.1)}100%{transform:translateY(-3px) scale(1)}}
+.water span.f{background:linear-gradient(180deg,#EAF4FF,#C8E1FB);border-color:var(--mensa);transform:translateY(-3px);box-shadow:0 6px 12px -4px rgba(37,99,235,.35)}
+
 html[data-theme="dark"] .water span.f{background:#1E3350}
 .stars{display:flex;gap:5px;font-size:23px;cursor:pointer;user-select:none}
 .stars span{filter:grayscale(1);opacity:.4;transition:all .25s var(--ease)}
 .stars span:hover{transform:scale(1.25) rotate(8deg)}
-.stars span.on{filter:none;opacity:1;animation:starpop .4s var(--ease)}
-@keyframes starpop{0%{transform:scale(.4) rotate(-30deg)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+.stars span.on{filter:none;opacity:1}
+
 .hint{font-size:12px;color:var(--grigio);margin-top:7px;line-height:1.55}
 .gtable{width:100%;font-size:13px}
 .gtable td{padding:6px 6px;vertical-align:top;border-bottom:1px solid var(--linea)}
 .gtable td:first-child{width:64px;text-align:center;font-size:17px}
 .gsec{font-weight:700;color:var(--bosco);margin:10px 0 2px;font-size:13.5px}
 .aibox{background:var(--mensabg);border:1px solid var(--linea);border-radius:14px;padding:12px;margin-top:9px;font-size:13.5px;line-height:1.5;white-space:pre-wrap}
-.histweek{border:1px solid var(--linea);border-radius:16px;background:var(--glass);backdrop-filter:blur(10px);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .3s}
+.histweek{border:1px solid var(--linea);border-radius:16px;background:var(--card);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .3s}
 .histweek:hover{box-shadow:var(--shadow-lift)}
 .histweek .hh{padding:12px 14px;display:flex;justify-content:space-between;cursor:pointer;font-weight:700;color:var(--bosco);font-size:14px;transition:background .2s}
 .histweek .hh:hover{background:color-mix(in srgb,var(--menta) 50%,transparent)}
 .histweek .hb{display:none;padding:0 14px 12px;font-size:13px}
-.histweek.open .hb{display:block;animation:pagein .35s var(--ease)}
+.histweek.open .hb{display:block}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th,td{padding:6px 4px;border-bottom:1px solid var(--linea);text-align:left}
 th{color:var(--grigio);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
@@ -252,38 +246,38 @@ tbody tr:hover,table tr:hover td{background:color-mix(in srgb,var(--menta) 40%,t
 .todaytag{background:var(--gradz);color:#fff;border-radius:8px;font-size:10.5px;padding:3px 9px;font-family:system-ui;font-weight:700;box-shadow:0 3px 8px -2px rgba(234,138,31,.5)}
 /* ══ GRAFICI: zoomabili ══ */
 canvas{max-width:100%;cursor:zoom-in;border-radius:10px;transition:transform .25s var(--ease)}
-@media(hover:hover){canvas:hover{transform:scale(1.012)}}
-#zoomOv{position:fixed;inset:0;background:rgba(6,14,8,.88);backdrop-filter:blur(8px);z-index:120;display:none;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
-#zoomOv.on{display:flex;animation:zoomfade .25s ease}
-@keyframes zoomfade{from{opacity:0}to{opacity:1}}
-#zoomOv img{max-width:96vw;max-height:82vh;background:#fff;border-radius:14px;box-shadow:0 30px 80px -20px rgba(0,0,0,.8);transform-origin:center;cursor:grab;user-select:none;-webkit-user-drag:none;animation:zoomin .35s var(--ease)}
+
+#zoomOv{position:fixed;inset:0;background:rgba(6,14,8,.88);z-index:120;display:none;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+#zoomOv.on{display:flex}
+
+#zoomOv img{max-width:96vw;max-height:82vh;background:#fff;border-radius:14px;box-shadow:0 30px 80px -20px rgba(0,0,0,.8);transform-origin:center;cursor:grab;user-select:none;-webkit-user-drag:none}
 html[data-theme="dark"] #zoomOv img{background:#131E15}
-@keyframes zoomin{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
-#zoomOv .ztools{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:8px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--linea);border-radius:20px;padding:8px;box-shadow:var(--shadow-lift)}
+
+#zoomOv .ztools{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:8px;background:var(--card);border:1px solid var(--linea);border-radius:20px;padding:8px;box-shadow:var(--shadow-lift)}
 #zoomOv .ztools button{border:0;background:var(--card);color:var(--ink);border-radius:12px;width:44px;height:40px;font-size:17px;cursor:pointer;transition:transform .18s var(--ease),background .2s}
 #zoomOv .ztools button:hover{transform:scale(1.1);background:var(--menta)}
 #zoomOv .zhint{position:fixed;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:#fff;font-size:12px;opacity:.8;background:rgba(0,0,0,.35);border-radius:14px;padding:6px 13px}
 #scanbox{display:none;margin-top:10px}
 #scanreader{width:100%;border-radius:14px;overflow:hidden}
-#aiSpin{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));z-index:90;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--linea);box-shadow:var(--shadow-lift);border-radius:24px;padding:10px 16px;display:none;align-items:center;gap:10px;font-size:13px;color:var(--bosco);font-weight:700}
-#aiSpin.on{display:flex;animation:pagein .3s var(--ease)}
-#aiSpin .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--linea);border-top-color:var(--salvia);animation:aispin .7s linear infinite}
+#aiSpin{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));z-index:90;background:var(--card);border:1px solid var(--linea);box-shadow:var(--shadow-lift);border-radius:24px;padding:10px 16px;display:none;align-items:center;gap:10px;font-size:13px;color:var(--bosco);font-weight:700}
+#aiSpin.on{display:flex}
+#aiSpin .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--linea);border-top-color:var(--salvia)}
 #toast{position:fixed;left:50%;transform:translateX(-50%) translateY(-16px) scale(.9);top:78px;z-index:96;background:var(--grad);color:#fff;border-radius:22px;padding:11px 20px;font-size:13.5px;font-weight:700;opacity:0;pointer-events:none;transition:all .4s var(--ease);box-shadow:0 12px 30px -8px rgba(22,163,74,.6)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:97;overflow:hidden}
-#confetti span{position:absolute;width:9px;height:9px;border-radius:2px;top:-12px;animation:cfall 1.15s ease-in forwards}
+#confetti span{position:absolute;width:9px;height:9px;border-radius:2px;top:-12px}
 /* ══ MODALI ══ */
-.modal{position:fixed;inset:0;background:rgba(6,14,8,.55);backdrop-filter:blur(6px);z-index:95;display:flex;align-items:center;justify-content:center;padding:16px;animation:zoomfade .22s ease}
-.modal .mcard{width:100%;max-width:530px;max-height:86vh;overflow:auto;background:var(--card);border:1px solid var(--linea);border-radius:22px;padding:18px;box-shadow:var(--shadow-lift);animation:modalin .38s var(--ease)}
-@keyframes modalin{from{opacity:0;transform:translateY(30px) scale(.94)}to{opacity:1;transform:none}}
+.modal{position:fixed;inset:0;background:rgba(6,14,8,.55);z-index:95;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .mcard{width:100%;max-width:530px;max-height:86vh;overflow:auto;background:var(--card);border:1px solid var(--linea);border-radius:22px;padding:18px;box-shadow:var(--shadow-lift)}
+
 .optbtn{display:block;width:100%;text-align:left;border:2px solid var(--linea);border-radius:14px;padding:12px 13px;margin-top:9px;background:var(--card);cursor:pointer;font-size:13px;line-height:1.45;color:var(--ink);transition:all .22s var(--ease)}
 .optbtn:hover{border-color:var(--salvia);transform:translateX(3px)}
 .optbtn.sel{border-color:var(--salvia);background:var(--menta);box-shadow:0 4px 14px -6px rgba(22,163,74,.4)}
 .optbtn b{color:var(--bosco)}
-@keyframes cfall{to{transform:translateY(105vh) rotate(560deg);opacity:.9}}
-@keyframes aispin{to{transform:rotate(360deg)}}
+
+
 button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible{outline:2.5px solid var(--mensa);outline-offset:2px}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}#confetti{display:none}body.fx .rvl{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}#confetti{display:none}}
 @media(min-width:700px){.tabs{max-width:620px;left:50%;right:auto;transform:translateX(-50%)}}
 /* ══════════ STAMPA: Report per il nutrizionista ══════════ */
 @media print{
@@ -295,7 +289,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.chk:focus-visible
   #printreport h1{font-size:20px;margin-bottom:4px}
   #printreport h2{font-size:15px;margin:14px 0 6px}
   #printreport table{font-size:11px}
-  .card,.histweek{box-shadow:none;border:1px solid #ccc;backdrop-filter:none;background:#fff}
+  .card,.histweek{box-shadow:none;border:1px solid #ccc;background:#fff}
 }
 #printreport{display:none}
 </style>
@@ -428,14 +422,30 @@ function estFiberOf(d){const s=(d||"").toLowerCase();let f=0;const add=(re,g)=>{
   add(/pizza|burger|sushi|panino/,3);
   add(/cornetto/,1);
   return Math.min(22,Math.round(f));}
-function enrichFiber(plan){(plan||[]).forEach(d=>d.meals.forEach(m=>m.o.forEach(o=>{if(o.fib==null)o.fib=estFiberOf(o.d);})));}
+/* Stima ZUCCHERI (g) da una descrizione, quando non arrivano da AI o barcode.
+   Sono gli zuccheri "semplici": frutta, latte/yogurt, dolci, bevande. */
+function estSugarOf(d){const s=(d||"").toLowerCase();let z=0;const add=(re,g)=>{if(re.test(s))z+=g;};
+  add(/banana/,14); add(/mela|pera|arancia|kiwi|pesca|albicocc/,12);
+  add(/uva|fichi|datteri|mango/,16); add(/frutti di bosco|fragole|lampon/,7);
+  add(/\bfrutta\b|frutto/,10); add(/succo|spremuta/,18);
+  add(/marmellata|miele|confettura|sciroppo/,12);
+  add(/yogurt/,8); add(/\blatte\b/,10); add(/ricotta|fiocchi di latte/,4);
+  add(/biscott|cornetto|brioche|torta|crostata|merendina/,14);
+  add(/cioccolat|nutella|caramell|confetti|gelato|dolce|dessert|budino/,18);
+  add(/bibita|cola|aranciata|tè freddo|the freddo|energy/,22);
+  add(/birra/,3); add(/vino/,2);
+  add(/pomodor|carote|cipoll/,3);
+  return Math.min(80,Math.round(z));}
+function enrichFiber(plan){(plan||[]).forEach(d=>d.meals.forEach(m=>m.o.forEach(o=>{
+  if(o.fib==null)o.fib=estFiberOf(o.d);
+  if(o.z==null)o.z=estSugarOf(o.d);})));}
 enrichFiber(BASE_PLAN);
 
 /* ═══════════════════════════════════════════════════════════════
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="5.0.4";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="5.1.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -534,15 +544,15 @@ function dayItems(di){const items=[];
     const st=S.week.days[pdi].meals[mi];const slot=st.movedAs||m.n;
     items.push({pdi,mi,slot,ord:SLOTS.indexOf(slot)<0?9:SLOTS.indexOf(slot)});}}));
   items.sort((a,b)=>a.ord-b.ord);return items;}
-function eatenOfDay(di){let k=0,p=0,c=0,f=0,fib=0;
+function eatenOfDay(di){let k=0,p=0,c=0,f=0,fib=0,z=0;
   dayItems(di).forEach(it=>{const st=S.week.days[it.pdi].meals[it.mi];
-    if(st.done&&!st.skip){const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;c+=o.c||0;f+=o.f||0;fib+=o.fib||0;}});
+    if(st.done&&!st.skip){const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;c+=o.c||0;f+=o.f||0;fib+=o.fib||0;z+=o.z||0;}});
   S.week.days[di].extras.forEach(e=>{if(e.st==="skip")return; // extra saltato: non conta
-    k+=e.k;p+=e.p||0;c+=e.c||0;f+=e.f||0;fib+=e.fib||0;});return{k,p,c,f,fib};}
+    k+=e.k;p+=e.p||0;c+=e.c||0;f+=e.f||0;fib+=e.fib||0;z+=e.z||0;});return{k,p,c,f,fib,z};}
 function extrasKcal(di){return S.week.days[di].extras.reduce((a,e)=>a+(e.st==="skip"?0:e.k),0);}
 function skippedOfDay(di){return dayItems(di).filter(it=>S.week.days[it.pdi].meals[it.mi].skip).length;}
-function plannedOfDay(di){let k=0,p=0,fib=0;
-  dayItems(di).forEach(it=>{const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;fib+=o.fib||0;});return{k,p,fib};}
+function plannedOfDay(di){let k=0,p=0,fib=0,z=0;
+  dayItems(di).forEach(it=>{const o=mealOpt(it.pdi,it.mi);k+=o.k;p+=o.p;fib+=o.fib||0;z+=o.z||0;});return{k,p,fib,z};}
 /* v5: i passi quotidiani sono dentro al TDEE (passi base, vedi tdee()).
    Le camminate "vere" si registrano come sport. stepsKcal resta per
    compatibilità ma vale sempre 0. */
@@ -642,12 +652,8 @@ function aiDone(){AIBUSY=Math.max(0,AIBUSY-1);if(AIBUSY===0){const e=document.ge
 let toastT=null;
 function toast(msg){const e=document.getElementById("toast");if(!e)return;
   e.textContent=msg;e.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove("on"),2600);}
-function confetti(){const box=document.getElementById("confetti");if(!box)return;
-  const cols=["#2F7D3B","#C77A15","#2F5FA6","#8FD3A0","#E8A44C"];
-  for(let i=0;i<26;i++){const s=document.createElement("span");
-    s.style.left=Math.random()*100+"vw";s.style.background=cols[i%cols.length];
-    s.style.animationDelay=(Math.random()*.25)+"s";s.style.animationDuration=(0.9+Math.random()*0.6)+"s";
-    box.appendChild(s);setTimeout(()=>s.remove(),1900);}}
+/* v5.1: coriandoli disattivati (26 nodi animati per volta = batteria) */
+function confetti(){}
 function vibra(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
 /* Chiamata Gemini robusta: fino a 3 tentativi per modello con backoff su 429/503/rete;
    passa al modello successivo su 404/quota; errori tipizzati per messaggi chiari. */
@@ -788,7 +794,7 @@ function mealCard(pdi,mi){
     <div class="mbody">
       <div class="mtop"><span class="mname">${esc(dispName)}${st.skip?" (saltato)":""}</span><span class="mtime">${m.t.replace(/\s*\(portatile\)/,"")}</span></div>
       <div class="mdesc">${esc(o.d)}</div>
-      <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""}${o.fib!=null?` · ${o.fib} g F`:""} ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
+      <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""}${o.fib!=null?` · ${o.fib} g F`:""}${o.z!=null?` · ${o.z} g Z`:""} ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
   if(PLAN[pdi].meals[mi].o.length>1&&!st.custom){h+=`<div class="mopts">`+m.o.map((x,oi)=>
     `<button class="${oi===st.opt?"sel":""}" onclick="setOpt(${pdi},${mi},${oi})">Opzione ${oi+1}</button>`).join("")+`</div>`;}
   h+=`<div class="mtools">
@@ -813,19 +819,19 @@ window.mealPhoto=async(pdi,mi)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
   const st=S.week.days[pdi].meals[mi];const o=mealOpt(pdi,mi);
   try{const ph=await snapPhoto();
-    const t=await aiAskVision('FOTO di una portata di questo pasto: "'+o.d+'". Stima dal PIATTO REALE nella foto: cosa contiene, porzione, kcal e macro. Rispondi SOLO JSON: {"nome":"descrizione breve del piatto reale","kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero}',[ph]);
+    const t=await aiAskVision('FOTO di una portata di questo pasto: "'+o.d+'". Stima dal PIATTO REALE nella foto: cosa contiene, porzione, kcal e macro. Rispondi SOLO JSON: {"nome":"descrizione breve del piatto reale","kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero,"zuccheri":numero}',[ph]);
     const j=parseAIJSON(t);
-    const nk=Math.round(j.kcal),np=Math.round(j.prot),nc=Math.round(j.carb)||0,nf=Math.round(j.gras)||0,nfib=Math.round(j.fibre)||0;
+    const nk=Math.round(j.kcal),np=Math.round(j.prot),nc=Math.round(j.carb)||0,nf=Math.round(j.gras)||0,nfib=Math.round(j.fibre)||0,nz=Math.round(j.zuccheri)||0;
     /* Al ristorante analizzi UNA portata alla volta (primo, secondo, dolce…):
        se il pasto ha già valori da foto/barcode puoi SOMMARE la nuova portata. */
     if(st.custom&&/da foto|da barcode/.test(st.custom.d||"")){
       if(confirm("📸 "+j.nome+" — ~"+nk+" kcal · "+np+" g prot\n\nOK = AGGIUNGI questa portata al pasto ("+st.custom.k+" kcal già registrate)\nAnnulla = SOSTITUISCI il pasto con questa sola portata")){
         st.custom={d:st.custom.d.replace(/ \(da foto\)$/,"")+" + "+j.nome+" (da foto)",
-          k:st.custom.k+nk,p:(st.custom.p||0)+np,c:(st.custom.c||0)+nc,f:(st.custom.f||0)+nf,fib:(st.custom.fib||0)+nfib};
+          k:st.custom.k+nk,p:(st.custom.p||0)+np,c:(st.custom.c||0)+nc,f:(st.custom.f||0)+nf,fib:(st.custom.fib||0)+nfib,z:(st.custom.z||0)+nz};
         save();render(cur);toast("Portata aggiunta al pasto ✓");return;}}
     else{const dev=nk-o.k;
       if(!confirm("📸 "+j.nome+"\n~"+nk+" kcal · "+np+" g prot ("+(dev>=0?"+":"")+dev+" kcal vs piano)\n\nOK = registra questa portata come pasto reale (poi puoi aggiungerne altre con 📸)"))return;}
-    st.custom={d:j.nome+" (da foto)",k:nk,p:np,c:nc||null,f:nf||null,fib:nfib||null};
+    st.custom={d:j.nome+" (da foto)",k:nk,p:np,c:nc||null,f:nf||null,fib:nfib||null,z:nz||estSugarOf(j.nome)};
     save();render(cur);toast("Pasto aggiornato dalla foto ✓ Spuntalo quando lo mangi");
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
 window.tgl=(d,m)=>{const st=S.week.days[d].meals[m];
@@ -845,19 +851,19 @@ window.editExtra=async(d,i)=>{const e=S.week.days[d].extras[i];
   const nd=prompt("Modifica l'extra:",e.d);if(nd==null||!nd.trim())return;
   let k=e.k,p=e.p||0,j=null;
   if(aiOn()&&nd!==e.d){try{
-    const t=await aiAsk('Stima calorie e macro di: "'+nd+'". Porzioni tipiche italiane. Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero}');
+    const t=await aiAsk('Stima calorie e macro di: "'+nd+'". Porzioni tipiche italiane. Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero,"zuccheri":numero}');
     j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
   }catch(_){k=parseInt(prompt("Calorie?",e.k))||e.k;p=parseInt(prompt("Proteine (g)?",e.p||0))||0;}}
   else if(nd!==e.d){k=parseInt(prompt("Calorie?",e.k))||e.k;p=parseInt(prompt("Proteine (g)?",e.p||0))||0;}
-  Object.assign(e,{d:nd.trim(),k,p,c:j?Math.round(j.carb)||null:e.c,f:j?Math.round(j.gras)||null:e.f,fib:j?Math.round(j.fibre)||estFiberOf(nd):e.fib});
+  Object.assign(e,{d:nd.trim(),k,p,c:j?Math.round(j.carb)||null:e.c,f:j?Math.round(j.gras)||null:e.f,fib:j?Math.round(j.fibre)||estFiberOf(nd):e.fib,z:j?Math.round(j.zuccheri)||estSugarOf(nd):estSugarOf(nd)});
   save();render(cur);};
 window.extraPhotoFix=async(d,i)=>{ // 📸 Analisi sull'extra: ricalcola da foto
   if(!aiOn())return aiFail(new Error("nokey"));
   try{const ph=await snapPhoto();
-    const t=await aiAskVision('Analizza la FOTO di questo cibo. Stima porzione, calorie e macro reali. Rispondi SOLO JSON: {"nome":"nome breve","kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero}',[ph]);
+    const t=await aiAskVision('Analizza la FOTO di questo cibo. Stima porzione, calorie e macro reali. Rispondi SOLO JSON: {"nome":"nome breve","kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero,"zuccheri":numero}',[ph]);
     const j=parseAIJSON(t);
     if(!confirm("📸 "+j.nome+"\n~"+Math.round(j.kcal)+" kcal · ~"+Math.round(j.prot)+" g prot\n\nOK = aggiorna l'extra con questi valori"))return;
-    Object.assign(S.week.days[d].extras[i],{d:j.nome,k:Math.round(j.kcal),p:Math.round(j.prot),c:Math.round(j.carb)||null,f:Math.round(j.gras)||null,fib:Math.round(j.fibre)||null});
+    Object.assign(S.week.days[d].extras[i],{d:j.nome,k:Math.round(j.kcal),p:Math.round(j.prot),c:Math.round(j.carb)||null,f:Math.round(j.gras)||null,fib:Math.round(j.fibre)||null,z:Math.round(j.zuccheri)||estSugarOf(j.nome)});
     save();render(cur);
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
 window.setOpt=(d,m,o)=>{S.week.days[d].meals[m].opt=o;save();render(cur);};
@@ -908,7 +914,7 @@ window.editMeal=async(d,m)=>{
   let k=o.k,p=o.p,j=null;
   if(aiOn()){
     try{
-      const t=await aiAsk('Stima calorie e macro di questo pasto: "'+txt.replace(/"/g,"'")+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero}');
+      const t=await aiAsk('Stima calorie e macro di questo pasto: "'+txt.replace(/"/g,"'")+'". Rispondi SOLO JSON: {"kcal":numero,"prot":numero,"carb":numero,"gras":numero,"fibre":numero,"zuccheri":numero}');
       j=parseAIJSON(t);k=Math.round(j.kcal);p=Math.round(j.prot);
       alert("Stima AI: ~"+k+" kcal · ~"+p+" g prot");
     }catch(e){aiFail(e);
@@ -916,7 +922,8 @@ window.editMeal=async(d,m)=>{
   }else{k=parseInt(prompt("Calorie?",o.k))||o.k;p=parseInt(prompt("Proteine (g)?",o.p))||o.p;}
   S.week.days[d].meals[m].custom={d:txt,k,p,
     c:(j&&Math.round(j.carb))||null,f:(j&&Math.round(j.gras))||null,
-    fib:(j&&Math.round(j.fibre))||estFiberOf(txt)};
+    fib:(j&&Math.round(j.fibre))||estFiberOf(txt),
+    z:(j&&Math.round(j.zuccheri))||estSugarOf(txt)};
   save();render(cur);};
 /* 🎲 Alternativa AI con macro identici */
 window.altMeal=async(d,m)=>{const o=mealOpt(d,m);
@@ -1212,7 +1219,7 @@ function mealCardStatic(pdi,mi){const m=PLAN[pdi].meals[mi];const o=templateOpt(
   let h=`<div class="meal"><div class="mbody">
     <div class="mtop"><span class="mname">${esc(m.n)}</span><span class="mtime">${m.t.replace(/\s*\(portatile\)/,"")}</span></div>
     <div class="mdesc">${esc(o.d)}</div>
-    <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""}${o.fib!=null?` · ${o.fib} g F`:""} ${isCustom?'<span class="badge ai">modificato</span>':""}</div>`;
+    <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""}${o.fib!=null?` · ${o.fib} g F`:""}${o.z!=null?` · ${o.z} g Z`:""} ${isCustom?'<span class="badge ai">modificato</span>':""}</div>`;
   if(m.o.length>1){h+=`<div class="mopts">`+m.o.map((x,oi)=>{
       const sel=isCustom?(permObj.d===x.d):(oi===0);
       return `<button class="${sel?"sel":""}" onclick="setPermOpt(${pdi},${mi},${oi})">Opzione ${oi+1}</button>`;}).join("")+`</div>`;}
@@ -1299,12 +1306,12 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div class="stat3"><div><div class="v">${eat.k}</div><div class="l">kcal segnate</div></div>
     <div><div class="v">${eat.p} g</div><div class="l">proteine</div></div>
     <div><div class="v">${burn}</div><div class="l">kcal sport</div></div></div>
-    <div class="gnums" style="margin-top:8px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span><span>${eat.fib} g F</span></div></div>`;
+    <div class="gnums" style="margin-top:8px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span><span>${eat.fib} g F</span><span>${eat.z} g Z</span></div></div>`;
   }else{
     h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}${isHard(_vd)?` · <span style="color:var(--zaff)">🏷️ ${esc((S.dayEvents||{})[_vd]||"giornata difficile")} (esclusa dalle medie)</span>`:""}</div>
     ${ring(eat.k/Math.max(1,target),def)}
     <div class="gnums"><span>Mangiate <b>${eat.k}</b></span><span>Pianificato <b>${plannedOfDay(di).k}</b></span><span>Sport <b>${burn>=0?"+":"−"}${Math.abs(burn)}</b></span></div>
-    <div class="gnums" style="margin-top:4px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span><span>${eat.fib} g F</span></div>
+    <div class="gnums" style="margin-top:4px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span><span>${eat.fib} g F</span><span>${eat.z} g Z</span></div>
     <div class="stat3"><div><div class="v">${eat.p} g</div><div class="l">proteine</div></div>
     <div><div class="v">${skippedOfDay(di)}</div><div class="l">pasti saltati</div></div>
     <div><div class="v">🔥 ${S.streak.count}</div><div class="l">giorni in target</div></div></div></div>`;}
@@ -1328,7 +1335,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   S.week.days[di].extras.forEach((e,ei)=>{const done=e.st!=="skip";
     h+=`<div class="meal ${done?"":"skip"}"><div class="chk ${done?"c":" s"}" role="button" onclick="tglExtra(${di},${ei})">${done?"✓":"✗"}</div>
     <div class="mbody"><div class="mtop"><span class="mname">Extra${done?"":" (non mangiato)"}</span></div>
-    <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ${e.p||0} g P${e.c!=null?` · ${e.c} g C`:""}${e.f!=null?` · ${e.f} g G`:""}${e.fib!=null?` · ${e.fib} g F`:""}</div>
+    <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ${e.p||0} g P${e.c!=null?` · ${e.c} g C`:""}${e.f!=null?` · ${e.f} g G`:""}${e.fib!=null?` · ${e.fib} g F`:""}${e.z!=null?` · ${e.z} g Z`:""}</div>
     <div class="mtools" style="margin-top:6px">
       <button class="ibtn" title="Modifica (ricalcola macro)" onclick="editExtra(${di},${ei})">✏️</button>
       <button class="ibtn" title="📸 Analisi da foto" onclick="extraPhotoFix(${di},${ei})">📸</button>
@@ -1397,6 +1404,7 @@ function scanOne(){
           c100:Math.round((nu["carbohydrates_100g"]||0)*10)/10,
           f100:Math.round((nu["fat_100g"]||0)*10)/10,
           fib100:Math.round((nu["fiber_100g"]||0)*10)/10,
+          z100:Math.round((nu["sugars_100g"]||0)*10)/10,
           g:100});
         renderScanQ();
       }catch(e){alert("Errore di rete verso Open Food Facts.");renderScanQ();}
@@ -1404,27 +1412,27 @@ function scanOne(){
 async function stopCam(){if(scanner){try{await scanner.stop();}catch(_){}scanner=null;}
   const b=document.getElementById("scanLive");if(b)b.style.display="none";}
 window.stopScan=()=>{stopCam();const b=document.getElementById("scanbox");if(b)b.style.display="none";};
-function scanTotals(){let k=0,p=0,c=0,f=0,fib=0;
-  SCANQ.items.forEach(it=>{const r=it.g/100;k+=it.k100*r;p+=it.p100*r;c+=it.c100*r;f+=it.f100*r;fib+=(it.fib100||0)*r;});
-  return{k:Math.round(k),p:Math.round(p),c:Math.round(c),f:Math.round(f),fib:Math.round(fib)};}
+function scanTotals(){let k=0,p=0,c=0,f=0,fib=0,z=0;
+  SCANQ.items.forEach(it=>{const r=it.g/100;k+=it.k100*r;p+=it.p100*r;c+=it.c100*r;f+=it.f100*r;fib+=(it.fib100||0)*r;z+=(it.z100||0)*r;});
+  return{k:Math.round(k),p:Math.round(p),c:Math.round(c),f:Math.round(f),fib:Math.round(fib),z:Math.round(z)};}
 window.scanG=(i,v)=>{SCANQ.items[i].g=Math.max(0,parseFloat(v)||0);renderScanQ(true);};
 window.scanDel=(i)=>{SCANQ.items.splice(i,1);renderScanQ();};
 window.scanManual=()=>{const n=prompt("Nome prodotto:");if(!n)return;
   const k=parseFloat(prompt("kcal per 100 g:","100"))||0,p=parseFloat(prompt("proteine per 100 g:","5"))||0;
-  SCANQ.items.push({name:n,k100:k,p100:p,c100:0,f100:0,fib100:0,g:100});renderScanQ();};
+  SCANQ.items.push({name:n,k100:k,p100:p,c100:0,f100:0,fib100:0,z100:0,g:100});renderScanQ();};
 window.scanMore=()=>{renderScanQ();scanOne();};
 window.scanConfirm=()=>{
   if(!SCANQ.items.length)return alert("Nessun prodotto in lista.");
   const t=scanTotals();
   const desc=SCANQ.items.map(it=>it.name+" "+it.g+"g").join(" + ");
   if(SCANQ.pdi!=null&&SCANQ.mi!=null){ // dentro un pasto: aggiorna il pasto (spunta a te)
-    S.week.days[SCANQ.pdi].meals[SCANQ.mi].custom={d:desc+" (da barcode)",k:t.k,p:t.p,c:t.c,f:t.f,fib:t.fib};
+    S.week.days[SCANQ.pdi].meals[SCANQ.mi].custom={d:desc+" (da barcode)",k:t.k,p:t.p,c:t.c,f:t.f,fib:t.fib,z:t.z};
     toast("Pasto aggiornato dai barcode ✓");
   }else if(SCANQ.ei!=null&&S.week.days[SCANQ.di].extras[SCANQ.ei]){ // dentro un extra: lo compila
-    Object.assign(S.week.days[SCANQ.di].extras[SCANQ.ei],{d:desc,k:t.k,p:t.p,c:t.c,f:t.f,fib:t.fib});
+    Object.assign(S.week.days[SCANQ.di].extras[SCANQ.ei],{d:desc,k:t.k,p:t.p,c:t.c,f:t.f,fib:t.fib,z:t.z});
     toast("Extra compilato dai barcode ✓");
   }else{
-    S.week.days[SCANQ.di].extras.push({d:desc,k:t.k,p:t.p,c:t.c,f:t.f,fib:t.fib,st:"done"});
+    S.week.days[SCANQ.di].extras.push({d:desc,k:t.k,p:t.p,c:t.c,f:t.f,fib:t.fib,z:t.z,st:"done"});
     toast("Extra aggiunto dai barcode ✓");}
   closeScanQ();save();render(cur);};
 window.closeScanQ=()=>{stopCam();SCANQ=null;const m=document.getElementById("scanM");if(m)m.remove();};
@@ -1439,7 +1447,7 @@ function renderScanQ(){
   SCANQ.items.forEach((it,i)=>{inner+=`<div class="wline"><span style="flex:1">${esc(it.name)}<br><small style="color:var(--grigio)">${it.k100} kcal · ${it.p100} g P /100g</small></span>
     <input type="number" value="${it.g}" style="width:74px" onchange="scanG(${i},this.value)"> <small>g</small>
     <span class="del" onclick="scanDel(${i})">✕</span></div>`;});
-  if(t)inner+=`<div class="daytotal" style="padding-top:8px">Totale: <span>~${t.k} kcal · ${t.p} g P · ${t.c} g C · ${t.f} g G · ${t.fib} g F</span></div>`;
+  if(t)inner+=`<div class="daytotal" style="padding-top:8px">Totale: <span>~${t.k} kcal · ${t.p} g P · ${t.c} g C · ${t.f} g G · ${t.fib} g F · ${t.z} g Z</span></div>`;
   inner+=`<div class="mtools" style="margin-top:10px">
     <button class="btn ghost small" onclick="scanMore()">📷 Scansiona ${SCANQ.items.length?"un altro":""}</button>
     <button class="btn ghost small" onclick="scanManual()">＋ A mano</button></div>
@@ -2629,6 +2637,7 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>🟦</td><td>Blu = <b>mensa</b> (mar/gio): segui la regola scritta nella riga.</td></tr></table>
 <div class="gsec">Altri</div><table class="gtable">
 <tr><td>📸</td><td>Foto + AI: <b>Analisi Piatto</b> (stima kcal di ciò che fotografi), <b>Selezionatore di menù</b> (sceglie dal menù il piatto compatibile col pasto di questo momento, compensando il surplus), <b>Crea un piatto</b> (più foto di frigo/congelatore/dispensa → ricetta su misura).</td></tr>
+<tr><td>Z</td><td>Zuccheri (g): stimati dalla descrizione, o presi da AI e barcode quando disponibili. Compaiono accanto a P/C/G/F.</td></tr>
 <tr><td>📷</td><td>Barcode (dentro ogni pasto): scansiona PIÙ prodotti, correggi i grammi e conferma la somma — da Open Food Facts, senza consumare AI.</td></tr>
 <tr><td>🔥</td><td><b>La serie, in parole semplici</b>: conta i giorni "buoni" di fila. Ogni mattina l'app guarda com'è andata IERI e si fa 3 domande: hai spuntato i pasti? sei rimasto dentro le calorie? gli extra erano al massimo 300 kcal? <b>Tre sì = fiamma +1. Anche un solo no = si riparte da 0.</b> Fa tutto da sola, non devi premere nulla; in 🏖️ vacanza si mette in pausa.</td></tr>
 <tr><td>💧</td><td>Acqua: obiettivo tarato sul tuo peso (35 ml/kg, in bicchieri da 250 ml), <b>+2</b> nei giorni con allenamento intenso o oltre 45 minuti.</td></tr>
@@ -3126,6 +3135,11 @@ window.goYesterday=()=>{VIEW=new Date();VIEW.setDate(VIEW.getDate()-1);VIEW.setH
 window.dismissMorning=()=>{const dISO=isoOfPdi(yIdx());reviewDone(dISO);};
 function needMorningBanner(){return !S.ui.vacanza&&pendingReviewDays().length>0;}
 window.goSportY=()=>{show("sport");setTimeout(()=>{const s=document.getElementById("wDay");if(s)s.value=yIdx();},80);};
+/* v5.1: grafici senza animazione (Chart.js ridisegna il canvas a 60fps
+   per ogni animazione: è uno dei costi maggiori in batteria). */
+try{if(window.Chart){Chart.defaults.animation=false;Chart.defaults.animations={};
+  Chart.defaults.transitions.active.animation.duration=0;
+  Chart.defaults.responsiveAnimationDuration=0;}}catch(e){}
 function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,storico:renderStorico,io:renderIo,guida:renderGuida,setup:renderSetup})[p]();renderHeader();initFX();}
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3135,30 +3149,10 @@ function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:r
    ═══════════════════════════════════════════════════════════════ */
 const REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let _rvObs=null;
-function initFX(){
-  if(REDUCED||!("IntersectionObserver" in window))return;
-  document.body.classList.add("fx");
-  if(!_rvObs)_rvObs=new IntersectionObserver(es=>{
-    es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("rv");_rvObs.unobserve(e.target);}});
-  },{threshold:.06,rootMargin:"0px 0px -6% 0px"});
-  const pg=document.querySelector(".page.active");if(!pg)return;
-  let i=0;
-  pg.querySelectorAll(".card,.meal,.gaugecard,.shopcat,.shopitems,.histweek,.dayname").forEach(el=>{
-    if(el.classList.contains("rvl"))return;
-    el.classList.add("rvl");
-    el.style.transitionDelay=Math.min(i*35,280)+"ms"; // stagger a cascata
-    i++;
-    _rvObs.observe(el);
-    // se già in viewport al render, rivelalo subito (senza aspettare lo scroll)
-    const r=el.getBoundingClientRect();
-    if(r.top<window.innerHeight)requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("rv")));
-  });
-}
-/* Header che si compatta scendendo */
-window.addEventListener("scroll",()=>{
-  const h=document.querySelector("header");if(!h)return;
-  h.classList.toggle("scrolled",window.scrollY>40);
-},{passive:true});
+/* v5.1: niente rivelazioni animate allo scroll (nessun observer, nessun
+   ridisegno progressivo): la pagina è statica e non consuma batteria. */
+function initFX(){}
+/* v5.1: header fisso (niente listener di scroll che ridisegna l'intestazione) */
 /* ── ZOOM GRAFICI: tap su un grafico → overlay con pinch/rotella/drag ── */
 let ZM={s:1,x:0,y:0,drag:null,pinch:0};
 function ensureZoomOv(){
