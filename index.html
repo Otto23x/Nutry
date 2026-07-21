@@ -435,7 +435,7 @@ enrichFiber(BASE_PLAN);
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="5.0.2";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="5.0.4";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -786,7 +786,7 @@ function mealCard(pdi,mi){
   let h=`<div class="${cls}">
     <div class="chk ${st.done?"c":""}${st.skip?" s":""}" role="button" tabindex="0" onclick="tgl(${pdi},${mi})">${sym}</div>
     <div class="mbody">
-      <div class="mtop"><span class="mname">${esc(dispName)}${st.skip?" (saltato)":""}</span><span class="mtime">${m.t}</span></div>
+      <div class="mtop"><span class="mname">${esc(dispName)}${st.skip?" (saltato)":""}</span><span class="mtime">${m.t.replace(/\s*\(portatile\)/,"")}</span></div>
       <div class="mdesc">${esc(o.d)}</div>
       <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""}${o.fib!=null?` · ${o.fib} g F`:""} ${st.custom?'<span class="badge ai">modificato</span>':(S.permMeals[pdi+"_"+mi]&&st.opt===0?'<span class="badge ai">alternativa fissa</span>':"")}</div>`;
   if(PLAN[pdi].meals[mi].o.length>1&&!st.custom){h+=`<div class="mopts">`+m.o.map((x,oi)=>
@@ -805,7 +805,7 @@ function mealCard(pdi,mi){
     <button class="ibtn" title="📸 Analisi: fotografa una portata e aggiungila o sostituisci il pasto" onclick="mealPhoto(${pdi},${mi})">📸</button>
     <button class="ibtn" title="Barcode: scansiona i prodotti di questo pasto (anche più di uno)" onclick="scanStart(${viewIdx()},${pdi},${mi})"><svg width="16" height="14" viewBox="0 0 24 20" style="vertical-align:-2px"><g fill="currentColor"><rect x="1" y="2" width="2" height="16"/><rect x="5" y="2" width="1" height="16"/><rect x="8" y="2" width="3" height="16"/><rect x="13" y="2" width="1" height="16"/><rect x="16" y="2" width="2" height="16"/><rect x="20" y="2" width="1" height="16"/><rect x="22" y="2" width="1.5" height="16"/></g></svg></button>`;
   if(st.custom)h+=`<button class="ibtn" title="Ripristina originale" onclick="resetMeal(${pdi},${mi})">↩️</button>`;
-  if(st.movedTo!==-1||st.movedAs&&st.movedAs!==m.n)h+=`<span class="badge moved">da ${PLAN[pdi].day} · ${m.n}</span>`;
+  if(st.movedTo!==-1||st.movedAs&&st.movedAs!==m.n)h+=`<span class="badge moved">da ${PLAN[pdi].day} · ${m.n}</span><button class="ibtn" title="Riporta questo pasto (e quello scambiato) al giorno di origine" onclick="unmoveMeal(${pdi},${mi})">🔙</button>`;
   h+=`</div></div></div>`;return h;}
 /* 📸 Analisi per-pasto: foto → l'AI ricalcola kcal e macro REALI del pasto.
    NON spunta nulla: la spunta la dai sempre tu. Dopo puoi correggere con ✏️. */
@@ -880,12 +880,21 @@ function applyMove(pdi,mi){
   const toSlot=st.movedAs||m.n;
   if(toDi===pdi&&toSlot===m.n){save();render(cur);return;} // tornato a casa: niente scambio
   const other=findCounterpart(toDi,toSlot,pdi,mi);
-  if(other){
+  if(other){ // scambio SEMPRE automatico: mai due pasti sullo stesso slot
     const ost=S.week.days[other.pdi].meals[other.mi];
-    if(!ost.done&&!ost.skip&&confirm("Scambio automatico: metto \""+(PLAN[other.pdi].meals[other.mi].n)+" di "+PLAN[other.pdi].day+"\" al posto lasciato libero ("+PLAN[pdi].day+" · "+m.n+")?\n\nOK = scambia i due pasti · Annulla = sposta solo questo")){
+    if(!ost.done&&!ost.skip){
       ost.movedTo=(pdi===other.pdi)?-1:pdi;ost.movedAs=m.n;
-      toast("🔄 Pasti scambiati: "+m.n+" ⇄ "+PLAN[other.pdi].meals[other.mi].n);}}
+      toast("🔄 Scambiati: "+m.n+" ⇄ "+PLAN[other.pdi].meals[other.mi].n+" (🔙 per annullare)");}}
   save();render(cur);}
+/* 🔙 Riporta il pasto (e il suo gemello scambiato) al giorno di origine */
+window.unmoveMeal=(pdi,mi)=>{
+  const st=S.week.days[pdi].meals[mi];const m=PLAN[pdi].meals[mi];
+  // il gemello è chi ora occupa la MIA posizione originale
+  const twin=findCounterpart(pdi,m.n,pdi,mi);
+  st.movedTo=-1;st.movedAs=null;
+  if(twin){const tst=S.week.days[twin.pdi].meals[twin.mi];
+    if(!tst.done&&!tst.skip){tst.movedTo=-1;tst.movedAs=null;}}
+  save();render(cur);toast("Pasti riportati al giorno di origine ✓");}
 window.moveDay=(d,m,v)=>{const st=S.week.days[d].meals[m];st.movedTo=parseInt(v);
   if(!st.movedAs)st.movedAs=PLAN[d].meals[m].n;applyMove(d,m);};
 window.moveSlot=(d,m,v)=>{S.week.days[d].meals[m].movedAs=v;applyMove(d,m);};
@@ -1009,7 +1018,7 @@ window.delExtraAsk=(d,i)=>{if(confirm("Eliminare questo extra?\n(Se semplicement
 /* Extra/sgarro: AI o manuale */
 window.addExtra=(d)=>{ // v5.1: crea un extra VUOTO da compilare come preferisci
   S.week.days[d].extras.push({d:"Nuovo extra — compilalo con ✏️, 📸 o barcode",k:0,p:0,st:"done"});
-  save();render(cur);toast("Extra creato: ✏️ per scriverlo, 📸 per la foto, ▍▍▍ per il barcode");};
+  save();render(cur);};
 /* 🚑 Salva-sgarro: ribilancia i pasti rimanenti della giornata */
 window.extraPhoto=async(di)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
@@ -1046,24 +1055,35 @@ window.checkByPhoto=async(di)=>{
     }
   }catch(e){if(e.message!=="annullato")aiFail(e);}};
 window.rebalance=async(di)=>{
-  const sg=Math.max(0,surplusOfDay(di));
-  if(sg<=50)return alert("Sei in linea col piano di oggi (surplus +"+sg+" kcal): non c'è nulla da ribilanciare.");
-  if(!aiOn())return aiFail(new Error("nokey"));
+  /* v5.0.3 — logica a BUDGET, idempotente:
+     budget residuo = kcal pianificate della giornata − kcal già mangiate;
+     eccesso = pianificato dei pasti RIMANENTI − budget residuo.
+     Se eccesso ≤ 50 non si tocca nulla (cliccare due volte non ri-taglia). */
+  const dayPlan=plannedOfDay(di).k;                 // la "giornata tipo"
+  const eaten=eatenOfDay(di).k;                     // mangiato finora (pasti ✓ + extra)
   const remaining=dayItems(di).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
     return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm";});
-  if(!remaining.length){
-    const ti=viewIdx(),tomorrow=ti+1;
-    if(isToday()&&tomorrow<=6){
-      if(confirm("Non ci sono più pasti da ribilanciare oggi. Vuoi recuperare DOMANI alleggerendo pranzo e cena?"))return rebalanceNextDay(ti,tomorrow);
-      return;}
-    return alert("Non ci sono pasti normali ancora da consumare da ribilanciare.");}
+  const remPlanned=remaining.reduce((a,it)=>a+mealOpt(it.pdi,it.mi).k,0);
+  const budget=dayPlan-eaten;
+  const excess=Math.round(remPlanned-budget);
+  if(!remaining.length)return alert("Non ci sono pasti normali ancora da consumare da ribilanciare.");
+  if(excess<=50)return alert("✅ Sei in linea con la giornata: pasti rimanenti ~"+remPlanned+" kcal, budget residuo ~"+Math.max(0,budget)+" kcal (su "+dayPlan+" pianificate). Nessun ribilanciamento necessario.");
+  if(!aiOn())return aiFail(new Error("nokey"));
   const list=remaining.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
+  const targetRem=Math.max(remaining.length*250,budget); // mai sotto ~250 kcal/pasto
   try{
-    const t=await aiAsk('Oggi ho accumulato '+sg+' kcal in più rispetto al piano. Questi sono i pasti rimanenti: '+JSON.stringify(list)+'. Riduci carboidrati e grassi (MAI le proteine) per assorbire circa '+sg+' kcal totali, mantenendo piatti realistici con grammature. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"...","kcal":n,"prot":n}]');
+    const t=await aiAsk('Devo restare dentro un budget di circa '+Math.round(targetRem)+' kcal TOTALI per questi pasti rimanenti di oggi (ora sommano '+remPlanned+' kcal): '+JSON.stringify(list)+'. REGOLA FONDAMENTALE: per ridurre le kcal devi RISCRIVERE ogni pasto cambiando le GRAMMATURE degli ingredienti (es. "pasta 80g"→"pasta 60g") oppure ELIMINANDO componenti (es. togliere il pane o il condimento); le kcal dichiarate devono corrispondere alla nuova descrizione. NON è accettabile lasciare la descrizione invariata abbassando solo i numeri. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. La SOMMA delle kcal proposte deve essere vicina a '+Math.round(targetRem)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
     const arr=parseAIJSON(t);
-    let msg="Proposta di ribilanciamento:\n";arr.forEach(a=>msg+="\n• "+a.slot+": "+a.desc+" (~"+a.kcal+" kcal · "+a.prot+"p)");
+    // scarta le proposte "furbe": kcal più basse ma descrizione identica = barare
+    const valid=arr.filter(a=>{const it=remaining.find(r=>r.slot===a.slot);if(!it)return false;
+      const o=mealOpt(it.pdi,it.mi);
+      return String(a.desc).trim()!==String(o.d).trim()||Math.round(a.kcal)>=o.k;});
+    if(!valid.length)return alert("L'AI non ha proposto grammature nuove valide: riprova.");
+    let msg="Ribilanciamento (budget residuo ~"+Math.max(0,budget)+" kcal, eccesso "+excess+" kcal):\n";
+    valid.forEach(a=>{const it=remaining.find(r=>r.slot===a.slot);const o=mealOpt(it.pdi,it.mi);
+      msg+="\n• "+a.slot+" ("+o.k+"→"+Math.round(a.kcal)+" kcal): "+a.desc+" (~"+a.prot+"p)";});
     if(!confirm(msg+"\n\nOK = applica ai pasti rimanenti"))return;
-    arr.forEach(a=>{const it=remaining.find(r=>r.slot===a.slot);if(it)
+    valid.forEach(a=>{const it=remaining.find(r=>r.slot===a.slot);if(it)
       S.week.days[it.pdi].meals[it.mi].custom={d:a.desc+" (ribilanciato)",k:Math.round(a.kcal),p:Math.round(a.prot)};});
     save();render(cur);
   }catch(e){aiFail(e);}};
@@ -1071,23 +1091,39 @@ window.rebalance=async(di)=>{
    assorbire l'eccesso (surplus) di fromDi. Avvisa, propone e applica solo se
    l'utente conferma. Segna il giorno come già ribilanciato per non insistere. */
 window.rebalanceNextDay=async(fromDi,toDi)=>{
-  const sg=Math.max(0,Math.round(surplusOfDay(fromDi)));
-  if(sg<=50)return alert("Ieri non risulta un eccesso da recuperare.");
+  // eccesso del giorno passato = mangiato − pianificato dell'INTERA giornata
+  const sg=Math.max(0,Math.round(eatenOfDay(fromDi).k-plannedOfDay(fromDi).k));
+  if(sg<=50)return alert("✅ "+PLAN[fromDi].day+" non risulta sforato (mangiate "+eatenOfDay(fromDi).k+" su "+plannedOfDay(fromDi).k+" pianificate): pasti di oggi invariati.");
   if(!aiOn())return aiFail(new Error("nokey"));
   const mains=dayItems(toDi).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
-    return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm"&&/Pranzo|Cena/i.test(it.slot);});
-  if(!mains.length)return alert("Non ci sono pranzo/cena ancora da consumare da alleggerire.");
+    return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm";});
+  if(!mains.length)return alert("Non ci sono pasti ancora da consumare da alleggerire.");
   const list=mains.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
+  const remPlanned=list.reduce((a,x)=>a+x.kcal,0);
+  const targetRem=Math.max(mains.length*250,remPlanned-sg);
   try{
-    const t=await aiAsk('Ieri ho ecceduto di '+sg+' kcal. Alleggerisci i pasti principali di OGGI per recuperare circa '+sg+' kcal totali, riducendo carboidrati e grassi (MAI le proteine), piatti realistici con grammature, senza scendere sotto ~300 kcal a pasto. Pasti principali di oggi: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"...","kcal":n,"prot":n}]');
+    const t=await aiAsk('Ieri ho ecceduto di '+sg+' kcal. Alleggerisci i pasti di OGGI ancora da consumare (ora sommano '+remPlanned+' kcal) portandone la SOMMA vicino a '+Math.round(targetRem)+' kcal. REGOLA FONDAMENTALE: riduci RISCRIVENDO ogni pasto con GRAMMATURE più basse (es. "riso 90g"→"riso 60g") oppure ELIMINANDO componenti; le kcal dichiarate devono corrispondere alla nuova descrizione, NON limitarti ad abbassare i numeri lasciando il pasto uguale. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. Pasti: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
     const arr=parseAIJSON(t);
-    let msg="Recupero di oggi per l'eccesso di ieri (~"+sg+" kcal):\n";arr.forEach(a=>msg+="\n• "+a.slot+": "+a.desc+" (~"+a.kcal+" kcal · "+a.prot+"p)");
-    if(!confirm(msg+"\n\nOK = applica a pranzo e cena di oggi"))return;
-    arr.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);if(it)
+    const valid=arr.filter(a=>{const it=mains.find(r=>r.slot===a.slot);if(!it)return false;
+      const o=mealOpt(it.pdi,it.mi);
+      return String(a.desc).trim()!==String(o.d).trim()||Math.round(a.kcal)>=o.k;});
+    if(!valid.length)return alert("L'AI non ha proposto grammature nuove valide: riprova.");
+    let msg="Recupero dello sforo di "+PLAN[fromDi].day+" (~"+sg+" kcal):\n";
+    valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);const o=mealOpt(it.pdi,it.mi);
+      msg+="\n• "+a.slot+" ("+o.k+"→"+Math.round(a.kcal)+" kcal): "+a.desc+" (~"+a.prot+"p)";});
+    if(!confirm(msg+"\n\nOK = applica ai pasti di oggi"))return;
+    valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);if(it)
       S.week.days[it.pdi].meals[it.mi].custom={d:a.desc+" (recupero)",k:Math.round(a.kcal),p:Math.round(a.prot)};});
     S.week.days[toDi].rebalancedFrom=fromDi;save();render(cur);
-    alert("Fatto: pranzo e cena di oggi alleggeriti per recuperare l'eccesso di ieri.");
+    alert("Fatto: pasti di oggi alleggeriti per recuperare lo sforo di "+PLAN[fromDi].day+".");
   }catch(e){aiFail(e);}};
+/* RGP — Ribilancia Giorno Precedente: un tocco. Se ieri hai sforato,
+   ribilancia l'intera giornata di oggi; altrimenti conferma che è tutto ok. */
+window.rgp=(di)=>{
+  if(!isToday())return alert("RGP funziona sul giorno corrente.");
+  const yi=yIdx();
+  if(S.week.days[di].rebalancedFrom===yi)return alert("Oggi è già stato ribilanciato per lo sforo di ieri.");
+  return rebalanceNextDay(yi,di);};
 window.dismissReb=()=>{S.ui.dismissReb=iso(new Date());save();render("oggi");};
 /* 🏳️ Giornate difficili: escluse dalle medie e dalle correlazioni AI, e non
    spezzano lo streak (a differenza della vacanza che congela tutto). */
@@ -1174,7 +1210,7 @@ function plannedTemplateOfDay(di){let k=0,p=0,c=0,f=0,fib=0;PLAN[di].meals.forEa
 function mealCardStatic(pdi,mi){const m=PLAN[pdi].meals[mi];const o=templateOpt(pdi,mi);
   const permObj=S.permMeals[pdi+"_"+mi];const isCustom=!!permObj;
   let h=`<div class="meal"><div class="mbody">
-    <div class="mtop"><span class="mname">${esc(m.n)}</span><span class="mtime">${m.t}</span></div>
+    <div class="mtop"><span class="mname">${esc(m.n)}</span><span class="mtime">${m.t.replace(/\s*\(portatile\)/,"")}</span></div>
     <div class="mdesc">${esc(o.d)}</div>
     <div class="mkcal">~${o.k} kcal · ${o.p} g P${o.c!=null?` · ${o.c} g C`:""}${o.f!=null?` · ${o.f} g G`:""}${o.fib!=null?` · ${o.fib} g F`:""} ${isCustom?'<span class="badge ai">modificato</span>':""}</div>`;
   if(m.o.length>1){h+=`<div class="mopts">`+m.o.map((x,oi)=>{
@@ -1251,10 +1287,11 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   // escluso dalle medie e non spezza lo streak, ma con una MOTIVAZIONE chiara.
   if(!S.ui.vacanza){const ev=(S.dayEvents||{})[_vd]||"";
     h+=`<div class="mtools" style="margin:0 0 8px;align-items:center">
-    <span style="font-size:12.5px;color:var(--grigio)">🏷️ Evento:</span>
-    <select style="max-width:210px" onchange="setDayEvent('${_vd}',this.value)">
+    <span style="font-size:12.5px;color:var(--grigio)">🏷️</span>
+    <select style="max-width:150px;font-size:12px" onchange="setDayEvent('${_vd}',this.value)">
       ${["","Giornata no","Compleanno","Natale","Capodanno","Pasqua","Festa / party","Cena fuori","Lavoro / trasferta","Matrimonio","Ferragosto","Vacanza breve","Malattia","Altro…"].map(o=>`<option value="${o}" ${ev===o?"selected":""}>${o||"— nessuno —"}</option>`).join("")}
-    </select>${ev?`<span class="badge" style="background:var(--zaffbg);color:var(--zaff)">escluso dalle medie</span>`:""}</div>`;}
+    </select>${ev?`<span class="badge" style="background:var(--zaffbg);color:var(--zaff)">escluso dalle medie</span>`:""}
+    ${isToday()?`<button class="btn small" style="margin-left:auto" title="Ribilancia Giorno Precedente: se ieri hai sforato, alleggerisce i pasti di oggi; altrimenti non tocca nulla" onclick="rgp(${di})">RGP</button>`:""}</div>`;}
 
   if(S.ui.vacanza){
     h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
@@ -1266,7 +1303,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   }else{
     h+=`<div class="gaugecard"><div class="hint" style="margin:0 0 2px">Bilancio di ${PLAN[di].day} ${isToday()?"":("("+VIEW.toLocaleDateString("it-IT")+")")}${isHard(_vd)?` · <span style="color:var(--zaff)">🏷️ ${esc((S.dayEvents||{})[_vd]||"giornata difficile")} (esclusa dalle medie)</span>`:""}</div>
     ${ring(eat.k/Math.max(1,target),def)}
-    <div class="gnums"><span>Mangiate <b>${eat.k}</b></span><span>Fabbisogno <b>${t}</b></span><span>Sport <b>${burn>=0?"+":"−"}${Math.abs(burn)}</b></span></div>
+    <div class="gnums"><span>Mangiate <b>${eat.k}</b></span><span>Pianificato <b>${plannedOfDay(di).k}</b></span><span>Sport <b>${burn>=0?"+":"−"}${Math.abs(burn)}</b></span></div>
     <div class="gnums" style="margin-top:4px"><span>${eat.p} g P</span><span>${eat.c} g C</span><span>${eat.f} g G</span><span>${eat.fib} g F</span></div>
     <div class="stat3"><div><div class="v">${eat.p} g</div><div class="l">proteine</div></div>
     <div><div class="v">${skippedOfDay(di)}</div><div class="l">pasti saltati</div></div>
