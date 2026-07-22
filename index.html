@@ -261,7 +261,10 @@ html[data-theme="dark"] #zoomOv img{background:#131E15}
 #scanreader{width:100%;border-radius:14px;overflow:hidden}
 #aiSpin{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));z-index:90;background:var(--card);border:1px solid var(--linea);box-shadow:var(--shadow-lift);border-radius:24px;padding:10px 16px;display:none;align-items:center;gap:10px;font-size:13px;color:var(--bosco);font-weight:700}
 #aiSpin.on{display:flex}
-#aiSpin .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--linea);border-top-color:var(--salvia)}
+/* rotella dell'AI: unica animazione rimasta, gira SOLO mentre l'AI lavora */
+@keyframes nspin{to{transform:rotate(360deg)}}
+#aiSpin .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--linea);border-top-color:var(--salvia);animation:nspin .8s linear infinite}
+@media(prefers-reduced-motion:reduce){#aiSpin .sp{animation:none}}
 #toast{position:fixed;left:50%;transform:translateX(-50%) translateY(-16px) scale(.9);top:78px;z-index:96;background:var(--grad);color:#fff;border-radius:22px;padding:11px 20px;font-size:13.5px;font-weight:700;opacity:0;pointer-events:none;transition:all .4s var(--ease);box-shadow:0 12px 30px -8px rgba(22,163,74,.6)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:97;overflow:hidden}
@@ -445,7 +448,7 @@ enrichFiber(BASE_PLAN);
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="5.1.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="5.1.2";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -1026,7 +1029,7 @@ window.delExtraAsk=(d,i)=>{if(confirm("Eliminare questo extra?\n(Se semplicement
 window.addExtra=(d)=>{ // v5.1: crea un extra VUOTO da compilare come preferisci
   S.week.days[d].extras.push({d:"Nuovo extra — compilalo con ✏️, 📸 o barcode",k:0,p:0,st:"done"});
   save();render(cur);};
-/* 🚑 Salva-sgarro: ribilancia i pasti rimanenti della giornata */
+/* ⚖️ Salva-sgarro: ribilancia i pasti rimanenti della giornata */
 window.extraPhoto=async(di)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
   try{const ph=await snapPhoto();
@@ -1126,11 +1129,63 @@ window.rebalanceNextDay=async(fromDi,toDi)=>{
   }catch(e){aiFail(e);}};
 /* RGP — Ribilancia Giorno Precedente: un tocco. Se ieri hai sforato,
    ribilancia l'intera giornata di oggi; altrimenti conferma che è tutto ok. */
-window.rgp=(di)=>{
-  if(!isToday())return alert("RGP funziona sul giorno corrente.");
-  const yi=yIdx();
-  if(S.week.days[di].rebalancedFrom===yi)return alert("Oggi è già stato ribilanciato per lo sforo di ieri.");
-  return rebalanceNextDay(yi,di);};
+/* RGP — Ribilancia Giorni Precedenti (v5.1)
+   Apre un elenco a spunta degli ULTIMI 5 giorni precedenti con lo sforo di
+   ciascuno: scegli quali recuperare e alleggerisco i pasti di oggi ancora da
+   consumare, riscrivendo le grammature (mai solo i numeri). */
+function overOfDay(di){return Math.round(eatenOfDay(di).k-plannedOfDay(di).k);}
+/* RGP — Ribilancia Giorni Precedenti (v5.1.2): tendina a SELEZIONE MULTIPLA
+   con le calorie in più di ciascuno degli ultimi 5 giorni. Scegli quali
+   recuperare e alleggerisco i pasti di oggi ancora da consumare. */
+function overOfDay(di){return Math.round(eatenOfDay(di).k-plannedOfDay(di).k);}
+function rgpDays(di){
+  const done=S.week.days[di].rgpDone||[];const out=[];
+  for(let d=di-1;d>=0&&out.length<5;d--) // al massimo i 5 giorni precedenti
+    out.push({di:d,over:overOfDay(d),tracked:eatenOfDay(d).k>0,used:done.indexOf(d)>=0});
+  return out;}
+function rgpRowHTML(di){
+  const days=rgpDays(di);
+  const sel=days.filter(d=>d.tracked&&d.over>50&&!d.used);
+  if(!days.length)return "";
+  const opts=days.map(d=>{
+    const dis=(!d.tracked||d.over<=50||d.used);
+    const note=!d.tracked?"non tracciato":(d.used?"già recuperato":(d.over>50?"+"+d.over+" kcal":"in linea"));
+    return `<option value="${d.di}" ${dis?"disabled":"selected"}>${PLAN[d.di].day} · ${note}</option>`;}).join("");
+  return `<span style="font-size:12.5px;color:var(--grigio);font-weight:700;margin-left:auto">RGP</span>
+  <select id="rgpSel" multiple size="${Math.min(4,days.length)}" style="max-width:190px;font-size:12px;padding:4px 6px"
+    title="Giorni precedenti sforati: seleziona quelli da recuperare (tocca per aggiungere o togliere)">${opts}</select>
+  <button class="btn small" ${sel.length?"":"disabled style=\"opacity:.5\""} onclick="rgpRun(${di})" title="Recupera i giorni selezionati alleggerendo i pasti di oggi">⚖️ Recupera</button>`;}
+window.rgpRun=async(toDi)=>{
+  const el=document.getElementById("rgpSel");
+  const sel=el?[...el.selectedOptions].filter(o=>!o.disabled).map(o=>+o.value):[];
+  if(!sel.length)return alert("Nella tendina RGP seleziona almeno un giorno sforato da recuperare.");
+  const tot=sel.reduce((a,d)=>a+Math.max(0,overOfDay(d)),0);
+  if(tot<=50)return alert("✅ I giorni scelti non risultano sforati: pasti di oggi invariati.");
+  if(!aiOn())return aiFail(new Error("nokey"));
+  const mains=dayItems(toDi).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
+    return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm";});
+  if(!mains.length)return alert("Non ci sono pasti di oggi ancora da consumare da alleggerire.");
+  const list=mains.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
+  const remPlanned=list.reduce((a,x)=>a+x.kcal,0);
+  const targetRem=Math.max(mains.length*250,remPlanned-tot);
+  const nomi=sel.map(d=>PLAN[d].day).join(", ");
+  try{
+    const t=await aiAsk('Nei giorni '+nomi+' ho ecceduto complessivamente di '+tot+' kcal. Alleggerisci i pasti di OGGI ancora da consumare (ora sommano '+remPlanned+' kcal) portandone la SOMMA vicino a '+Math.round(targetRem)+' kcal. REGOLA FONDAMENTALE: riduci RISCRIVENDO ogni pasto con GRAMMATURE più basse (es. "riso 90g"→"riso 60g") oppure ELIMINANDO componenti; le kcal dichiarate devono corrispondere alla nuova descrizione, NON limitarti ad abbassare i numeri lasciando il pasto uguale. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. Pasti: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
+    const arr=parseAIJSON(t);
+    const valid=arr.filter(a=>{const it=mains.find(r=>r.slot===a.slot);if(!it)return false;
+      const o=mealOpt(it.pdi,it.mi);
+      return String(a.desc).trim()!==String(o.d).trim()||Math.round(a.kcal)>=o.k;});
+    if(!valid.length)return alert("L'AI non ha proposto grammature nuove valide: riprova.");
+    let msg="Recupero di "+nomi+" (~"+tot+" kcal in totale):\n";
+    valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);const o=mealOpt(it.pdi,it.mi);
+      msg+="\n• "+a.slot+" ("+o.k+"→"+Math.round(a.kcal)+" kcal): "+a.desc;});
+    if(!confirm(msg+"\n\nOK = applica ai pasti di oggi"))return;
+    valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);if(it)
+      S.week.days[it.pdi].meals[it.mi].custom={d:a.desc+" (recupero)",k:Math.round(a.kcal),p:Math.round(a.prot)};});
+    S.week.days[toDi].rgpDone=(S.week.days[toDi].rgpDone||[]).concat(sel);
+    save();render(cur);
+    alert("Fatto: pasti di oggi alleggeriti per recuperare "+nomi+".");
+  }catch(e){aiFail(e);}};
 window.dismissReb=()=>{S.ui.dismissReb=iso(new Date());save();render("oggi");};
 /* 🏳️ Giornate difficili: escluse dalle medie e dalle correlazioni AI, e non
    spezzano lo streak (a differenza della vacanza che congela tutto). */
@@ -1280,25 +1335,17 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div style="flex:1;font-size:13.5px">🌅 <b>Ieri</b>${p.missMeals?` hai <b>${unmarkedOfDay(p.di)} pasti</b> da spuntare`:""}${p.missMeals&&p.missSport?" e":""}${p.missSport?" <b>nessuno sport</b> registrato":""}: se manca qualcosa, inseriscilo.</div>
     <button class="btn ghost small" onclick="goReview(${p.di})">Apri ieri</button>
     <button class="btn small" onclick="reviewDone('${p.dISO}')">Fatto</button></div>`;}
-  // 🔁 Recupero giorni sforati: banner con SELETTORE del giorno da ribilanciare
-  if(isToday()&&!S.ui.vacanza){const ti=viewIdx();
-    const over=[];for(let di=0;di<ti;di++){const s=Math.round(surplusOfDay(di));if(s>200&&S.week.days[ti].rebalancedFrom!==di)over.push({di,s});}
-    if(over.length&&S.ui.dismissReb!==iso(new Date())){
-      h+=`<div class="card" style="border-left:4px solid var(--rosso);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-      <div style="flex:1;font-size:13.5px">🔁 Hai <b>giorni sforati</b> da recuperare. Scegli quale e alleggerisco i pasti di <b>oggi</b> non ancora spuntati:</div>
-      <select id="rebFrom" style="max-width:180px">${over.map(o=>`<option value="${o.di}">${PLAN[o.di].day} (+${o.s} kcal)</option>`).join("")}</select>
-      <button class="btn small" onclick="rebalanceNextDay(+document.getElementById('rebFrom').value,${ti})">Ribilancia oggi</button>
-      <button class="ibtn" onclick="dismissReb()" title="Nascondi per oggi">✕</button></div>`;}}
+  // v5.1: nessun banner automatico di ribilanciamento — si usa il tasto RGP
   const _vd=iso(VIEW);
   // 🏷️ Evento del giorno (sostituisce "giornata difficile"): il giorno viene
   // escluso dalle medie e non spezza lo streak, ma con una MOTIVAZIONE chiara.
   if(!S.ui.vacanza){const ev=(S.dayEvents||{})[_vd]||"";
-    h+=`<div class="mtools" style="margin:0 0 8px;align-items:center">
-    <span style="font-size:12.5px;color:var(--grigio)">🏷️</span>
-    <select style="max-width:150px;font-size:12px" onchange="setDayEvent('${_vd}',this.value)">
+    h+=`<div class="mtools" style="margin:0 0 8px;align-items:center;flex-wrap:wrap;gap:8px">
+    <span style="font-size:12.5px;color:var(--grigio);font-weight:700">Evento</span>
+    <select style="max-width:170px;font-size:12px" onchange="setDayEvent('${_vd}',this.value)">
       ${["","Giornata no","Compleanno","Natale","Capodanno","Pasqua","Festa / party","Cena fuori","Lavoro / trasferta","Matrimonio","Ferragosto","Vacanza breve","Malattia","Altro…"].map(o=>`<option value="${o}" ${ev===o?"selected":""}>${o||"— nessuno —"}</option>`).join("")}
     </select>${ev?`<span class="badge" style="background:var(--zaffbg);color:var(--zaff)">escluso dalle medie</span>`:""}
-    ${isToday()?`<button class="btn small" style="margin-left:auto" title="Ribilancia Giorno Precedente: se ieri hai sforato, alleggerisce i pasti di oggi; altrimenti non tocca nulla" onclick="rgp(${di})">RGP</button>`:""}</div>`;}
+    ${isToday()?rgpRowHTML(di):""}</div>`;}
 
   if(S.ui.vacanza){
     h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
@@ -1344,8 +1391,8 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     </div></div></div>`;});
   h+=`<div class="mtools" style="margin-top:4px">
     <button class="btn ghost small" onclick="addExtra(${di})">+ Extra</button>
-    <button class="btn small" onclick="rebalance(${di})">🚑 Ribilancia</button></div>
-  <div class="hint">🚑 <b>Ribilancia</b> ricalcola la giornata tenendo conto dei pasti già spuntati fino ad ora, alleggerendo solo quelli ancora da consumare.</div>`;
+    <button class="btn small" onclick="rebalance(${di})">⚖️ Ribilancia Oggi</button></div>
+  <div class="hint">⚖️ <b>Ribilancia Oggi</b> ricalcola la giornata tenendo conto dei pasti già spuntati fino ad ora, alleggerendo solo quelli ancora da consumare.</div>`;
   // Svuota-frigo — "⭐ I miei piatti" al posto di "Usa il testo"; "Usa il testo" sotto la casella
   h+=`<div class="card" style="margin-top:18px"><h2>🍲 Crea un piatto con quello che hai</h2>
   ${mealSelHtml("frTarget",di)}
@@ -2608,14 +2655,14 @@ function renderSetup(){const el=document.getElementById("pg-setup");let h="";
 /* ═══ PAGINA GUIDA (statica) ═══ */
 function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <div class="card"><h2>❓ Guida rapida</h2>
-<div class="hint">Come funziona, in 20 secondi: ogni giorno <b>spunti quello che mangi</b> e registri gli allenamenti; l'anello di Oggi ti mostra il <b>deficit</b> in tempo reale; a fine settimana l'app <b>archivia da sola</b> e riparte (tutto resta modificabile nello Storico). Tutto qui — il resto sono aiuti.</div></div>
+<div class="hint">Come funziona, in 20 secondi: ogni giorno <b>spunti quello che mangi</b> (✓ o ✗, extra compresi) e registri gli allenamenti; l'anello di Oggi ti mostra il <b>deficit</b> in tempo reale; a fine settimana l'app <b>archivia da sola</b> e riparte (tutto resta modificabile nello Storico). Tutto qui — il resto sono aiuti.</div></div>
 
 <div class="card"><h2>Le pagine</h2><table class="gtable">
-<tr><td>☀️</td><td><b>Oggi</b> — bilancio del giorno (anello), acqua, sonno/relax/umore, pasti da spuntare, foto-AI. Le frecce ‹ › in alto cambiano giorno.</td></tr>
+<tr><td>☀️</td><td><b>Oggi</b> — bilancio del giorno (anello con il <b>deficit</b> in grande e <b>Pianificato</b> = le kcal previste dal piano per quel giorno), acqua, sonno/relax/umore, pasti ed extra da spuntare. Le frecce ‹ › in alto cambiano giorno.</td></tr>
 <tr><td>🍽️</td><td><b>Piano</b> — tutta la settimana: spunte, spostamenti, modifiche, note ed extra per ogni giorno.</td></tr>
 <tr><td>🛒</td><td><b>Spesa</b> — checklist spuntabile, ricerca Conad, alternative AI, prodotti salvati, invio WhatsApp.</td></tr>
 <tr><td>🏃</td><td><b>Sport</b> — registra allenamenti (le kcal si calcolano sul tuo peso); nuovi sport con stima MET.</td></tr>
-<tr><td>📚</td><td><b>Storico</b> — recap live, grafici, settimane salvate con report AI, stampa PDF.</td></tr>
+<tr><td>📚</td><td><b>Storico</b> — recap con selettore <b>Settimana / Mese in corso</b>, <b>Riepilogo esteso</b> (medie settimanali o mensili di tutta la storia, in un riquadro scorrevole), <b>Mesi passati</b> e <b>Settimane passate</b> sempre modificabili, grafici, report AI, stampa PDF.</td></tr>
 <tr><td>👤</td><td><b>Io</b> — dati e biometrie, motore calorico, vacanza, AI, Drive e backup.</td></tr>
 <tr><td>🧭</td><td><b>Il tuo piano</b> (in Io) — "Ri/comincia da zero": questionario guidato (dati, intolleranze, gusti, obiettivi) da cui l'AI genera una settimana su misura, modificabile prima della conferma. "Modifica il piano attuale" per ritocchi a mano. Sempre da validare con un dietista.</td></tr></table></div>
 
@@ -2623,33 +2670,52 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <div class="gsec">Sui pasti</div><table class="gtable">
 <tr><td>○ ✓ ✗</td><td>Tocca il cerchio per ciclare: <b>da fare → mangiato → saltato</b>. Solo i ✓ contano nel bilancio; i ✗ restano segnati come saltati.</td></tr>
 <tr><td>📍→</td><td>I due menu spostano il pasto in un altro <b>giorno</b> e/o <b>fascia</b> (anche pranzo↔cena dello stesso giorno). Il badge rosso ricorda da dove viene.</td></tr>
-<tr><td>✏️</td><td><b>Modifica ingredienti</b>: cambi il testo e l'AI stima kcal/proteine.</td></tr>
+<tr><td>✏️</td><td><b>Modifica ingredienti</b>: cambi il testo e l'AI ristima kcal e macro. Funziona anche sui pasti già ribilanciati o modificati, e <b>premendo OK senza cambiare nulla</b> rifà comunque la stima.</td></tr>
 <tr><td>🎲</td><td><b>Alternativa</b>: l'AI inventa un piatto diverso con gli stessi macro; puoi renderla fissa o solo per questa settimana.</td></tr>
 <tr><td>🔁</td><td><b>Non ho un ingrediente</b>: si apre un pannello con 3 proposte <b>cliccabili</b> (tocca per selezionare, poi OK). "🔄 Altre proposte" ne genera di nuove; "📸 Scatta foto del cibo che hai in casa" (anche più foto) e poi "🍳 Proponi dalla foto" ti fa suggerire il sostituto migliore tra ciò che possiedi.</td></tr>
 <tr><td>⭐</td><td><b>I miei piatti</b>: quando un piatto AI ti piace, salvalo con ⭐; lo ritrovi nel bottone "⭐ I miei piatti" (dentro Crea un piatto) e lo riusi con un tap, senza consumare AI.</td></tr>
-<tr><td>🚶</td><td><b>Passi</b> (in Sport, separati dagli allenamenti): riporta i passi dell'orologio; contano nel deficit solo quelli OLTRE i 5000, perché i primi sono già nel fabbisogno da sedentario. Il banner del mattino te li ricorda.</td></tr>
+<tr><td>🚶</td><td><b>Passi</b>: non si inseriscono più ogni giorno. Nel fabbisogno sono già inclusi i tuoi <b>passi base</b> (3.000 di riferimento, modificabili in Io): se ne fai stabilmente di più o di meno, cambia lì il valore. Le camminate vere si registrano in <b>Sport</b> con durata e intensità — solo quelle contano come bruciato.</td></tr>
 <tr><td>🎯</td><td><b>Obiettivo peso</b> (in Io): imposta il traguardo e vedi la linea nel grafico + la data stimata di arrivo al ritmo attuale.</td></tr>
 <tr><td>↩️</td><td>Ripristina il pasto originale dopo ✏️, 🎲 o 🔁.</td></tr>
-<tr><td>🚑</td><td><b>Ribilancia</b>: se hai accumulato calorie in più, l'AI alleggerisce i pasti rimanenti (mai le proteine).</td></tr></table>
+<tr><td>📸</td><td><b>Analisi</b> (dentro ogni pasto): fotografi il piatto e l'AI ricalcola kcal e macro reali. Al ristorante puoi fotografare <b>una portata alla volta</b> (primo, secondo, dolce): ti chiede se <b>aggiungere</b> al pasto o sostituirlo. La spunta ✓ resta sempre tua.</td></tr>
+<tr><td>🔙</td><td>Appare sui pasti spostati: riporta il pasto <b>e quello scambiato con lui</b> al giorno di origine. Lo scambio infatti è <b>automatico e bidirezionale</b>: se metti il pranzo di mercoledì alla cena di venerdì, la cena di venerdì prende il posto lasciato libero.</td></tr>
+<tr><td>⚖️</td><td><b>Ribilancia Oggi</b>: rimette in riga la giornata sui pasti non ancora spuntati, riscrivendo le grammature (mai le proteine). Se sei già in linea non tocca nulla.</td></tr></table>
 <div class="gsec">Colori dei pasti</div><table class="gtable">
 <tr><td>🟩</td><td>Verde = pasto normale del piano.</td></tr>
 <tr><td>🟧</td><td>Arancione = pasto <b>libero</b> (sushi, pizza, aperitivo, cornetto): non obbligatorio, c'è sempre l'opzione normale.</td></tr>
 <tr><td>🟦</td><td>Blu = <b>mensa</b> (mar/gio): segui la regola scritta nella riga.</td></tr></table>
 <div class="gsec">Altri</div><table class="gtable">
-<tr><td>📸</td><td>Foto + AI: <b>Analisi Piatto</b> (stima kcal di ciò che fotografi), <b>Selezionatore di menù</b> (sceglie dal menù il piatto compatibile col pasto di questo momento, compensando il surplus), <b>Crea un piatto</b> (più foto di frigo/congelatore/dispensa → ricetta su misura).</td></tr>
-<tr><td>Z</td><td>Zuccheri (g): stimati dalla descrizione, o presi da AI e barcode quando disponibili. Compaiono accanto a P/C/G/F.</td></tr>
+<tr><td>🍽️</td><td><b>Selezionatore di menù</b>: scatti <b>più foto</b> del menù (anche pagine diverse), poi premi <b>Cerca</b> e l'AI sceglie il piatto più compatibile con quello che dovresti mangiare adesso, più due riserve. In alternativa incolli il testo e usi "Usa il testo".</td></tr>
+<tr><td>🍲</td><td><b>Crea un piatto con quello che hai</b>: fotografi frigo, congelatore e dispensa (più foto), poi <b>Crea</b>; il piatto è tarato sul pasto di questo momento e compensa le calorie già accumulate. "⭐ I miei piatti" riusa i piatti salvati senza consumare AI.</td></tr>
+<tr><td>Z</td><td><b>Zuccheri</b> (g): accanto a P/C/G/F. Arrivano dal barcode (Open Food Facts) o dall'AI; se mancano sono stimati dalla descrizione.</td></tr>
+<tr><td>＋</td><td><b>+ Extra</b>: crea una card <b>vuota</b> che compili come preferisci — ✏️ a mano, 📸 con la foto o con il barcode. Gli extra si spuntano come i pasti (✓ mangiato / ✗ non mangiato): se non l'hai mangiato metti la ✗ e non conta, senza cancellarlo. Il 🗑 elimina davvero, con conferma.</td></tr>
+<tr><td>RGP</td><td><b>Ribilancia Giorni Precedenti</b> (sulla riga Evento, solo su oggi): la tendina elenca gli <b>ultimi 5 giorni</b> con le calorie in più di ciascuno. Selezioni quelli da recuperare (selezione multipla) e ⚖️ <b>Recupera</b> alleggerisce i pasti di oggi non ancora spuntati. I giorni non tracciati o già recuperati restano disattivati.</td></tr>
+<tr><td>🏷️</td><td><b>Evento</b> del giorno (Natale, compleanno, festa, cena fuori, lavoro/trasferta, giornata no, malattia…): il giorno resta tracciato ma <b>escluso dalle medie</b> e non spezza la serie 🔥.</td></tr>
 <tr><td>📷</td><td>Barcode (dentro ogni pasto): scansiona PIÙ prodotti, correggi i grammi e conferma la somma — da Open Food Facts, senza consumare AI.</td></tr>
 <tr><td>🔥</td><td><b>La serie, in parole semplici</b>: conta i giorni "buoni" di fila. Ogni mattina l'app guarda com'è andata IERI e si fa 3 domande: hai spuntato i pasti? sei rimasto dentro le calorie? gli extra erano al massimo 300 kcal? <b>Tre sì = fiamma +1. Anche un solo no = si riparte da 0.</b> Fa tutto da sola, non devi premere nulla; in 🏖️ vacanza si mette in pausa.</td></tr>
 <tr><td>💧</td><td>Acqua: obiettivo tarato sul tuo peso (35 ml/kg, in bicchieri da 250 ml), <b>+2</b> nei giorni con allenamento intenso o oltre 45 minuti.</td></tr>
 <tr><td>⭐</td><td>Sonno · Relax · Come ti senti: scala 1 basso → 5 alto. Alimentano le correlazioni AI di fine settimana.</td></tr>
 <tr><td>🏖️</td><td>Vacanza (in Io): congela deficit e 🔥; l'app resta un diario senza giudizio.</td></tr>
-<tr><td>🌅</td><td>Banner del mattino: se ieri hai pasti senza spunta, zero allenamenti o passi non inseriti, ti propone "Completa ieri" e "Sport & Passi".</td></tr>
+<tr><td>🌅</td><td>Promemoria del mattino: se <b>ieri</b> restano pasti senza spunta o non hai registrato sport, resta in alto finché non premi <b>Fatto</b> (o apri ieri e sistemi).</td></tr>
 <tr><td>🌓</td><td>Il bottone del tema cicla tra chiaro → scuro → <b>automatico</b> (segue le impostazioni del telefono).</td></tr>
 <tr><td>👆</td><td>Sulla pagina Oggi puoi <b>scorrere col dito</b> (swipe sinistra/destra) per cambiare giorno, oltre alle frecce ‹ ›.</td></tr>
-<tr><td>📅</td><td>Banner del lunedì: nuova settimana → controlla il recap e convalida la scorsa. <b>Dopo il salvataggio non è più modificabile.</b> Le medie del recap contano solo i giorni completati (i ⏳ sono esclusi).</td></tr>
+<tr><td>📅</td><td>Fine settimana: l'archiviazione è <b>automatica</b> con quello che c'è, senza bottoni da premere. Le settimane chiuse restano <b>sempre modificabili</b> da Storico → Settimane passate → ✏️.</td></tr>
 <tr><td>🔗</td><td><b>Link di ricerca Conad</b> (in cima a Spesa): Conad richiede di scegliere prima il negozio, quindi non c'è un link universale. Fai una ricerca sul sito col TUO negozio selezionato, copia l'indirizzo, sostituisci il termine cercato con <b>{q}</b> e incollalo nel campo — da quel momento ogni 🔗 della lista punta al tuo negozio.</td></tr>
 <tr><td>🛒</td><td><b>I miei prodotti Conad</b> (in Spesa): per un prodotto preciso, apri la sua pagina sul sito Conad, copia il link, poi "+ Aggiungi prodotto" → dai un nome e incolla il link. Da quel momento lo riapri con "🛒 Apri", senza passare dal modello di ricerca.</td></tr>
 <tr><td>🥗</td><td><b>Caratteristiche alimentari</b> (in Io): intolleranze, cibi da evitare/preferiti e FODMAP — le rispettano TUTTE le funzioni AI. Modificale a mano o con "🤖 Compila con l'AI".</td></tr></table></div>
+
+<div class="card"><h2>✨ Novità della versione 5</h2><table class="gtable">
+<tr><td>Extra</td><td>Si spuntano ✓/✗ come i pasti e hanno le stesse icone (✏️ 📸 barcode 🗑). "+ Extra" crea una card vuota da compilare.</td></tr>
+<tr><td>Icone</td><td>Tutte su una riga dentro ogni pasto: ✏️ 🎲 🔁 📸 e barcode. Fuori restano solo <b>+ Extra</b> e <b>⚖️ Ribilancia Oggi</b>.</td></tr>
+<tr><td>Barcode</td><td>Più prodotti nella stessa scansione: correggi i grammi di ognuno e confermi la <b>somma</b>, dentro un pasto o in un extra.</td></tr>
+<tr><td>⚖️</td><td><b>Ribilancia Oggi</b> lavora a budget: pianificato del giorno meno quello già mangiato. Se sei in linea te lo dice e non tocca nulla; quando taglia <b>riscrive le grammature</b> o toglie componenti, mai solo i numeri.</td></tr>
+<tr><td>RGP</td><td>Recupero dei giorni precedenti a scelta tua, dalla tendina a selezione multipla sulla riga Evento.</td></tr>
+<tr><td>Scambi</td><td>Spostare un pasto scambia in automatico i due pasti; 🔙 annulla lo scambio.</td></tr>
+<tr><td>Passi</td><td>Passi base nel fabbisogno (3.000, modificabili in Io); niente sezione passi, le camminate vanno in Sport.</td></tr>
+<tr><td>Storico</td><td>Recap con Δ rispetto al <b>pianificato del giorno</b>, vista Settimana/Mese in corso, Riepilogo esteso scorrevole, Mesi passati, chiusura settimana automatica.</td></tr>
+<tr><td>Zuccheri</td><td>Nuovo macro <b>g Z</b> accanto a proteine, carboidrati, grassi e fibre.</td></tr>
+<tr><td>Batteria</td><td>Effetti grafici rimossi (sfondi sfocati animati, vetro, coriandoli, animazioni dei grafici): l'app non disegna nulla quando non la tocchi. Resta solo la rotella mentre l'AI lavora.</td></tr>
+</table></div>
 
 <div class="card"><h2>AI (Gemini)</h2>
 <div class="hint">Serve una chiave gratuita da <b>aistudio.google.com</b> → Get API key, da incollare in <b>Io → Motore AI</b>. "auto" sceglie da solo il modello migliore disponibile. Ogni stima è una <b>proposta</b>: confermi o correggi sempre tu. In Io vedi il contatore di chiamate/token di oggi; se compare l'errore "limite gratuito", aspetta un minuto.</div></div>
