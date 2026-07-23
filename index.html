@@ -275,6 +275,13 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .ctlrow .ck input{width:19px;height:19px;margin:0}
 .ctlrow .ck input:disabled+span{opacity:.45}
 .lnk{color:var(--salvia);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.wtab{font-size:12.5px;width:100%;table-layout:auto}
+.wtab th,.wtab td{padding:7px 5px;white-space:nowrap}
+.wtab th:first-child,.wtab td:first-child{padding-left:2px}
+.wtab td:first-child{font-weight:600;color:var(--ink)}
+@media(max-width:400px){.wtab{font-size:11.5px}.wtab th,.wtab td{padding:6px 3px}}
+.card.pesata{border-left:4px solid var(--salvia);background:linear-gradient(180deg,var(--menta) 0%,var(--card) 42%)}
+.card.pesata h2{color:var(--bosco)}
 .ckline{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px;font-weight:500;color:var(--ink)}
 .ckline input{width:20px;height:20px;margin:0}
 .ckline small{color:var(--grigio);font-weight:400}
@@ -484,13 +491,20 @@ const BASE_PLAN=[
 ];
 let PLAN=BASE_PLAN; // può essere sostituito dal piano personalizzato (S.customPlan)
 const SLOTS=["Colazione","Metà mattina","Pranzo","Metà pomeriggio","Aperitivo","Cena","Dopo cena"];
+/* Categorie GENERICHE della spesa: devono valere per qualsiasi prodotto, così
+   l'AI sa sempre dove collocare quello che trova nel piano. La lista sotto è
+   quella della dieta standard; con un piano personalizzato viene rigenerata. */
+const SHOP_CATS=["Carne e pesce","Uova e latticini","Cereali, pane e derivati","Legumi",
+  "Verdura","Frutta","Grassi, semi e frutta secca","Dispensa e bevande","Altro"];
 const SHOP=[
- ["PROTEINE (peso da crudo)",["Pollo 400 g crudi (lun + gio)","Salmone 250 g crudi (dom)","Branzino 250 g crudi (mer, alternativa al sushi)","Vitello 200 g crudi (mar) — o prosciutto 150 g","Tonno all'olio ~3 scatolette (mer + ven)","Fiocchi di latte 170 g SENZA lattosio (mer)","Caprino fresco 100 g (sab)","Scamorza senza lattosio ~40 g","Parmigiano ~120 g (uso quotidiano)","Prosciutto cotto ~150 g (variante mar)","Uova ~8 (lun 2, ven 3, dom 3)","Piselli surgelati ~560 g (ven 220 + sab 240 + dom 100)"]],
- ["KEFIR / YOGURT (senza lattosio)",["Kefir ~1 L (colazione)","Yogurt greco senza lattosio ~1,4 kg (spuntini)"]],
- ["CARBOIDRATI",["Patate ~1,3 kg (crude)","Quinoa soffiata ~200 g","Pasta 100 g secca (ven)","Pane + crostini 1 filone","Zuppa di verdure 1 (lun)","Gelato senza lattosio (gio, opz.)"]],
- ["VERDURA (di stagione)",["Verdura di stagione + verdura cruda (mer)","Carote ~1 kg","Insalata / valeriana 4–5 buste","Cetrioli / cipollotto (parte verde)","Verdure surgelate al naturale"]],
- ["FRUTTA (di stagione)",["Frutta di stagione (spuntino + dopo cena)","Frutti di bosco freschi o surgelati ~400 g","Limone"]],
- ["GRASSI, SEMI, DISPENSA",["Olio EVO","Semi oleosi misti ~150 g (con noci e lino)","Noci ~100 g (1 al giorno)","Avocado 1–2 (lun)","Olive 1 barattolo (opz.)","Tisane: finocchio, melissa, camomilla"]]
+ ["Carne e pesce",["Pollo 400 g crudi (lun + gio)","Salmone 250 g crudi (dom)","Branzino 250 g crudi (mer)","Vitello 200 g crudi (mar) — o prosciutto 150 g","Tonno al naturale 2 scatolette"]],
+ ["Uova e latticini",["Uova 6","Kefir ~1 L (colazione)","Yogurt greco ~1,4 kg (spuntini)","Fiocchi di latte 250 g","Ricotta 250 g"]],
+ ["Cereali, pane e derivati",["Pane + crostini 1 filone","Pasta 100 g secca (ven)","Quinoa soffiata ~200 g","Fette biscottate 1 pacco"]],
+ ["Legumi",["Ceci o fagioli 1 barattolo","Lenticchie secche 250 g"]],
+ ["Verdura",["Verdura di stagione (mer)","Patate ~1,3 kg","Carote ~1 kg","Insalata / valeriana 4–5 buste","Cetrioli / cipollotto","Verdure surgelate al naturale","Zuppa di verdure 1 (lun)"]],
+ ["Frutta",["Frutta di stagione (spuntino + dopo cena)","Frutti di bosco freschi o surgelati ~400 g","Limone","Avocado 1–2 (lun)"]],
+ ["Grassi, semi e frutta secca",["Olio EVO","Semi oleosi misti ~150 g","Noci ~100 g","Olive 1 barattolo"]],
+ ["Dispensa e bevande",["Tisane: finocchio, melissa, camomilla","Sale, spezie, aceto","Caffè"]]
 ];
 const SPORTS_DEFAULT=[{name:"Camminata",met:3.5},{name:"Corsa",met:9.8},{name:"Tennis",met:7.3},{name:"Squash",met:9.0},{name:"Pesi",met:5.0},{name:"Trekking",met:6.0},{name:"Lavori domestici — interno (faccende)",met:3.0},{name:"Lavori domestici — esterno (giardino)",met:4.3}];
 let INT={bassa:.8,media:1,alta:1.2}; // moltiplicatori di intensità (modificabili nelle Regole)
@@ -1672,6 +1686,11 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <div style="flex:1;font-size:13.5px">📅 <b>Nuova settimana!</b> Controlla il recap della scorsa e, se è tutto a posto, convalidala. <b>Potrai comunque correggerla anche dopo</b> da Storico → ✏️ Modifica.</div>
     <button class="btn small" onclick="show('storico')">Vai al recap</button>
     <button class="ibtn" onclick="dismissWeek()" title="Nascondi per oggi">✕</button></div>`;
+  if(!aiOn()&&!S.ui.dismissAI)h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+    <div style="flex:1;font-size:13.5px">🤖 <b>Manca la chiave AI</b>: senza, restano spenti piano automatico, stime dei piatti, foto, menù, ribilanciamenti e recuperi. È gratuita e si crea in un minuto.</div>
+    <a class="btn small" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="text-decoration:none">Crea la chiave ↗</a>
+    <button class="btn ghost small" onclick="show('io')">Incollala</button>
+    <button class="ibtn" onclick="S.ui.dismissAI=1;save();render('oggi')" title="Nascondi">✕</button></div>`;
   if(needMorningBanner()){const p=pendingReviewDays()[0];
     h+=`<div class="card" style="border-left:4px solid var(--zaff);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
     <div style="flex:1;font-size:13.5px">🌅 <b>Ieri</b> è rimasto indietro: ${[
@@ -1903,9 +1922,7 @@ window.genShop=async()=>{
   if(!confirm("Genero la lista della spesa dal piano attuale? Sostituisce quella corrente."))return;
   try{
     const meals=PLAN.map(d=>d.meals.filter(m=>m.type==="norm").map(m=>m.o[0].d)).flat();
-    const t=await aiAsk("Da questi pasti settimanali crea una lista della spesa per UNA persona, raggruppata in 5-7 categorie con quantita totali stimate. Pasti: "+JSON.stringify(meals)+' Rispondi SOLO JSON: [["CATEGORIA",["voce 1","voce 2"]],...]');
-    const arr=parseAIJSON(t);
-    if(!Array.isArray(arr)||!arr.length)throw new Error("formato");
+    const t=await aiAsk("Da questi pasti settimanali crea una lista della spesa per UNA persona con le quantita totali stimate. Usa ESCLUSIVAMENTE queste categorie, nell'ordine dato, saltando quelle vuote: "+JSON.stringify(SHOP_CATS)+". Ogni prodotto va nella categoria giusta per la sua natura (es. lo yogurt in 'Uova e latticini', il pane in 'Cereali, pane e derivati', le patate in 'Verdura'). Rispondi SOLO con un JSON array di coppie [categoria, [prodotti]]. Pasti: "+JSON.stringify(meals));
     S.customShop=arr.map(x=>[String(x[0]),x[1].map(String)]);S.shop={};save();render("spesa");
   }catch(e){aiFail(e);}};
 
@@ -1927,14 +1944,19 @@ function homeOptForShop(m){
   return m.o[0];
 }
 /* Categoria della spesa in base a parole chiave dell'ingrediente */
+/* Classificazione per REPARTO, non per macronutriente: le stesse categorie
+   generiche usate anche dall'AI, così un prodotto finisce sempre nello stesso
+   posto sia che la lista la calcoli l'app sia che la generi l'AI. */
 function shopCatOf(s){s=(s||"").toLowerCase();
-  if(/kefir|yogurt/.test(s))return "KEFIR / YOGURT";
-  if(/pollo|salmone|branzino|vitello|prosciutto|tonno|uova|uovo|fiocchi di latte|caprino|scamorza|parmigiano|piselli|carne|pesce/.test(s))return "PROTEINE";
-  if(/patate|patata|quinoa|pasta|pane|crostini|crostino|zuppa|gelato|cornetto|riso|avena/.test(s))return "CARBOIDRATI";
-  if(/insalata|valeriana|verdura|verdure|carote|cetriol|cipollotto|rucola|spinaci/.test(s))return "VERDURA";
-  if(/frutta|frutto|frutti di bosco|limone|mela|banana/.test(s))return "FRUTTA";
-  if(/evo|olio|semi|noci|noce|avocado|olive|tisana|tisane/.test(s))return "GRASSI, SEMI, DISPENSA";
-  return "ALTRO";
+  if(/pollo|tacchino|manzo|vitell|maiale|prosciutto|bresaola|salame|carne|salmone|branzino|orata|tonno|merluzzo|gamber|sgombro|pesce|sushi/.test(s))return "Carne e pesce";
+  if(/uova|uovo|kefir|yogurt|latte|ricotta|fiocchi di latte|mozzarell|caprino|scamorza|parmigiano|formagg|burro|skyr/.test(s))return "Uova e latticini";
+  if(/pane|crostin|pasta|riso|quinoa|avena|farro|orzo|cous|couscous|fette biscottate|cracker|cereali|farina|pizza|piadina|gnocchi|polenta/.test(s))return "Cereali, pane e derivati";
+  if(/ceci|fagioli|lenticchi|piselli|fave|soia|edamame|hummus|tofu|tempeh/.test(s))return "Legumi";
+  if(/insalata|valeriana|verdur|carote|cetriol|cipoll|rucola|spinaci|zucchin|melanzan|peperon|pomodor|broccol|cavol|finocchi|patate|patata|zucca|funghi|asparag|sedano|porro|minestr|zuppa|passato/.test(s))return "Verdura";
+  if(/frutta|frutto|frutti di bosco|limone|mela|pera|banana|arancia|kiwi|pesca|albicocc|uva|fragol|lampon|mirtill|anguria|melone|ananas|mango|datter|prugn/.test(s))return "Frutta";
+  if(/olio|evo|semi|noci|noce|mandorl|nocciol|pistacch|anacard|avocado|olive|burro di arachidi|tahini/.test(s))return "Grassi, semi e frutta secca";
+  if(/tisana|tisane|caffè|caffe|tè|the|acqua|sale|spezie|aceto|zucchero|miele|marmellat|cioccolat|integrator|gelato|bevanda|succo|vino|birra/.test(s))return "Dispensa e bevande";
+  return "Altro";
 }
 /* Pulisce un pezzo di descrizione ("Pollo 200g" ecc.) */
 function cleanIngredient(x){return (x||"").replace(/^\s*(libero|mensa)\s*:\s*/i,"").replace(/\s+/g," ").trim();}
@@ -1942,7 +1964,7 @@ function cleanIngredient(x){return (x||"").replace(/^\s*(libero|mensa)\s*:\s*/i,
 function ingrKey(x){return cleanIngredient(x).toLowerCase().replace(/\d+[.,]?\d*\s*(g|kg|ml|l|gr|scatolette?|pallina)?/g,"").replace(/[^a-zàèéìòù ]/g,"").replace(/\s+/g," ").trim();}
 /* Costruisce la lista della spesa dal piano (opzioni a casa) */
 function buildShopFromPlan(){
-  const byCat={};const order=["PROTEINE","KEFIR / YOGURT","CARBOIDRATI","VERDURA","FRUTTA","GRASSI, SEMI, DISPENSA","ALTRO"];
+  const byCat={};const order=SHOP_CATS;
   const seen={};
   PLAN.forEach(function(d){d.meals.forEach(function(m){
     const o=homeOptForShop(m);if(!o)return;
@@ -2378,12 +2400,10 @@ function renderBenvenuto(){
   if(st===1)c=`<h2>🔒 I tuoi dati</h2>
     <p class="obp">Prima di chiederti qualsiasi cosa, è giusto che tu sappia dove finisce.</p>
     <div class="obbox"><b>Tutto resta nel telefono.</b> Nutry non ha account e non ha server propri: quello che scrivi vive nella memoria del browser di questo dispositivo e non parte da lì se non lo decidi tu.</div>
-    <ul class="clean">
-      <li><b>Nessuna registrazione</b>: niente email, niente password, nessun profilo su un server</li>
-      <li><b>Backup su Drive facoltativo</b>: se lo attivi, il file finisce sul <i>tuo</i> account Google, in una cartella tua. Nessun altro vi accede</li>
-      <li><b>Funzioni AI facoltative</b>: se le usi, il testo del pasto o la foto vanno a Google Gemini con la <i>tua</i> chiave, e la risposta torna qui. Nutry non tiene copia delle foto</li>
-      <li><b>Esportazione sempre possibile</b>: da Storico scarichi tutto in CSV o JSON, quando vuoi</li>
-    </ul>
+    <p class="obp"><b>Nessuna registrazione</b>: niente email, niente password, nessun profilo su un server.</p>
+    <p class="obp"><b>Backup su Drive facoltativo</b>: se lo attivi, il file finisce sul <i>tuo</i> account Google, in una cartella tua. Nessun altro vi accede.</p>
+    <p class="obp"><b>Funzioni AI facoltative</b>: se le usi, il testo del pasto o la foto vanno a Google Gemini con la <i>tua</i> chiave, e la risposta torna qui. Nutry non tiene copia delle foto.</p>
+    <p class="obp"><b>Esportazione sempre possibile</b>: da Storico scarichi tutto in CSV o JSON, quando vuoi.</p>
     <div class="obbox"><b>Lo sviluppatore non vede niente.</b> Non ha accesso ai tuoi dati alimentari, al tuo peso, al tuo Drive né alla tua chiave AI: non esiste un server dove finirebbero. Anche se ci segnalerai un problema, l'email conterrà solo quello che scrivi tu e, se lo autorizzi, versione dell'app e modello del telefono.</div>
     <div class="obwarn">Attenzione: se cancelli i dati del browser o disinstalli senza backup, i dati si perdono. Per questo più avanti ti proporrò il backup su Drive.</div>`;
   if(st===2)c=`<h2>📏 Chi sei</h2>
@@ -2399,6 +2419,7 @@ function renderBenvenuto(){
     </div>
     <label>Massa grassa (%) — facoltativa</label>
     <input type="number" id="obFat" step="0.1" value="${p.fatp||""}" placeholder="se la conosci, il calcolo è più preciso">
+    <div class="obbox"><b>Anagrafica</b> qui sopra, <b>misurazioni</b> qui sotto: in Nutry restano separate, perché le prime non cambiano quasi mai mentre il peso lo aggiorni spesso. Ogni pesata registrata crea una riga nello storico.</div>
     <label>Attività di base (lavoro e vita quotidiana, sport escluso)</label>
     <select id="obAct">
       <option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario</option>
@@ -2445,7 +2466,8 @@ function renderBenvenuto(){
     <label>Cosa ti piace</label><input type="text" id="obSi" value="${esc(D.si||"")}" placeholder="es. pesce azzurro, uova, yogurt greco">
     <div class="obwhere">Tutto modificabile in <b>Regole → Caratteristiche alimentari</b>.</div>`;
   if(st===5)c=`<h2>🤖 L'AI (facoltativa ma consigliata)</h2>
-    <p class="obp">Senza AI Nutry funziona: spunte, deficit, storico, spesa. <b>Con</b> l'AI arrivano le cose che fanno risparmiare tempo: analisi del piatto dalla foto, stima dei pasti che scrivi, ribilanciamenti, scelta dal menù del ristorante e generazione del piano.</p>
+    <p class="obp">Senza chiave, Nutry resta un diario funzionante: spunte, deficit, sport, storico, esportazione.</p>
+    <div class="obwarn"><b>Ma le limitazioni sono forti.</b> Senza AI restano spenti: generazione e bilanciamento del piano, stima di calorie e macro dai piatti che scrivi, analisi delle foto, scelta dal menù del ristorante, svuota-frigo, ribilanciamento della giornata, recupero degli sfori, alternative ai pasti, analisi dei pattern e report settimanali. Sono la maggior parte delle funzioni che fanno risparmiare tempo: con la chiave l'app lavora per te, senza diventa un quaderno da compilare a mano.</div>
     <div class="obbox"><b>Serve una chiave Gemini di Google. È gratuita e si ottiene in un minuto:</b>
       <ol class="obol">
         <li>apri <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="lnk">aistudio.google.com/app/apikey ↗</a> <small>(si apre in una nuova scheda)</small></li>
@@ -2857,18 +2879,29 @@ function drawWeightsChart(){
       options:{animation:false,plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},
         scales:{x:{ticks:{font:{size:9}}},y2:{position:"right",grid:{drawOnChartArea:false}}}}});
   }catch(e){}}
-function weightsCardHTML(){const p=S.profile;let h="";
-  if(p.weights&&p.weights.length>1)
+function weightsCardHTML(){const p=S.profile,W=(p.weights||[]);
+  let h="";
+  if(W.length>1)
     h+=`<div class="card"><h2>📉 Andamento del peso</h2>
     <canvas id="chPesate" height="170"></canvas>
-    <div class="hint">Ogni salvataggio in <b>Io</b> aggiunge un punto. La linea tratteggiata è l'obiettivo, se impostato.</div></div>`;
+    <div class="hint">Ogni pesata registrata in <b>Io</b> aggiunge un punto. La linea tratteggiata è l'obiettivo, se impostato.</div></div>`;
   h+=`<div class="card"><h2>⚖️ Pesate e biometriche</h2>`;
-  if(!p.weights.length)h+=`<div class="hint">Nessuna pesata registrata.</div>`;
-  p.weights.slice().reverse().forEach((x,ri)=>{const i=p.weights.length-1-ri;
-    const prev=i>0?p.weights[i-1].w:null;const d=prev?(x.w-prev).toFixed(1):null;
-    h+=`<div class="wline"><span>${new Date(x.d).toLocaleDateString("it-IT")}${x.fat?" · grasso "+x.fat+"%":""}${x.mus?" · muscolo "+x.mus+"%":""}${x.pa?" · "+x.pa:""}${x.spo2?" · SpO2 "+x.spo2:""}</span>
-    <span><b>${x.w} kg</b>${d!==null?` <span style="color:${d<=0?"var(--salvia)":"var(--rosso)"};font-size:12px">(${d>0?"+":""}${d})</span>`:""}<span class="del" onclick="delWeight(${i})">✕</span></span></div>`;});
-  h+=`</div>`;
+  if(!W.length)h+=`<div class="hint">Nessuna pesata registrata: la prima si aggiunge da <b>Io → Nuova pesata</b>.</div></div>`;
+  else{
+    h+=`<div class="tbl-scroll"><table class="wtab"><tr>
+      <th>Data</th><th class="n">Kg</th><th class="n">Δ</th><th class="n">%MG</th><th class="n">%MM</th><th class="n">PA</th><th class="n">SpO₂</th></tr>`;
+    W.slice().reverse().forEach((x,ri)=>{const i2=W.length-1-ri;
+      const prev=i2>0?W[i2-1].w:null,d=prev!=null?Math.round((x.w-prev)*10)/10:null;
+      const dt=new Date(x.d);
+      const gg=String(dt.getDate()).padStart(2,"0")+"/"+String(dt.getMonth()+1).padStart(2,"0")+"/"+String(dt.getFullYear()).slice(2);
+      h+=`<tr><td>${gg}</td><td class="n"><b>${x.w}</b></td>
+        <td class="n" style="color:${d==null?"var(--grigio)":(d<=0?"var(--salvia)":"var(--rosso)")}">${d==null?"–":(d>0?"+":"")+d}</td>
+        <td class="n">${x.fat!=null&&x.fat!==""?x.fat:"–"}</td>
+        <td class="n">${x.mus!=null&&x.mus!==""?x.mus:"–"}</td>
+        <td class="n">${x.pa||"–"}</td>
+        <td class="n">${x.spo2!=null&&x.spo2!==""?x.spo2:"–"}</td></tr>`;});
+    h+=`</table></div>
+    <div class="hint">Δ = differenza rispetto alla pesata precedente · %MG massa grassa · %MM massa muscolare · PA pressione.</div></div>`;}
   return h;}
 function renderStorico(){const el=document.getElementById("pg-storico");
   const w=weekSummary();
@@ -3828,10 +3861,10 @@ Da <b>Storico → Esporta i dati</b> scarichi qualsiasi periodo come tabella: un
 <tr><td>🍽️</td><td><b>Piano</b> — tutta la settimana: spunte, spostamenti, modifiche, note ed extra per ogni giorno.</td></tr>
 <tr><td>🛒</td><td><b>Spesa</b> — checklist spuntabile, ricerca sul sito del tuo supermercato, alternative AI, prodotti salvati, invio WhatsApp.</td></tr>
 <tr><td>🏃</td><td><b>Sport</b> — registra allenamenti (le kcal si calcolano sul tuo peso); nuovi sport con stima MET.</td></tr>
-<tr><td>📚</td><td><b>Storico</b> — recap settimanale, riepilogo esteso, mesi e settimane passate, <b>pesate</b> con grafico, analisi e esportazione, <b>Riepilogo esteso</b> (medie settimanali o mensili di tutta la storia, in un riquadro scorrevole), <b>Mesi passati</b> e <b>Settimane passate</b> sempre modificabili, grafici, report AI, stampa PDF.</td></tr>
+<tr><td>📚</td><td><b>Storico</b> — recap settimanale, riepilogo esteso, mesi e settimane passate, <b>pesate e biometriche</b> in tabella (data, kg, Δ, %MG, %MM, pressione, SpO₂) con grafico dell'andamento, analisi ed esportazione, <b>Riepilogo esteso</b> (medie settimanali o mensili di tutta la storia, in un riquadro scorrevole), <b>Mesi passati</b> e <b>Settimane passate</b> sempre modificabili, grafici, report AI, stampa PDF.</td></tr>
 <tr><td>🔑</td><td><b>Codice piano</b> (in Regole → Il piano, o nell'ultimo passo del benvenuto): carica un piano già pronto. <b>00000000</b> è la dieta standard con cui è nata Nutry — mediterranea, cinque pasti, mensa il martedì e il giovedì.</td></tr>
 <tr><td>📐</td><td><b>Regole</b> — la configurazione del sistema: fabbisogno, formula degli allenamenti, soglie di ribilanciamento e recupero, obiettivo proteine, caratteristiche alimentari e gestione del piano.</td></tr>
-<tr><td>👤</td><td><b>Io</b> — profilo e biometriche, percorso guidato e questionario del piano, chiave AI, backup e Drive, ripristino di emergenza, pulizia selettiva, segnalazioni</td></tr>
+<tr><td>👤</td><td><b>Io</b> — quattro schede distinte con salvataggi separati: <b>Anagrafica</b> (nome, genere, nascita, altezza: cambiano di rado), <b>Nuova pesata</b> (peso, massa grassa e muscolare, pressione, SpO₂: ogni salvataggio aggiunge una riga allo storico), <b>Obiettivi</b> (peso, acqua, allenamenti) e <b>Attività di base</b> (moltiplicatore e passi base). Poi periodi, vacanza, percorso guidato, chiave AI, Drive, backup, ripristino, pulizia selettiva e segnalazioni.</td></tr>
 <tr><td>🧭</td><td><b>Il tuo piano</b> (in Io) — "Ri/comincia da zero": questionario guidato (dati, intolleranze, gusti, obiettivi) da cui l'AI genera una settimana su misura, modificabile prima della conferma. "Modifica il piano attuale" per ritocchi a mano. Sempre da validare con un dietista.</td></tr></table></div>
 
 <div class="card"><h2>I simboli</h2>
@@ -3947,50 +3980,60 @@ function goalProj(){const p=S.profile,ws=p.weights.slice(-8);
   const eta=new Date(Date.now()+dLeft*864e5);
   return "Al ritmo attuale (~"+(slope*7).toFixed(1).replace("-","−")+" kg/settimana) dovresti raggiungere <b>"+p.goalW+" kg</b> intorno al <b>"+eta.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})+"</b>. Stima indicativa: il ritmo rallenta man mano che scendi.";}
 function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
-  let h=`<div class="card"><h2>I miei dati</h2>
-  <div class="row2"><div><label>Nome</label><input type="text" id="pName" value="${p.name||""}"></div>
+  /* Quattro schede distinte, ognuna con il suo salvataggio:
+     1) anagrafica (cambia quasi mai) · 2) misurazioni (la pesata, il dato che
+     cambia di continuo) · 3) obiettivi · 4) attività di base. */
+  let h=`<div class="card"><h2>👤 Anagrafica</h2>
+  <div class="hint">Dati che non cambiano (o cambiano di rado). Servono a calcolare il metabolismo basale.</div>
+  <div class="row2"><div><label>Nome</label><input type="text" id="pName" value="${esc(p.name||"")}"></div>
   <div><label>Genere</label><select id="pGen"><option value="m" ${p.gender==="m"?"selected":""}>Uomo</option><option value="f" ${p.gender==="f"?"selected":""}>Donna</option></select></div></div>
   <div class="row2"><div><label>Data di nascita</label><input type="date" id="pDob" value="${p.dob||""}"></div>
   <div><label>Altezza (cm)</label><input type="number" id="pH" value="${p.h||""}" placeholder="es. 175"></div></div>
+  <button class="btn" onclick="saveAnagrafica()">Salva anagrafica</button></div>`;
+
+  h+=`<div class="card pesata"><h2>⚖️ Nuova pesata</h2>
+  <div class="hint">I valori che cambiano nel tempo. Ogni salvataggio <b>aggiunge una riga</b> allo storico, con la data di oggi: è così che nascono i grafici e le proiezioni.</div>
   <div class="row3"><div><label>Peso (kg)</label><input type="number" step="0.1" id="pW" value="${p.w||""}" placeholder="es. 80"></div>
-  <div><label>M. grassa %*</label><input type="number" step="0.1" id="pFat" value="${p.fatp||""}" placeholder="es. 28"></div>
-  <div><label>M. muscolare %*</label><input type="number" step="0.1" id="pMus" value="${p.musp||""}" placeholder="es. 42"></div></div>
-  <div class="hint" style="margin-top:2px">* opzionale (M = massa)</div>
+  <div><label>M. grassa %</label><input type="number" step="0.1" id="pFat" value="${p.fatp||""}" placeholder="es. 28"></div>
+  <div><label>M. muscolare %</label><input type="number" step="0.1" id="pMus" value="${p.musp||""}" placeholder="es. 42"></div></div>
   ${compLine(p)}
-  <div class="row2"><div><label>Pressione (opz.)</label><input type="text" id="pPa" placeholder="120/80"></div>
-  <div><label>SpO2 % (opz.)</label><input type="number" id="pSpo2" placeholder="98"></div></div>
-  ${(()=>{const W=(p.weights||[]);const lastPa=[...W].reverse().find(x=>x.pa);const lastSpo2=[...W].reverse().find(x=>x.spo2!=null);
-    const bits=[];if(lastPa)bits.push("pressione "+lastPa.pa);if(lastSpo2)bits.push("SpO2 "+lastSpo2.spo2+"%");
-    return bits.length?`<div class="hint" style="margin-top:2px">Ultimi valori registrati: ${bits.join(" · ")}. Pressione, SpO2, % grassa e % muscolare vengono salvate a ogni pesata nello <b>storico biometriche</b> qui sotto.</div>`:`<div class="hint" style="margin-top:2px">Pressione, SpO2, % grassa e % muscolare vengono salvate a ogni pesata nello <b>storico biometriche</b> qui sotto (e finiscono nei grafici in Storico).</div>`;})()}
-  <div class="row2"><div><label>Obiettivo peso (kg, opz.)</label><input type="number" step="0.1" id="pGoal" value="${p.goalW||""}" placeholder="es. 98"></div>
-  <div><label>Obiettivo acqua (L/giorno)</label><input type="number" step="0.5" id="pWater" value="${p.waterGoalL||""}" placeholder="proposto: ${waterSuggestL()} L"></div></div>
-  ${(()=>{if(!p.goalW||!p.h)return"";const b=bmiFor(p.goalW),cur=bmiFor(p.w),cl=bmiClass(b);
-    return `<div class="hint" style="color:${cl.ok?"var(--bosco)":"var(--rosso)"}">⚖️ Obiettivo ${p.goalW} kg → BMI ${b} (${cl.label}). Ora sei a BMI ${cur} (${bmiClass(cur).label}).${cl.msg?" "+cl.msg:""}</div>`;})()}
-  <div class="hint" style="margin-top:2px">🚶 I passi non hanno un obiettivo separato: nel calcolo delle calorie giornaliere (TDEE) sono <b>già considerati i tuoi passi base</b> (${(+S.profile.baseSteps>0)?(+S.profile.baseSteps).toLocaleString("it-IT"):"3.000"}, modificabili qui sopra). Le camminate vere si registrano in Sport.</div>
-  <label>Allenamenti obiettivo (a settimana) — puoi metterne più tipi</label>
+  <div class="row2"><div><label>Pressione</label><input type="text" id="pPa" placeholder="120/80"></div>
+  <div><label>SpO2 %</label><input type="number" id="pSpo2" placeholder="98"></div></div>
+  <div class="hint">Percentuali, pressione e SpO2 sono facoltative: se le lasci vuote, la riga registra solo il peso.</div>
+  <button class="btn" onclick="saveWeighIn()">📌 Registra la pesata</button></div>`;
+
+  h+=`<div class="card"><h2>🎯 Obiettivi</h2>
+  <div class="row2"><div><label>Obiettivo peso (kg)</label><input type="number" step="0.1" id="pGoal" value="${p.goalW||""}" placeholder="facoltativo"></div>
+  <div><label>Obiettivo acqua (L al giorno)</label><input type="number" step="0.5" id="pWater" value="${p.waterGoalL||""}" placeholder="proposto: ${waterSuggestL()}"></div></div>
+  ${(()=>{if(!p.goalW||!p.h)return"";const b=bmiFor(p.goalW),cl=bmiClass(b);
+    return `<div class="hint" style="color:${cl.ok?"var(--bosco)":"var(--rosso)"}">Obiettivo ${p.goalW} kg → BMI ${b} (${cl.label}).</div>`;})()}
+  <div class="hint">Acqua: se lasci vuoto vale la proposta sul peso (${waterSuggestL()} L). Un bicchiere vale 250 ml.</div>
+  <label>Allenamenti obiettivo a settimana</label>
   <div id="goalWkList">${(p.goalWorkoutList||[]).map((g,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
-    <select style="flex:2" onchange="setGoalWk(${i},'sport',this.value)">${allSports().map(s=>`<option ${g.sport===s.name?"selected":""}>${esc(s.name)}</option>`).join("")}</select>
+    <select style="flex:2;min-width:0" onchange="setGoalWk(${i},'sport',this.value)">${allSports().map(sp=>`<option ${g.sport===sp.name?"selected":""}>${esc(sp.name)}</option>`).join("")}</select>
     <input style="flex:1;min-width:0" type="number" min="1" step="1" value="${g.perWeek||1}" onchange="setGoalWk(${i},'perWeek',this.value)" title="volte a settimana">
-    <span style="font-size:11px;color:var(--grigio)">a settimana</span>
-    <input style="flex:1;min-width:0" type="number" min="5" step="5" value="${g.min||30}" onchange="setGoalWk(${i},'min',this.value)" title="minuti a sessione">
-    <span style="font-size:11px;color:var(--grigio)">min</span>
-    <button class="btn ghost small" style="padding:4px 9px" onclick="delGoalWk(${i})">✕</button></div>`).join("")||`<div class="hint" style="margin:0 0 5px">Nessun allenamento obiettivo. Aggiungine uno (es. 2× Corsa, 1× Tennis).</div>`}</div>
+    <input style="flex:1;min-width:0" type="number" min="5" step="5" value="${g.min||30}" onchange="setGoalWk(${i},'min',this.value)" title="minuti">
+    <button class="btn ghost small" style="padding:4px 9px;margin:0" onclick="delGoalWk(${i})">✕</button></div>`).join("")||`<div class="hint">Nessun obiettivo impostato.</div>`}</div>
   <button class="btn ghost small" onclick="addGoalWk()">+ Aggiungi allenamento</button>
-  <div class="hint" style="margin-top:2px">Acqua: se lasci vuoto usa la proposta in base al peso (${waterSuggestL()} L). Con l'obiettivo peso attivo vedi la <b>proiezione di dimagrimento</b> (curva non lineare) nel grafico in Storico e la data stimata di arrivo; passi e allenamenti obiettivo entrano nella stima come dispendio extra.</div>
-  ${(()=>{const sim=simulateWeightDescent(p.w,new Date());if(!sim)return p.goalW?"":"";
-    const burn=plannedActivityBurnFor(p.w);
-    if(sim.stalled)return `<div class="hint" style="color:var(--rosso)">🎯 Con la dieta pianificata e questi obiettivi il deficit si annulla prima di arrivare a ${p.goalW} kg: servirebbe mangiare meno o muoversi di più.</div>`;
-    return `<div class="hint" style="color:var(--bosco)">🎯 Al ritmo pianificato (deficit iniziale ~${sim.dailyDeficitStart} kcal/giorno, di cui ~${burn} da passi+allenamenti) raggiungeresti <b>${p.goalW} kg</b> intorno al <b>${sim.etaDate.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})}</b> (~${sim.etaDays} giorni). È una stima non lineare: rallenta scendendo di peso.</div>`;})()}
-  <label>Attività di base (lavoro/vita, sport escluso)</label>
-  <select id="pAct"><option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario (1.2)</option>
-  <option value="1.25" ${p.act==1.25?"selected":""}>Sedentario− (1.25)</option>
-  <option value="1.3" ${p.act==1.3?"selected":""}>Sedentario, lavoro al PC (1.3)</option>
-  <option value="1.45" ${p.act==1.45?"selected":""}>Moderatamente attivo (1.45)</option></select>
-  <label>🚶 Passi base garantiti al giorno</label>
+  ${(()=>{const sim=simulateWeightDescent(p.w,new Date());if(!sim)return"";
+    if(sim.stalled)return `<div class="hint" style="color:var(--rosso)">Con questi obiettivi il deficit si annulla prima di arrivare al traguardo.</div>`;
+    return `<div class="hint" style="color:var(--bosco)">Al ritmo pianificato l'obiettivo arriva intorno al <b>${sim.etaDate?new Date(sim.etaDate).toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"}):"—"}</b> (deficit iniziale ~${sim.dailyDeficitStart} kcal al giorno).</div>`;})()}
+  <button class="btn" onclick="saveObiettivi()">Salva obiettivi</button></div>`;
+
+  h+=`<div class="card"><h2>🚶 Attività di base</h2>
+  <div class="hint">Quanto ti muovi <b>al di fuori</b> degli allenamenti: da qui e dal basale nasce il fabbisogno.</div>
+  <label>Attività di base (lavoro e vita quotidiana)</label>
+  <select id="pAct"><option value="1.2" ${p.act==1.2?"selected":""}>Molto sedentario</option>
+  <option value="1.25" ${p.act==1.25?"selected":""}>Sedentario −</option>
+  <option value="1.3" ${!p.act||p.act==1.3?"selected":""}>Sedentario, lavoro al PC</option>
+  <option value="1.35" ${p.act==1.35?"selected":""}>Poco attivo</option>
+  <option value="1.4" ${p.act==1.4?"selected":""}>Attivo</option>
+  <option value="1.45" ${p.act==1.45?"selected":""}>Moderatamente attivo</option></select>
+  <label>Passi base garantiti al giorno</label>
   <input type="number" id="pBaseSteps" value="${(+p.baseSteps>0)?+p.baseSteps:3000}" step="500" min="0">
-  <div class="hint">I passi che fai <b>sempre</b>, anche nei giorni pigri. Il riferimento è 3000: se ne fai stabilmente di più (o di meno), imposta qui il tuo valore e il fabbisogno si aggiusta. Le camminate vere si registrano come sport.</div>
-  <button class="btn" onclick="saveProfile()">Salva dati e pesata</button>
-  <div class="hint">Ogni salvataggio registra peso e biometriche nello storico (grafici in Storico).</div></div>`;
+  <div class="hint">I passi che fai <b>sempre</b>, anche nei giorni pigri: sono già dentro al fabbisogno, non si inseriscono ogni giorno. Le camminate vere si registrano in Sport.</div>
+  <button class="btn" onclick="saveAttivita()">Salva attività</button></div>`;
+
   // Gestione periodi (inizio/fine dieta o periodo libero)
   h+=`<div class="card"><h2>Il tuo motore</h2><div class="stat3">
   <div><div class="v">${age()||"—"}</div><div class="l">anni</div></div>
@@ -4005,7 +4048,9 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   h+=`<div class="card"><h2>🧭 Percorso guidato</h2>
   <div class="hint">Ripercorre la configurazione iniziale: profilo, obiettivo, come mangi, chiave AI e backup. Non cancella nulla di quello che hai già registrato. <b>Il piano non si tocca da qui</b>: si genera e si modifica dalla pagina Piano.</div>
   <button class="btn ghost" onclick="S.onboard.step=0;save();show('benvenuto')">Rifai il percorso guidato</button></div>`;
-  h+=`<div class="card"><h2>Motore AI (Gemini)</h2>
+  h+=`<div class="card"${aiOn()?"":' style="border-left:4px solid var(--zaff)"'}><h2>Motore AI (Gemini)</h2>
+  ${aiOn()?"":`<div class="hint" style="background:var(--zaffbg);border-radius:12px;padding:10px 12px;margin-bottom:10px">
+    ⚠️ <b>Senza chiave l'app è fortemente limitata.</b> Restano spenti: generazione e bilanciamento del piano, stima di calorie e macro dai piatti scritti, analisi delle foto, selezionatore di menù, svuota-frigo, ribilanciamento della giornata, recupero degli sfori, alternative ai pasti, analisi dei pattern e report. La chiave è gratuita e si crea in un minuto.</div>`}
   <label>Chiave API Google Gemini</label><input type="text" id="gKey" value="${(S.ai&&S.ai.key)||""}" placeholder="AIza…">
   <label>Modello Gemini</label>
   <select id="gModel">${GEM_ALL.map(m=>`<option ${S.ai.model===m?"selected":""}>${m}</option>`).join("")}</select>
@@ -4099,25 +4144,39 @@ window.addGoalWk=()=>{S.profile.goalWorkoutList=S.profile.goalWorkoutList||[];S.
 window.delGoalWk=(i)=>{S.profile.goalWorkoutList.splice(i,1);save();render("io");};
 window.setGoalWk=(i,f,v)=>{const g=(S.profile.goalWorkoutList||[])[i];if(!g)return;
   g[f]=(f==="sport")?v:Math.max(1,parseInt(v,10)||(f==="min"?30:1));save();render("io");};
-window.saveProfile=()=>{const p=S.profile;
-  p.name=document.getElementById("pName").value;p.gender=document.getElementById("pGen").value;
-  p.dob=document.getElementById("pDob").value;p.h=+document.getElementById("pH").value||"";
-  const _bs=document.getElementById("pBaseSteps");if(_bs)p.baseSteps=Math.max(0,parseInt(_bs.value)||3000);
-  const wIn=parseFloat(document.getElementById("pW").value);
-  const nw=wIn>0?wIn:(parseFloat(p.w)>0?parseFloat(p.w):"");
-  const fat=parseFloat(document.getElementById("pFat").value)||null;
-  const mus=parseFloat(document.getElementById("pMus").value)||null;
-  const pa=document.getElementById("pPa").value.trim()||null;
-  const spo2=parseFloat(document.getElementById("pSpo2").value)||null;
-  if(nw!=="" && (nw!==p.w||fat||mus||pa||spo2||!p.weights.length))
-    p.weights.push({d:new Date().toISOString(),w:nw,fat,mus,pa,spo2});
-  p.w=nw;p.fatp=fat||p.fatp;p.musp=mus||p.musp;p.act=+document.getElementById("pAct").value;
-  p.goalW=parseFloat(document.getElementById("pGoal").value)||null;
-  p.waterGoalL=parseFloat(document.getElementById("pWater").value)||null;
-  save();render("io");renderHeader();
-  let msg="Dati salvati.";
-  if(p.goalW&&p.h){const b=bmiFor(p.goalW),cl=bmiClass(b);if(!cl.ok)msg+="\n\n⚠️ Attenzione: l'obiettivo di "+p.goalW+" kg corrisponde a un BMI di "+b+" ("+cl.label+"). "+(cl.msg||"Valutalo con un medico/dietista.");}
-  alert(msg);};
+/* Salvataggi separati: ognuno tocca solo i suoi campi, così modificare
+   l'altezza non registra una pesata e viceversa. */
+function _v(id){const e=document.getElementById(id);return e?String(e.value).trim():"";}
+window.saveAnagrafica=()=>{const p=S.profile;
+  p.name=_v("pName");p.gender=_v("pGen")||"m";p.dob=_v("pDob");
+  p.h=+_v("pH")||p.h||"";
+  save();render("io");toast("Anagrafica salvata ✓");};
+window.saveObiettivi=()=>{const p=S.profile;
+  const g=parseFloat(_v("pGoal"));p.goalW=g>0?g:null;
+  const w=parseFloat(_v("pWater"));p.waterGoalL=w>0?w:null;
+  save();render("io");toast("Obiettivi salvati ✓");};
+window.saveAttivita=()=>{const p=S.profile;
+  p.act=parseFloat(_v("pAct"))||1.3;
+  p.baseSteps=Math.max(0,parseInt(_v("pBaseSteps"))||3000);
+  save();render("io");toast("Attività salvata ✓ · fabbisogno ora "+tdee()+" kcal");};
+/* La pesata è l'unico salvataggio che AGGIUNGE una riga allo storico. */
+window.saveWeighIn=()=>{const p=S.profile;
+  const wIn=parseFloat(_v("pW"));
+  const nw=wIn>0?wIn:(parseFloat(p.w)>0?parseFloat(p.w):null);
+  if(!nw)return alert("Inserisci almeno il peso.");
+  const fat=parseFloat(_v("pFat"))||null,mus=parseFloat(_v("pMus"))||null;
+  const pa=_v("pPa")||null,spo2=parseInt(_v("pSpo2"))||null;
+  p.w=nw;if(fat)p.fatp=fat;if(mus)p.musp=mus;
+  p.weights=p.weights||[];
+  const today=iso(new Date());
+  const rec={d:today,w:nw,fat:fat||null,mus:mus||null,pa:pa,spo2:spo2};
+  const same=p.weights.findIndex(x=>x.d===today);
+  if(same>=0)p.weights[same]=Object.assign({},p.weights[same],rec);
+  else p.weights.push(rec);
+  p.weights.sort((a,b)=>a.d<b.d?-1:1);
+  save();render("io");
+  toast("Pesata registrata ✓ "+nw+" kg");};
+window.saveProfile=()=>{saveAnagrafica();};   // compatibilità
 window.delWeight=i=>{S.profile.weights.splice(i,1);save();render("io");};
 window.saveAI=()=>{
   S.ai.key=document.getElementById("gKey").value.trim();
