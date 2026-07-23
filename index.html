@@ -448,7 +448,7 @@ enrichFiber(BASE_PLAN);
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="5.1.2";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="5.2.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -476,7 +476,7 @@ S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last
 if(!S.profile.goalWorkoutList){S.profile.goalWorkoutList=[];
   if(S.profile.goalWorkouts&&S.profile.goalSport)S.profile.goalWorkoutList.push({sport:S.profile.goalSport,perWeek:S.profile.goalWorkouts,min:S.profile.goalWorkoutMin||30});}
 S.meta=S.meta||{updated:new Date().toISOString()};
-S.conadTpl=S.conadTpl||"";
+S.shopTpl=S.shopTpl||S.conadTpl||"";delete S.conadTpl;
 S.recipes=S.recipes||[];
 S.progressLog=S.progressLog||[];
 /* Periodi (Dieta 1, Periodo libero 1, Dieta 2, …): ogni periodo raggruppa i
@@ -902,7 +902,7 @@ window.unmoveMeal=(pdi,mi)=>{
   const twin=findCounterpart(pdi,m.n,pdi,mi);
   st.movedTo=-1;st.movedAs=null;
   if(twin){const tst=S.week.days[twin.pdi].meals[twin.mi];
-    if(!tst.done&&!tst.skip){tst.movedTo=-1;tst.movedAs=null;}}
+    tst.movedTo=-1;tst.movedAs=null;} // sempre: l'altro pasto è invisibile da qui
   save();render(cur);toast("Pasti riportati al giorno di origine ✓");}
 window.moveDay=(d,m,v)=>{const st=S.week.days[d].meals[m];st.movedTo=parseInt(v);
   if(!st.movedAs)st.movedAs=PLAN[d].meals[m].n;applyMove(d,m);};
@@ -1082,7 +1082,7 @@ window.rebalance=async(di)=>{
   const list=remaining.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
   const targetRem=Math.max(remaining.length*250,budget); // mai sotto ~250 kcal/pasto
   try{
-    const t=await aiAsk('Devo restare dentro un budget di circa '+Math.round(targetRem)+' kcal TOTALI per questi pasti rimanenti di oggi (ora sommano '+remPlanned+' kcal): '+JSON.stringify(list)+'. REGOLA FONDAMENTALE: per ridurre le kcal devi RISCRIVERE ogni pasto cambiando le GRAMMATURE degli ingredienti (es. "pasta 80g"→"pasta 60g") oppure ELIMINANDO componenti (es. togliere il pane o il condimento); le kcal dichiarate devono corrispondere alla nuova descrizione. NON è accettabile lasciare la descrizione invariata abbassando solo i numeri. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. La SOMMA delle kcal proposte deve essere vicina a '+Math.round(targetRem)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
+    const t=await aiAsk('Devo restare dentro un budget di circa '+Math.round(targetRem)+' kcal TOTALI per questi pasti rimanenti di oggi (ora sommano '+remPlanned+' kcal): '+JSON.stringify(list)+'. REGOLE OBBLIGATORIE: (1) usa i valori nutrizionali REALI degli alimenti nelle quantità che scrivi, mai numeri adattati per far tornare il conto; (2) per ridurre parti sempre ABBASSANDO LE GRAMMATURE degli ingredienti (es. "pasta 80g"→"pasta 60g"); (3) SOLO se il pasto così diventa poco saziante, sostituisci un ingrediente con uno più leggero e voluminoso (es. parte dei carboidrati con verdure); (4) è vietato lasciare la descrizione uguale abbassando solo i numeri; (5) NESSUN pasto va eliminato o ridotto sotto ~250 kcal: meglio restare un poco sopra il budget. Riduci carboidrati e grassi, MAI le proteine. La SOMMA delle kcal proposte deve essere vicina a '+Math.round(targetRem)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
     const arr=parseAIJSON(t);
     // scarta le proposte "furbe": kcal più basse ma descrizione identica = barare
     const valid=arr.filter(a=>{const it=remaining.find(r=>r.slot===a.slot);if(!it)return false;
@@ -1112,7 +1112,7 @@ window.rebalanceNextDay=async(fromDi,toDi)=>{
   const remPlanned=list.reduce((a,x)=>a+x.kcal,0);
   const targetRem=Math.max(mains.length*250,remPlanned-sg);
   try{
-    const t=await aiAsk('Ieri ho ecceduto di '+sg+' kcal. Alleggerisci i pasti di OGGI ancora da consumare (ora sommano '+remPlanned+' kcal) portandone la SOMMA vicino a '+Math.round(targetRem)+' kcal. REGOLA FONDAMENTALE: riduci RISCRIVENDO ogni pasto con GRAMMATURE più basse (es. "riso 90g"→"riso 60g") oppure ELIMINANDO componenti; le kcal dichiarate devono corrispondere alla nuova descrizione, NON limitarti ad abbassare i numeri lasciando il pasto uguale. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. Pasti: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
+    const t=await aiAsk('Ieri ho ecceduto di '+sg+' kcal. Alleggerisci i pasti di OGGI ancora da consumare (ora sommano '+remPlanned+' kcal) portandone la SOMMA vicino a '+Math.round(targetRem)+' kcal. REGOLE OBBLIGATORIE: (1) i valori nutrizionali devono essere quelli REALI degli alimenti nelle quantità che scrivi, mai adattati per far tornare il conto; (2) per ridurre le kcal RISCRIVI il pasto: prima sostituisci ingredienti con alternative più leggere, e se non basta ABBASSA LE GRAMMATURE (es. "riso 90g"→"riso 60g") o togli componenti; (3) è vietato lasciare la descrizione uguale abbassando solo i numeri; (4) se col cibo scelto non riesci a rientrare nel totale, riduci ancora le quantità: meglio un totale leggermente diverso ma VERO che numeri falsi. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. Pasti: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
     const arr=parseAIJSON(t);
     const valid=arr.filter(a=>{const it=mains.find(r=>r.slot===a.slot);if(!it)return false;
       const o=mealOpt(it.pdi,it.mi);
@@ -1127,64 +1127,86 @@ window.rebalanceNextDay=async(fromDi,toDi)=>{
     S.week.days[toDi].rebalancedFrom=fromDi;save();render(cur);
     alert("Fatto: pasti di oggi alleggeriti per recuperare lo sforo di "+PLAN[fromDi].day+".");
   }catch(e){aiFail(e);}};
-/* RGP — Ribilancia Giorno Precedente: un tocco. Se ieri hai sforato,
-   ribilancia l'intera giornata di oggi; altrimenti conferma che è tutto ok. */
-/* RGP — Ribilancia Giorni Precedenti (v5.1)
-   Apre un elenco a spunta degli ULTIMI 5 giorni precedenti con lo sforo di
-   ciascuno: scegli quali recuperare e alleggerisco i pasti di oggi ancora da
-   consumare, riscrivendo le grammature (mai solo i numeri). */
+/* ═══ RGP — Recupero dei giorni precedenti (v5.2) ═══════════════════
+   Principi:
+   • SOGLIA DI TOLLERANZA: sotto una certa quota lo sforo non si recupera
+     (rientra nell'errore di stima delle porzioni). Default: 10% del
+     pianificato del giorno, con un minimo di 150 kcal — regolabile in Io.
+   • MAI GIORNI DI DIGIUNO: in un giorno si recupera al massimo una quota
+     del pianificato (default 25%), e i pasti non scendono sotto ~250 kcal.
+     Se lo sforo è grande, il resto si recupera nei giorni successivi.
+   • Recupero PARZIALE tracciato: ogni giorno sforato ricorda quanto è già
+     stato recuperato, così non si conta due volte. */
+function rgpThresh(di){ // kcal sotto le quali NON vale la pena recuperare
+  const pct=(S.profile.rgpPct!=null?+S.profile.rgpPct:10);
+  const min=(S.profile.rgpMin!=null?+S.profile.rgpMin:150);
+  return Math.max(min,Math.round(plannedOfDay(di).k*pct/100));}
+function rgpCapPct(){return (S.profile.rgpCap!=null?+S.profile.rgpCap:25);}
 function overOfDay(di){return Math.round(eatenOfDay(di).k-plannedOfDay(di).k);}
-/* RGP — Ribilancia Giorni Precedenti (v5.1.2): tendina a SELEZIONE MULTIPLA
-   con le calorie in più di ciascuno degli ultimi 5 giorni. Scegli quali
-   recuperare e alleggerisco i pasti di oggi ancora da consumare. */
-function overOfDay(di){return Math.round(eatenOfDay(di).k-plannedOfDay(di).k);}
+function residualOfDay(di){ // sforo ancora da recuperare (al netto di quanto già fatto)
+  return Math.max(0,overOfDay(di)-(S.week.days[di].rgpRecovered||0));}
 function rgpDays(di){
-  const done=S.week.days[di].rgpDone||[];const out=[];
-  for(let d=di-1;d>=0&&out.length<5;d--) // al massimo i 5 giorni precedenti
-    out.push({di:d,over:overOfDay(d),tracked:eatenOfDay(d).k>0,used:done.indexOf(d)>=0});
+  const out=[];
+  for(let d=di-1;d>=0&&out.length<5;d--){ // al massimo i 5 giorni precedenti
+    const res=residualOfDay(d),th=rgpThresh(d);
+    out.push({di:d,over:overOfDay(d),res,th,tracked:eatenOfDay(d).k>0,
+      done:(S.week.days[d].rgpRecovered||0)>0&&res<th,
+      todo:eatenOfDay(d).k>0&&res>=th});}
   return out;}
 function rgpRowHTML(di){
-  const days=rgpDays(di);
-  const sel=days.filter(d=>d.tracked&&d.over>50&&!d.used);
-  if(!days.length)return "";
-  const opts=days.map(d=>{
-    const dis=(!d.tracked||d.over<=50||d.used);
-    const note=!d.tracked?"non tracciato":(d.used?"già recuperato":(d.over>50?"+"+d.over+" kcal":"in linea"));
-    return `<option value="${d.di}" ${dis?"disabled":"selected"}>${PLAN[d.di].day} · ${note}</option>`;}).join("");
-  return `<span style="font-size:12.5px;color:var(--grigio);font-weight:700;margin-left:auto">RGP</span>
-  <select id="rgpSel" multiple size="${Math.min(4,days.length)}" style="max-width:190px;font-size:12px;padding:4px 6px"
-    title="Giorni precedenti sforati: seleziona quelli da recuperare (tocca per aggiungere o togliere)">${opts}</select>
-  <button class="btn small" ${sel.length?"":"disabled style=\"opacity:.5\""} onclick="rgpRun(${di})" title="Recupera i giorni selezionati alleggerendo i pasti di oggi">⚖️ Recupera</button>`;}
+  const days=rgpDays(di);if(!days.length)return "";
+  const over=days.filter(d=>d.todo);
+  const tot=over.reduce((a,d)=>a+d.res,0);
+  const lbl=`<span style="font-size:12.5px;color:var(--grigio);font-weight:700;margin-left:auto" title="RGP — Recupero dei giorni precedenti">Recupero</span>`;
+  if(!over.length)return lbl+`<span class="badge" title="Nessuno degli ultimi 5 giorni supera la soglia di recupero (impostabile in Io)">✅ niente da recuperare</span>`;
+  const opts=[`<option value="all" selected>Tutti · +${tot} kcal</option>`]
+    .concat(over.map(d=>`<option value="${d.di}">${PLAN[d.di].day} · +${d.res} kcal</option>`)).join("");
+  return lbl+`<select id="rgpSel" style="max-width:180px;font-size:12px" title="Calorie ancora da recuperare degli ultimi 5 giorni">${opts}</select>
+  <button class="btn small" onclick="rgpRun(${di})" title="Alleggerisce i pasti di oggi non ancora spuntati, senza mai farti saltare un pasto">⚖️ Recupera</button>`;}
 window.rgpRun=async(toDi)=>{
-  const el=document.getElementById("rgpSel");
-  const sel=el?[...el.selectedOptions].filter(o=>!o.disabled).map(o=>+o.value):[];
-  if(!sel.length)return alert("Nella tendina RGP seleziona almeno un giorno sforato da recuperare.");
-  const tot=sel.reduce((a,d)=>a+Math.max(0,overOfDay(d)),0);
-  if(tot<=50)return alert("✅ I giorni scelti non risultano sforati: pasti di oggi invariati.");
+  const el=document.getElementById("rgpSel");const v=el?el.value:"";
+  const over=rgpDays(toDi).filter(d=>d.todo);
+  const sel=(v==="all")?over.map(d=>d.di):(v===""?[]:[+v]);
+  if(!sel.length)return alert("Nella tendina Recupero scegli cosa recuperare.");
+  const tot=sel.reduce((a,d)=>a+residualOfDay(d),0);
+  if(!tot)return alert("✅ Non c'è nulla da recuperare: pasti di oggi invariati.");
   if(!aiOn())return aiFail(new Error("nokey"));
   const mains=dayItems(toDi).filter(it=>{const st=S.week.days[it.pdi].meals[it.mi];
     return !st.done&&!st.skip&&PLAN[it.pdi].meals[it.mi].type==="norm";});
   if(!mains.length)return alert("Non ci sono pasti di oggi ancora da consumare da alleggerire.");
   const list=mains.map(it=>{const o=mealOpt(it.pdi,it.mi);return {slot:it.slot,desc:o.d,kcal:o.k,prot:o.p};});
   const remPlanned=list.reduce((a,x)=>a+x.kcal,0);
-  const targetRem=Math.max(mains.length*250,remPlanned-tot);
+  // tetto giornaliero: mai più di X% del pianificato, e mai sotto ~250 kcal a pasto
+  const capDay=Math.round(plannedOfDay(toDi).k*rgpCapPct()/100);
+  const floor=mains.length*250;
+  const cut=Math.max(0,Math.min(tot,capDay,remPlanned-floor));
+  if(cut<50)return alert("Oggi non c'è margine per recuperare senza farti saltare un pasto (restano "+mains.length+" pasti da ~"+Math.round(remPlanned/mains.length)+" kcal). Meglio rimandare a domani.");
+  const targetRem=remPlanned-cut;
   const nomi=sel.map(d=>PLAN[d].day).join(", ");
   try{
-    const t=await aiAsk('Nei giorni '+nomi+' ho ecceduto complessivamente di '+tot+' kcal. Alleggerisci i pasti di OGGI ancora da consumare (ora sommano '+remPlanned+' kcal) portandone la SOMMA vicino a '+Math.round(targetRem)+' kcal. REGOLA FONDAMENTALE: riduci RISCRIVENDO ogni pasto con GRAMMATURE più basse (es. "riso 90g"→"riso 60g") oppure ELIMINANDO componenti; le kcal dichiarate devono corrispondere alla nuova descrizione, NON limitarti ad abbassare i numeri lasciando il pasto uguale. Riduci carboidrati e grassi (MAI le proteine), senza scendere sotto ~250 kcal a pasto. Pasti: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
+    const t=await aiAsk('Devo recuperare '+cut+' kcal di sforo dei giorni '+nomi+' alleggerendo i pasti di OGGI ancora da consumare (ora sommano '+remPlanned+' kcal): la loro SOMMA deve arrivare vicino a '+targetRem+' kcal. REGOLE OBBLIGATORIE: (1) usa i valori nutrizionali REALI degli alimenti nelle quantità che scrivi, mai numeri adattati per far tornare il conto; (2) per ridurre parti sempre ABBASSANDO LE GRAMMATURE degli ingredienti (es. "riso 90g"→"riso 60g"); (3) SOLO se il pasto così diventa poco saziante, sostituisci un ingrediente con uno più leggero e voluminoso (es. parte del riso con verdure); (4) è vietato lasciare la descrizione uguale abbassando solo i numeri; (5) NESSUN pasto va eliminato o ridotto sotto ~250 kcal: meglio recuperare meno del richiesto. Riduci carboidrati e grassi, MAI le proteine. Pasti: '+JSON.stringify(list)+'. '+dietStr()+' Rispondi SOLO JSON array: [{"slot":"...","desc":"descrizione COMPLETA con le nuove grammature","kcal":n,"prot":n}]');
     const arr=parseAIJSON(t);
     const valid=arr.filter(a=>{const it=mains.find(r=>r.slot===a.slot);if(!it)return false;
       const o=mealOpt(it.pdi,it.mi);
       return String(a.desc).trim()!==String(o.d).trim()||Math.round(a.kcal)>=o.k;});
     if(!valid.length)return alert("L'AI non ha proposto grammature nuove valide: riprova.");
-    let msg="Recupero di "+nomi+" (~"+tot+" kcal in totale):\n";
+    let applied=0;
+    valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);const o=mealOpt(it.pdi,it.mi);
+      applied+=Math.max(0,o.k-Math.round(a.kcal));});
+    let msg="Recupero da "+nomi+" — "+applied+" kcal di alleggerimento oggi";
+    if(applied<tot)msg+=" (restano ~"+(tot-applied)+" kcal, le recuperi nei prossimi giorni)";
+    msg+=":\n";
     valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);const o=mealOpt(it.pdi,it.mi);
       msg+="\n• "+a.slot+" ("+o.k+"→"+Math.round(a.kcal)+" kcal): "+a.desc;});
     if(!confirm(msg+"\n\nOK = applica ai pasti di oggi"))return;
     valid.forEach(a=>{const it=mains.find(r=>r.slot===a.slot);if(it)
       S.week.days[it.pdi].meals[it.mi].custom={d:a.desc+" (recupero)",k:Math.round(a.kcal),p:Math.round(a.prot)};});
-    S.week.days[toDi].rgpDone=(S.week.days[toDi].rgpDone||[]).concat(sel);
+    // ripartisci il recuperato sui giorni scelti, dal più vecchio
+    let rest=applied;
+    sel.slice().sort((a,b)=>a-b).forEach(d=>{if(rest<=0)return;
+      const q=Math.min(rest,residualOfDay(d));
+      S.week.days[d].rgpRecovered=(S.week.days[d].rgpRecovered||0)+q;rest-=q;});
     save();render(cur);
-    alert("Fatto: pasti di oggi alleggeriti per recuperare "+nomi+".");
   }catch(e){aiFail(e);}};
 window.dismissReb=()=>{S.ui.dismissReb=iso(new Date());save();render("oggi");};
 /* 🏳️ Giornate difficili: escluse dalle medie e dalle correlazioni AI, e non
@@ -1268,7 +1290,7 @@ window.menuAI=async(di)=>{
    Oggi). Le modifiche fatte qui (opzione / ✏️ / 🎲) sono PERMANENTI: restano
    effettive anche nelle settimane successive, perché vivono in S.permMeals. */
 function templateOpt(pdi,mi){const perm=S.permMeals[pdi+"_"+mi];if(perm)return perm;return PLAN[pdi].meals[mi].o[0];}
-function plannedTemplateOfDay(di){let k=0,p=0,c=0,f=0,fib=0;PLAN[di].meals.forEach((m,mi)=>{const o=templateOpt(di,mi);k+=o.k;p+=o.p;c+=(o.c||0);f+=(o.f||0);fib+=(o.fib||0);});return{k,p,c,f,fib};}
+function plannedTemplateOfDay(di){let k=0,p=0,c=0,f=0,fib=0,z=0;PLAN[di].meals.forEach((m,mi)=>{const o=templateOpt(di,mi);k+=o.k;p+=o.p;c+=(o.c||0);f+=(o.f||0);fib+=(o.fib||0);z+=(o.z||0);});return{k,p,c,f,fib,z};}
 function mealCardStatic(pdi,mi){const m=PLAN[pdi].meals[mi];const o=templateOpt(pdi,mi);
   const permObj=S.permMeals[pdi+"_"+mi];const isCustom=!!permObj;
   let h=`<div class="meal"><div class="mbody">
@@ -1305,7 +1327,7 @@ function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(
     h+=`<div class="dayname">${d.day}${di===ti?'<span class="todaytag">OGGI</span>':""}</div><div class="dayctx">${d.ctx}</div>`;
     d.meals.forEach((m,mi)=>h+=mealCardStatic(di,mi));
     const pl=plannedTemplateOfDay(di);
-    h+=`<div class="daytotal">Pianificato: <span>~${pl.k} kcal · ${pl.p} g P · ${pl.c} g C · ${pl.f} g G · ${pl.fib} g F</span></div>`;
+    h+=`<div class="daytotal">Piano: <span>~${pl.k} kcal · ${pl.p} g P · ${pl.c} g C · ${pl.f} g G · ${pl.fib} g F · ${pl.z||0} g Z</span></div>`;
   });
   el.innerHTML=h;}
 
@@ -1380,7 +1402,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
   else h+=`<div class="hint">Nessun pasto assegnato a questo giorno.</div>`;
   // Extra v5: card COMPLETE come i pasti (✓/✗, ✏️, 📸, 🗑) — niente eliminazioni per sbaglio
   S.week.days[di].extras.forEach((e,ei)=>{const done=e.st!=="skip";
-    h+=`<div class="meal ${done?"":"skip"}"><div class="chk ${done?"c":" s"}" role="button" onclick="tglExtra(${di},${ei})">${done?"✓":"✗"}</div>
+    h+=`<div class="meal ${done?"done":"skip"}"><div class="chk ${done?"c":"s"}" role="button" onclick="tglExtra(${di},${ei})">${done?"✓":"✗"}</div>
     <div class="mbody"><div class="mtop"><span class="mname">Extra${done?"":" (non mangiato)"}</span></div>
     <div class="mdesc">${esc(e.d)}</div><div class="mkcal">~${e.k} kcal · ${e.p||0} g P${e.c!=null?` · ${e.c} g C`:""}${e.f!=null?` · ${e.f} g G`:""}${e.fib!=null?` · ${e.fib} g F`:""}${e.z!=null?` · ${e.z} g Z`:""}</div>
     <div class="mtools" style="margin-top:6px">
@@ -1504,16 +1526,16 @@ function renderScanQ(){
   m.innerHTML=inner;}
 
 /* ═══════════════════════════════════════════════════════════════
-   12. PAGINA SPESA (Conad, sostituzioni AI, prodotti salvati, WhatsApp)
+   12. PAGINA SPESA (link supermercato, sostituzioni AI, prodotti salvati, WhatsApp)
    ═══════════════════════════════════════════════════════════════ */
 /* Costruisce il link di ricerca: usa il modello personale se impostato
    (con {q} = termine pulito e codificato), altrimenti apre solo la home
-   del sito (nessun link indovinato: Conad richiede prima il negozio). */
-function conadLink(text){
-  const q=encodeURIComponent(conadQ(text));
-  if(S.conadTpl&&S.conadTpl.includes("{q}"))return safeUrl(S.conadTpl.replace("{q}",q));
-  return "https://spesaonline.conad.it/";}
-function conadQ(t){ // pulizia testo per la ricerca Conad
+   del sito del TUO supermercato (nessun link indovinato). */
+function shopLink(text){
+  const q=encodeURIComponent(shopQ(text));
+  if(S.shopTpl&&S.shopTpl.includes("{q}"))return safeUrl(S.shopTpl.replace("{q}",q));
+  return "";}
+function shopQ(t){ // pulizia testo per la ricerca sul sito del supermercato
   return t.replace(/\(.*?\)/g,"").replace(/~|≈/g,"")
     .replace(/\b(crudi|crudo|crude|cruda|secca|secchi|freschi|fresco|SENZA|senza|surgelati|surgelata|opz\.?)\b/gi,"")
     .replace(/[0-9]+([.,][0-9]+)?\s*(g|kg|l|ml|pz)?/gi,"").replace(/[—–-].*$/,"")
@@ -1626,12 +1648,12 @@ window.resetShopToPlan=()=>{if(!confirm("Ripristino la lista originale del piano
   S.customShop=null;S.shop={};save();render("spesa");};
 
 function renderSpesa(){const el=document.getElementById("pg-spesa");
-  let h=`<div class="card"><h2>🔗 Link di ricerca Conad</h2>
-  <div class="hint">Conad richiede di selezionare prima il tuo negozio: non esiste un link universale. Vai su <b>spesaonline.conad.it</b>, scegli il tuo punto vendita, cerca un prodotto qualsiasi, copia l'indirizzo ottenuto e incollalo qui sotto sostituendo il termine cercato con <b>{q}</b>.</div>
-  <input type="text" id="cTpl" value="${esc(S.conadTpl||"")}" placeholder="es. https://spesaonline.conad.it/negozio/123/ricerca?q={q}">
-  <button class="btn small" onclick="saveConadTpl()">Salva modello</button></div>
+  let h=`<div class="card"><h2>🔗 Link di ricerca del tuo supermercato</h2>
+  <div class="hint">I supermercati online di solito richiedono prima la scelta del negozio, quindi non esiste un link universale. Vai sul sito del <b>tuo</b> supermercato, cerca un prodotto qualsiasi, copia l'indirizzo ottenuto e incollalo qui sotto sostituendo il termine cercato con <b>{q}</b>.</div>
+  <input type="text" id="cTpl" value="${esc(S.shopTpl||"")}" placeholder="es. https://spesa.esempio.it/negozio/123/ricerca?q={q}">
+  <button class="btn small" onclick="saveShopTpl()">Salva modello</button></div>
   <div class="card"><h2>Lista della spesa</h2>
-  <div class="hint">☐ spunta · 🔗 cerca su Conad · 🤖 alternativa se esaurito · ✕ rimuovi. Le spunte restano salvate.</div>
+  <div class="hint">☐ spunta · 🔗 cerca sul sito della spesa · 🤖 alternativa se esaurito · ✕ rimuovi. Le spunte restano salvate.</div>
   <div class="mtools"><button class="btn small" onclick="syncShopFromPlan()">🔄 Sincronizza col piano</button>
   <button class="btn ghost small" onclick="resetShop()">Svuota spunte</button>
   <button class="btn ghost small" onclick="waShop()">📤 WhatsApp</button></div>
@@ -1642,28 +1664,28 @@ function renderSpesa(){const el=document.getElementById("pg-spesa");
       h+=`<div class="shopitem ${c?"c":""}">
         <span class="box" onclick="tglShop('${id}')">${c?"✓":""}</span>
         <span class="st" onclick="tglShop('${id}')">${esc(it)}</span>
-        <a class="ibtn" target="_blank" rel="noopener" title="Cerca su Conad" href="${conadLink(it)}" title="${S.conadTpl?'Cerca nel tuo Conad':'Apri Conad (imposta il tuo link in cima alla pagina)'}">🔗</a>
+                ${S.shopTpl?`<a class="ibtn" target="_blank" rel="noopener" href="${shopLink(it)}" title="Cerca nel tuo supermercato">🔗</a>`:`<button class="ibtn" title="Imposta il link del tuo supermercato in cima alla pagina" onclick="alert('Imposta prima il link di ricerca del tuo supermercato, in cima alla pagina Spesa.')">🔗</button>`}
         <button class="ibtn" title="Alternativa AI" onclick="subAI('${it.replace(/'/g,"\\'")}')">🤖</button>
         <button class="ibtn" title="Rimuovi dalla lista" onclick="removeShopItem(${ci},${ii})">✕</button></div>`;});
     h+=`</div>`;});
   h+=`<div class="mtools" style="margin-top:8px"><button class="btn ghost small" onclick="addShopCat()">+ Nuova categoria</button>`;
   if(S.customShop)h+=`<button class="btn ghost small" onclick="resetShopToPlan()">↩️ Ripristina dal piano</button>`;
   h+=`</div>`;
-  // Prodotti Conad salvati
-  h+=`<div class="card" style="margin-top:14px"><h2>I miei prodotti Conad</h2>
+  // Prodotti salvati del supermercato
+  h+=`<div class="card" style="margin-top:14px"><h2>I miei prodotti salvati</h2>
   <div class="hint">Salva i link diretti dei tuoi prodotti preferiti per ritrovarli al volo.</div>`;
   if(!S.links.length)h+=`<div class="hint">Nessun prodotto salvato.</div>`;
   S.links.forEach((l,i)=>{h+=`<div class="wline"><span>${esc(l.n)}</span>
     <span><a class="ibtn" target="_blank" rel="noopener" href="${esc(safeUrl(l.u))}">🛒 Apri</a><span class="del" onclick="delLink(${i})">✕</span></span></div>`;});
   h+=`<button class="btn ghost small" onclick="addLink()">+ Aggiungi prodotto</button></div>`;
   el.innerHTML=h;}
-window.saveConadTpl=()=>{const v=document.getElementById("cTpl").value.trim();
+window.saveShopTpl=()=>{const v=document.getElementById("cTpl").value.trim();
   if(v&&!v.includes("{q}"))return alert("Il modello deve contenere {q} al posto del termine cercato.");
-  S.conadTpl=v;save();alert(v?"Modello salvato: i link ora puntano al tuo negozio.":"Modello rimosso: i link apriranno la home Conad.");render("spesa");};
+  S.shopTpl=v;save();alert(v?"Modello salvato: i link ora puntano al tuo negozio.":"Modello rimosso: senza modello i link di ricerca non sono attivi.");render("spesa");};
 window.tglShop=id=>{S.shop[id]=!S.shop[id];save();render("spesa");};
 window.resetShop=()=>{S.shop={};save();render("spesa");};
 window.addLink=()=>{const n=prompt("Nome prodotto (es. Kefir XYZ 500g)");if(!n)return;
-  const u=safeUrl(prompt("Incolla il link Conad del prodotto"));if(!u)return alert("Link non valido: deve iniziare con http(s)://");
+  const u=safeUrl(prompt("Incolla il link del prodotto sul sito del supermercato"));if(!u)return alert("Link non valido: deve iniziare con http(s)://");
   S.links.push({n,u});save();render("spesa");};
 window.delLink=i=>{S.links.splice(i,1);save();render("spesa");};
 window.waShop=()=>{let t="🛒 *Spesa della settimana*%0A";
@@ -2660,7 +2682,7 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <div class="card"><h2>Le pagine</h2><table class="gtable">
 <tr><td>☀️</td><td><b>Oggi</b> — bilancio del giorno (anello con il <b>deficit</b> in grande e <b>Pianificato</b> = le kcal previste dal piano per quel giorno), acqua, sonno/relax/umore, pasti ed extra da spuntare. Le frecce ‹ › in alto cambiano giorno.</td></tr>
 <tr><td>🍽️</td><td><b>Piano</b> — tutta la settimana: spunte, spostamenti, modifiche, note ed extra per ogni giorno.</td></tr>
-<tr><td>🛒</td><td><b>Spesa</b> — checklist spuntabile, ricerca Conad, alternative AI, prodotti salvati, invio WhatsApp.</td></tr>
+<tr><td>🛒</td><td><b>Spesa</b> — checklist spuntabile, ricerca sul sito del tuo supermercato, alternative AI, prodotti salvati, invio WhatsApp.</td></tr>
 <tr><td>🏃</td><td><b>Sport</b> — registra allenamenti (le kcal si calcolano sul tuo peso); nuovi sport con stima MET.</td></tr>
 <tr><td>📚</td><td><b>Storico</b> — recap con selettore <b>Settimana / Mese in corso</b>, <b>Riepilogo esteso</b> (medie settimanali o mensili di tutta la storia, in un riquadro scorrevole), <b>Mesi passati</b> e <b>Settimane passate</b> sempre modificabili, grafici, report AI, stampa PDF.</td></tr>
 <tr><td>👤</td><td><b>Io</b> — dati e biometrie, motore calorico, vacanza, AI, Drive e backup.</td></tr>
@@ -2678,8 +2700,8 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>🎯</td><td><b>Obiettivo peso</b> (in Io): imposta il traguardo e vedi la linea nel grafico + la data stimata di arrivo al ritmo attuale.</td></tr>
 <tr><td>↩️</td><td>Ripristina il pasto originale dopo ✏️, 🎲 o 🔁.</td></tr>
 <tr><td>📸</td><td><b>Analisi</b> (dentro ogni pasto): fotografi il piatto e l'AI ricalcola kcal e macro reali. Al ristorante puoi fotografare <b>una portata alla volta</b> (primo, secondo, dolce): ti chiede se <b>aggiungere</b> al pasto o sostituirlo. La spunta ✓ resta sempre tua.</td></tr>
-<tr><td>🔙</td><td>Appare sui pasti spostati: riporta il pasto <b>e quello scambiato con lui</b> al giorno di origine. Lo scambio infatti è <b>automatico e bidirezionale</b>: se metti il pranzo di mercoledì alla cena di venerdì, la cena di venerdì prende il posto lasciato libero.</td></tr>
-<tr><td>⚖️</td><td><b>Ribilancia Oggi</b>: rimette in riga la giornata sui pasti non ancora spuntati, riscrivendo le grammature (mai le proteine). Se sei già in linea non tocca nulla.</td></tr></table>
+<tr><td>🔙</td><td>Appare sui pasti spostati: riporta <b>entrambi</b> i pasti dello scambio al loro giorno di origine, anche quello che da qui non vedi (e anche se è già spuntato). Lo scambio infatti è <b>automatico e bidirezionale</b>.</td></tr>
+<tr><td>⚖️</td><td><b>Ribilancia Oggi</b>: rimette in riga la giornata agendo <b>solo sui pasti non ancora spuntati</b>; se sei già in linea non tocca nulla. Quando taglia usa <b>valori reali</b>: prima abbassa le <b>grammature</b>, poi — solo se il piatto diventa poco saziante — sostituisce ingredienti con alternative più leggere e voluminose. Mai numeri ritoccati a piatto invariato (scartati in automatico), mai pasti eliminati.</td></tr>
 <div class="gsec">Colori dei pasti</div><table class="gtable">
 <tr><td>🟩</td><td>Verde = pasto normale del piano.</td></tr>
 <tr><td>🟧</td><td>Arancione = pasto <b>libero</b> (sushi, pizza, aperitivo, cornetto): non obbligatorio, c'è sempre l'opzione normale.</td></tr>
@@ -2688,8 +2710,8 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>🍽️</td><td><b>Selezionatore di menù</b>: scatti <b>più foto</b> del menù (anche pagine diverse), poi premi <b>Cerca</b> e l'AI sceglie il piatto più compatibile con quello che dovresti mangiare adesso, più due riserve. In alternativa incolli il testo e usi "Usa il testo".</td></tr>
 <tr><td>🍲</td><td><b>Crea un piatto con quello che hai</b>: fotografi frigo, congelatore e dispensa (più foto), poi <b>Crea</b>; il piatto è tarato sul pasto di questo momento e compensa le calorie già accumulate. "⭐ I miei piatti" riusa i piatti salvati senza consumare AI.</td></tr>
 <tr><td>Z</td><td><b>Zuccheri</b> (g): accanto a P/C/G/F. Arrivano dal barcode (Open Food Facts) o dall'AI; se mancano sono stimati dalla descrizione.</td></tr>
-<tr><td>＋</td><td><b>+ Extra</b>: crea una card <b>vuota</b> che compili come preferisci — ✏️ a mano, 📸 con la foto o con il barcode. Gli extra si spuntano come i pasti (✓ mangiato / ✗ non mangiato): se non l'hai mangiato metti la ✗ e non conta, senza cancellarlo. Il 🗑 elimina davvero, con conferma.</td></tr>
-<tr><td>RGP</td><td><b>Ribilancia Giorni Precedenti</b> (sulla riga Evento, solo su oggi): la tendina elenca gli <b>ultimi 5 giorni</b> con le calorie in più di ciascuno. Selezioni quelli da recuperare (selezione multipla) e ⚖️ <b>Recupera</b> alleggerisce i pasti di oggi non ancora spuntati. I giorni non tracciati o già recuperati restano disattivati.</td></tr>
+<tr><td>＋</td><td><b>+ Extra</b>: crea una card <b>vuota</b> da compilare — ✏️ a mano, 📸 con la foto o con il barcode. Gli extra si spuntano come i pasti (✓ mangiato / ✗ non mangiato) e, una volta spuntati, sbiadiscono e vengono barrati esattamente come gli altri. Il 🗑 elimina davvero, con conferma.</td></tr>
+<tr><td>RGP</td><td><b>Recupero</b> (riga Evento, solo su oggi): la tendina mostra le calorie <b>ancora da recuperare</b> degli ultimi 5 giorni — un giorno solo o "Tutti". Tre regole di sicurezza: gli sfori <b>sotto la soglia</b> (10% del giorno, minimo 150 kcal — regolabile in Io) non vengono nemmeno proposti; in un giorno si taglia al massimo il <b>25% del pianificato</b>; <b>nessun pasto scende sotto ~250 kcal</b>. Se lo sforo è grande, il resto resta in coda e lo recuperi nei giorni seguenti — mai un giorno di digiuno.</td></tr>
 <tr><td>🏷️</td><td><b>Evento</b> del giorno (Natale, compleanno, festa, cena fuori, lavoro/trasferta, giornata no, malattia…): il giorno resta tracciato ma <b>escluso dalle medie</b> e non spezza la serie 🔥.</td></tr>
 <tr><td>📷</td><td>Barcode (dentro ogni pasto): scansiona PIÙ prodotti, correggi i grammi e conferma la somma — da Open Food Facts, senza consumare AI.</td></tr>
 <tr><td>🔥</td><td><b>La serie, in parole semplici</b>: conta i giorni "buoni" di fila. Ogni mattina l'app guarda com'è andata IERI e si fa 3 domande: hai spuntato i pasti? sei rimasto dentro le calorie? gli extra erano al massimo 300 kcal? <b>Tre sì = fiamma +1. Anche un solo no = si riparte da 0.</b> Fa tutto da sola, non devi premere nulla; in 🏖️ vacanza si mette in pausa.</td></tr>
@@ -2700,8 +2722,8 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>🌓</td><td>Il bottone del tema cicla tra chiaro → scuro → <b>automatico</b> (segue le impostazioni del telefono).</td></tr>
 <tr><td>👆</td><td>Sulla pagina Oggi puoi <b>scorrere col dito</b> (swipe sinistra/destra) per cambiare giorno, oltre alle frecce ‹ ›.</td></tr>
 <tr><td>📅</td><td>Fine settimana: l'archiviazione è <b>automatica</b> con quello che c'è, senza bottoni da premere. Le settimane chiuse restano <b>sempre modificabili</b> da Storico → Settimane passate → ✏️.</td></tr>
-<tr><td>🔗</td><td><b>Link di ricerca Conad</b> (in cima a Spesa): Conad richiede di scegliere prima il negozio, quindi non c'è un link universale. Fai una ricerca sul sito col TUO negozio selezionato, copia l'indirizzo, sostituisci il termine cercato con <b>{q}</b> e incollalo nel campo — da quel momento ogni 🔗 della lista punta al tuo negozio.</td></tr>
-<tr><td>🛒</td><td><b>I miei prodotti Conad</b> (in Spesa): per un prodotto preciso, apri la sua pagina sul sito Conad, copia il link, poi "+ Aggiungi prodotto" → dai un nome e incolla il link. Da quel momento lo riapri con "🛒 Apri", senza passare dal modello di ricerca.</td></tr>
+<tr><td>🔗</td><td><b>Link di ricerca della spesa</b> (in cima a Spesa): quasi tutti i supermercati online richiedono prima la scelta del negozio, quindi non c'è un link universale. Fai una ricerca sul sito del TUO negozio, copia l'indirizzo e incollalo sostituendo la parola cercata con <b>{q}</b>: da lì ogni 🔗 della lista cerca direttamente nel tuo supermercato.</td></tr>
+<tr><td>🛒</td><td><b>I miei prodotti</b> (in Spesa): per un prodotto preciso, apri la sua pagina sul sito del supermercato, copia il link, poi "+ Aggiungi prodotto" → dai un nome e incolla. Lo ritrovi con un tap ogni volta che serve.</td></tr>
 <tr><td>🥗</td><td><b>Caratteristiche alimentari</b> (in Io): intolleranze, cibi da evitare/preferiti e FODMAP — le rispettano TUTTE le funzioni AI. Modificale a mano o con "🤖 Compila con l'AI".</td></tr></table></div>
 
 <div class="card"><h2>✨ Novità della versione 5</h2><table class="gtable">
@@ -2709,7 +2731,7 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <tr><td>Icone</td><td>Tutte su una riga dentro ogni pasto: ✏️ 🎲 🔁 📸 e barcode. Fuori restano solo <b>+ Extra</b> e <b>⚖️ Ribilancia Oggi</b>.</td></tr>
 <tr><td>Barcode</td><td>Più prodotti nella stessa scansione: correggi i grammi di ognuno e confermi la <b>somma</b>, dentro un pasto o in un extra.</td></tr>
 <tr><td>⚖️</td><td><b>Ribilancia Oggi</b> lavora a budget: pianificato del giorno meno quello già mangiato. Se sei in linea te lo dice e non tocca nulla; quando taglia <b>riscrive le grammature</b> o toglie componenti, mai solo i numeri.</td></tr>
-<tr><td>RGP</td><td>Recupero dei giorni precedenti a scelta tua, dalla tendina a selezione multipla sulla riga Evento.</td></tr>
+<tr><td>RGP</td><td>Recupero dei giorni precedenti dalla tendina <b>Recupero</b>: un giorno solo o tutti quelli sforati insieme.</td></tr>
 <tr><td>Scambi</td><td>Spostare un pasto scambia in automatico i due pasti; 🔙 annulla lo scambio.</td></tr>
 <tr><td>Passi</td><td>Passi base nel fabbisogno (3.000, modificabili in Io); niente sezione passi, le camminate vanno in Sport.</td></tr>
 <tr><td>Storico</td><td>Recap con Δ rispetto al <b>pianificato del giorno</b>, vista Settimana/Mese in corso, Riepilogo esteso scorrevole, Mesi passati, chiusura settimana automatica.</td></tr>
@@ -2830,6 +2852,17 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <label>🚶 Passi base garantiti al giorno</label>
   <input type="number" id="pBaseSteps" value="${(+p.baseSteps>0)?+p.baseSteps:3000}" step="500" min="0">
   <div class="hint">I passi che fai <b>sempre</b>, anche nei giorni pigri. Il riferimento è 3000: se ne fai stabilmente di più (o di meno), imposta qui il tuo valore e il fabbisogno si aggiusta. Le camminate vere si registrano come sport.</div>
+  <label>⚖️ Recupero degli sfori — soglia di tolleranza</label>
+  <div class="mtools" style="align-items:center">
+    <input type="number" id="pRgpPct" value="${(S.profile.rgpPct!=null)?S.profile.rgpPct:10}" step="1" min="0" max="30" style="width:80px"><span style="font-size:12.5px;color:var(--grigio)">% del giorno</span>
+    <input type="number" id="pRgpMin" value="${(S.profile.rgpMin!=null)?S.profile.rgpMin:150}" step="25" min="0" style="width:90px"><span style="font-size:12.5px;color:var(--grigio)">kcal minime</span>
+  </div>
+  <div class="hint">Sotto questa soglia lo sforo <b>non viene proposto</b> per il recupero: rientra nell'errore normale di stima delle porzioni. Vale la più alta delle due (es. 10% di 1800 = 180 kcal).</div>
+  <label>⚖️ Recupero massimo in un giorno</label>
+  <div class="mtools" style="align-items:center">
+    <input type="number" id="pRgpCap" value="${(S.profile.rgpCap!=null)?S.profile.rgpCap:25}" step="5" min="5" max="50" style="width:80px"><span style="font-size:12.5px;color:var(--grigio)">% del pianificato</span>
+  </div>
+  <div class="hint">Quanto puoi tagliare al massimo in una giornata: se lo sforo è più grande, il resto viene recuperato nei giorni successivi. Nessun pasto scende comunque sotto ~250 kcal — <b>mai giorni di digiuno</b>.</div>
   <button class="btn" onclick="saveProfile()">Salva dati e pesata</button>
   <div class="hint">Ogni salvataggio registra peso e biometriche nello storico (grafici in Storico).</div></div>`;
   // Gestione periodi (inizio/fine dieta o periodo libero)
@@ -2925,6 +2958,9 @@ window.saveProfile=()=>{const p=S.profile;
   p.name=document.getElementById("pName").value;p.gender=document.getElementById("pGen").value;
   p.dob=document.getElementById("pDob").value;p.h=+document.getElementById("pH").value||"";
   const _bs=document.getElementById("pBaseSteps");if(_bs)p.baseSteps=Math.max(0,parseInt(_bs.value)||3000);
+  const _rp=document.getElementById("pRgpPct");if(_rp)p.rgpPct=Math.max(0,Math.min(30,parseInt(_rp.value)||0));
+  const _rm=document.getElementById("pRgpMin");if(_rm)p.rgpMin=Math.max(0,parseInt(_rm.value)||0);
+  const _rc=document.getElementById("pRgpCap");if(_rc)p.rgpCap=Math.max(5,Math.min(50,parseInt(_rc.value)||25));
   const wIn=parseFloat(document.getElementById("pW").value);
   const nw=wIn>0?wIn:(parseFloat(p.w)>0?parseFloat(p.w):"");
   const fat=parseFloat(document.getElementById("pFat").value)||null;
