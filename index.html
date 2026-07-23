@@ -176,7 +176,13 @@ html[data-theme="dark"] .btn{color:#04170B}
 .btn.small{padding:7px 13px;font-size:12.5px;margin-top:4px}
 .row2{display:flex;gap:10px}.row2>*{flex:1;min-width:0}
 .row3{display:flex;gap:10px}.row3>*{flex:1;min-width:0}
-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Il troncamento vale SOLO per le etichette dentro le righe a colonne strette:
+   applicato a tutte tagliava a metà le etichette lunghe in tutta l'app. */
+.row2 label,.row3 label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Nessun contenuto deve uscire dal riquadro: parole lunghe, link e numeri
+   vanno a capo invece di sfondare il bordo. */
+.card,.obbox,.obwarn,.hint,.wline,.aibox{overflow-wrap:anywhere;word-break:break-word}
+.card>*{max-width:100%}
 /* ══ SPESA ══ */
 .shopcat{font-weight:700;color:#fff;background:var(--grad);background-size:200% 200%;border-radius:16px 16px 0 0;padding:10px 14px;font-size:13.5px;margin-top:14px;letter-spacing:.2px}
 .shopitems{background:var(--card);border:1px solid var(--linea);border-top:0;border-radius:0 0 16px 16px;padding:4px 0;box-shadow:var(--shadow)}
@@ -240,6 +246,12 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .obd.ok{background:var(--salvia);opacity:.55}
 .obd.on{background:var(--salvia)}
 .obp{font-size:14.5px;line-height:1.55;color:var(--ink);margin:0 0 12px}
+.obwrap ul.clean{margin:10px 0}
+.obwrap ul.clean li{font-size:13.5px;line-height:1.5;padding:9px 2px 9px 24px;color:var(--ink)}
+.obwrap ul.clean li::before{top:15px}
+.obwrap label{white-space:normal}
+.obwrap .card{padding:16px 15px}
+.obwrap input,.obwrap select,.obwrap textarea{max-width:100%}
 .obbox{background:var(--menta);border-left:4px solid var(--salvia);border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;margin:12px 0}
 .obwarn{background:var(--zaffbg);border-left:4px solid var(--zaff);border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;margin:12px 0}
 .obwhere{font-size:12.5px;color:var(--grigio);margin-top:10px;padding-top:8px;border-top:1px dashed var(--linea)}
@@ -252,6 +264,9 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .obcard h3{margin:0 0 6px;font-size:15px;color:var(--bosco)}
 .obcard p{font-size:12.8px;line-height:1.5;color:var(--grigio);margin:0 0 10px}
 @media(max-width:560px){.obchoice{grid-template-columns:1fr}}
+.wzrow{display:flex;align-items:stretch;gap:8px;margin:8px 0}
+.wzrow .wzval{flex:1;min-width:0;margin:0;display:flex;align-items:center;overflow-x:auto;white-space:nowrap}
+.wzrow .wzbtn{flex-shrink:0;margin:0;align-self:stretch;display:flex;align-items:center}
 .wzval{padding:9px 11px;border:1px dashed var(--linea);border-radius:12px;font-size:13px;color:var(--bosco);font-weight:600;background:var(--menta)}
 .ctlrow{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:7px 11px;border-radius:14px;
   background:var(--card);border:1px solid var(--linea);font-size:12.5px;overflow-x:auto;white-space:nowrap}
@@ -260,7 +275,14 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .ctlrow .ck{display:flex;align-items:center;gap:4px;color:var(--grigio);flex-shrink:0}
 .ctlrow .ck input{width:19px;height:19px;margin:0}
 .ctlrow .ck input:disabled+span{opacity:.45}
+.lnk{color:var(--salvia);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.ckline{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px;font-weight:500;color:var(--ink)}
+.ckline input{width:20px;height:20px;margin:0}
+.ckline small{color:var(--grigio);font-weight:400}
 .ctlrow .coff{color:var(--grigio);opacity:.6;flex-shrink:0}
+.ctlrow .vbtn{flex-shrink:0;margin-left:auto;border:0;background:var(--salvia);color:#fff;font-size:15px;font-weight:800;
+  width:38px;height:32px;border-radius:11px;cursor:pointer;line-height:1}
+.ctlrow .vbtn.done{background:var(--menta);color:var(--salvia)}
 .pbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px;padding:9px 13px;border-radius:14px;
   background:var(--menta);border-left:4px solid var(--salvia);cursor:pointer;font-size:12.5px}
 .pbar.libero{background:var(--zaffbg);border-left-color:var(--zaff)}
@@ -331,7 +353,10 @@ table.rules .rout{font-family:inherit;font-weight:700;color:var(--salvia);font-s
   table.rules td.rc{text-align:left;width:auto;margin-top:6px}
   table.rules select.rv{width:100%;max-width:260px}
 }
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+@media(max-width:420px){.grid2{grid-template-columns:1fr}}
+/* barre di pulsanti: stessa altezza e stessa spaziatura ovunque */
+.mtools>.btn,.mtools>.ibtn,.mtools>a.btn,.mtools>input,.mtools>select{margin-top:0}
 .modal{position:fixed;inset:0;background:rgba(6,14,8,.55);z-index:95;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal .mcard{width:100%;max-width:530px;max-height:86vh;overflow:auto;background:var(--card);border:1px solid var(--linea);border-radius:22px;padding:18px;box-shadow:var(--shadow-lift)}
 
@@ -537,6 +562,25 @@ S.ui=Object.assign({theme:"light",vacanza:false,lastOpen:"",lastMorning:""},S.ui
 S.drive=Object.assign({cid:"",on:false},S.drive||{});
 S.ai=Object.assign({key:"",model:"auto"},S.ai||{});
 S.usage=Object.assign({day:"",calls:0,tokens:0,errors:0,last:""},S.usage||{});
+/* Rete di compatibilità: qualunque stato salvato — anche di versioni vecchie,
+   parziale o riparato a mano — viene completato con le chiavi mancanti prima
+   che l'app lo usi. Senza questo, una sola chiave assente manda in errore
+   un'intera pagina. */
+S.profile=S.profile||{};
+S.profile.weights=S.profile.weights||[];
+S.customSports=S.customSports||[];
+S.shop=S.shop||{};S.recipes=S.recipes||[];S.history=S.history||[];
+S.ai=S.ai||{key:""};S.drive=S.drive||{cid:"",on:false};
+S.ui=S.ui||{};S.meta=S.meta||{};S.usage=S.usage||{day:"",calls:0,tokens:0,errors:0,last:""};
+S.week=S.week||freshWeek();
+S.week.days=S.week.days||[];
+while(S.week.days.length<PLAN.length)
+  S.week.days.push({meals:[],extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0});
+S.week.days.forEach((d,di)=>{
+  d.meals=d.meals||[];d.extras=d.extras||[];d.workouts=d.workouts||[];
+  const need=(PLAN[di]&&PLAN[di].meals)?PLAN[di].meals.length:0;
+  while(d.meals.length<need)d.meals.push({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null});
+});
 S.links=S.links||[];S.permMeals=S.permMeals||{};S.streak=S.streak||{count:0,last:""};S.hardDays=S.hardDays||{};S.dayEvents=S.dayEvents||{};
 if(!S.profile.goalWorkoutList){S.profile.goalWorkoutList=[];
   if(S.profile.goalWorkouts&&S.profile.goalSport)S.profile.goalWorkoutList.push({sport:S.profile.goalSport,perWeek:S.profile.goalWorkouts,min:S.profile.goalWorkoutMin||30});}
@@ -945,6 +989,36 @@ function goalWkTotal(){
   if(+S.profile.goalWk>0)return +S.profile.goalWk; // valore impostato nelle Regole
   return (S.profile.goalWorkoutList||[]).reduce((a,g)=>a+(+g.perWeek||0),0);}
 function workoutsThisWeek(){return S.week.days.reduce((a,d)=>a+d.workouts.length,0);}
+/* Fabbisogno REALE stimato dai tuoi dati: quanto hai mangiato in media e
+   quanto è cambiato il peso nello stesso periodo. È la verifica migliore del
+   moltiplicatore di attività, perché non è una stima ma una misura. */
+function tdeeReal(minDays){
+  const rows=flattenDiet().filter(d=>d.eat>0);
+  if(rows.length<(minDays||14))return null;
+  const ws=(S.profile.weights||[]).slice().sort((a,b)=>a.d<b.d?-1:1);
+  if(ws.length<2)return null;
+  const from=rows[0].date,to=rows[rows.length-1].date;
+  const w0=ws.filter(x=>x.d<=from).pop()||ws[0];
+  const w1=ws.filter(x=>x.d<=to).pop()||ws[ws.length-1];
+  const days=Math.round((new Date(w1.d)-new Date(w0.d))/86400000);
+  if(days<10)return null;
+  const inRange=rows.filter(d=>d.date>=w0.d&&d.date<=w1.d);
+  if(inRange.length<10)return null;
+  const avgEat=inRange.reduce((a,d)=>a+d.eat,0)/inRange.length;
+  const avgBurn=inRange.reduce((a,d)=>a+(d.burn||0),0)/inRange.length;
+  const dW=w1.w-w0.w;                       // kg (negativo se dimagrito)
+  const real=avgEat-(dW*7700/days)-avgBurn; // fabbisogno base, sport escluso
+  return {tdee:Math.round(real),days,dW:Math.round(dW*10)/10,
+    avgEat:Math.round(avgEat),n:inRange.length,stimato:tdee()};}
+window.applyTdeeReal=()=>{
+  const r=tdeeReal();
+  if(!r)return alert("Servono almeno due settimane di giorni tracciati e due pesate per calcolarlo.");
+  const ratio=r.tdee/Math.max(1,bmr());
+  const act=Math.max(1.1,Math.min(1.9,Math.round(ratio*100)/100));
+  if(!confirm("Dai tuoi dati risulta un fabbisogno reale di circa "+r.tdee+" kcal (stimato ora: "+r.stimato+").\n\n"+
+    "Periodo: "+r.days+" giorni · "+r.n+" giorni tracciati · peso "+(r.dW>0?"+":"")+r.dW+" kg · media mangiata "+r.avgEat+" kcal.\n\n"+
+    "Allineo il moltiplicatore di attività a "+act+"?"))return;
+  S.profile.act=act;save();render("regole");toast("Fabbisogno calibrato sui tuoi dati ✓");};
 function rulesSnapshot(){return{
   passi_base:(+S.profile.baseSteps>0)?+S.profile.baseSteps:3000,
   tdee_calcolato:tdee(),
@@ -1381,16 +1455,25 @@ function rgpControlHTML(di){
   const days=rgpDays(di),over=days.filter(d=>d.todo);
   if(!over.length)return `<span class="coff" title="Nessuno degli ultimi giorni supera la soglia di recupero">niente da recuperare</span>`;
   const tot=over.reduce((a,d)=>a+d.res,0);
-  const opts=[`<option value="all" selected>tutti · +${tot} kcal</option>`]
+  const opts=[`<option value="">— non recuperare —</option>`,`<option value="all">tutti · +${tot} kcal</option>`]
     .concat(over.map(d=>`<option value="${d.di}">${PLAN[d.di].day} · +${d.res} kcal</option>`)).join("");
-  return `<select id="rgpSel" title="Calorie ancora da recuperare dai giorni scorsi">${opts}</select>
-  <label class="ck" title="Spunta per ricalcolare i pasti di oggi non ancora spuntati">
-    <input type="checkbox" onchange="if(this.checked){this.checked=false;rgpRun(${di});}"><span>ok</span></label>`;}
+  return `<select id="rgpSel" title="Scegli cosa recuperare, poi conferma con ✓">${opts}</select>`;}
+/* Un solo pulsante ✓ rende effettivi evento e recupero della giornata. */
+window.applyCtl=(dISO,di,isToday)=>{
+  const ev=(S.dayEvents||{})[dISO]||"";
+  S.ui.evOk=S.ui.evOk||{};
+  if(ev)S.ui.evOk[dISO]=true;else delete S.ui.evOk[dISO];
+  save();
+  const sel=document.getElementById("rgpSel");
+  const want=isToday&&sel&&sel.value;
+  render("oggi");
+  if(want)return rgpRun(di);
+  toast(ev?("Evento confermato: "+ev):"Giornata confermata ✓");};
 window.rgpRun=async(toDi)=>{
   const el=document.getElementById("rgpSel");const v=el?el.value:"";
   const over=rgpDays(toDi).filter(d=>d.todo);
   const sel=(v==="all")?over.map(d=>d.di):(v===""?[]:[+v]);
-  if(!sel.length)return alert("Nella tendina Recupero scegli cosa recuperare.");
+  if(!sel.length)return;
   const tot=sel.reduce((a,d)=>a+residualOfDay(d),0);
   if(!tot)return alert("✅ Non c'è nulla da recuperare: pasti di oggi invariati.");
   if(!aiOn())return aiFail(new Error("nokey"));
@@ -1436,9 +1519,6 @@ window.rgpRun=async(toDi)=>{
 /* 🏷️ Eventi v5: motivazione esplicita (Natale, compleanno, giornata no…)
    al posto della generica "giornata difficile". Stesso effetto: escluso
    dalle medie/AI e streak protetto. */
-window.setEvOk=(dISO,v)=>{S.ui.evOk=S.ui.evOk||{};
-  if(v)S.ui.evOk[dISO]=true;else delete S.ui.evOk[dISO];
-  save();render("oggi");if(v)toast("Evento confermato ✓");};
 window.setDayEvent=(dISO,label)=>{
   S.dayEvents=S.dayEvents||{};
   if(label==="Altro…"){const c=prompt("Che evento è?");label=(c&&c.trim())?c.trim():"";}
@@ -1547,7 +1627,14 @@ function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(
   <div class="mtools">
     <button class="btn small" onclick="wizEditCurrent()">✏️ Gestisci il piano</button>
     <button class="btn ghost small" onclick="genPlanAI()">✨ Generane uno nuovo</button>
+    <button class="btn ghost small" onclick="wizStart(true)">📋 Questionario</button>
   </div>
+  <div class="hint">✏️ <b>Gestisci</b> = modifica pasti, orari, tipo e alternative · ✨ <b>Generane uno nuovo</b> = l'AI costruisce sette giorni dalle tue caratteristiche · 📋 <b>Questionario</b> = ricostruisci il piano rispondendo a domande, pasto per pasto.</div>
+  <div class="mtools" style="margin-top:8px">
+    <input type="text" id="planCode" placeholder="codice piano" style="max-width:150px;margin:0">
+    <button class="btn ghost small" onclick="loadPlanCode(false)">🔑 Ripristina</button>
+  </div>
+  <div class="hint">Con <b>00000000</b> ripristini il piano principale di Nutry.</div>
 </div>`;
   if(planIsEmpty())h+=`<div class="card" style="text-align:center">
     <div style="font-size:34px">📋</div><h2 style="margin-top:4px">Piano vuoto</h2>
@@ -1603,10 +1690,10 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
       <select onchange="setDayEvent('${_vd}',this.value)">
         ${["","Giornata no","Compleanno","Natale","Capodanno","Pasqua","Festa / party","Cena fuori","Lavoro / trasferta","Matrimonio","Ferragosto","Vacanza breve","Malattia","Altro…"].map(o=>`<option value="${o}" ${ev===o?"selected":""}>${o||"— nessuno —"}</option>`).join("")}
       </select>
-      <label class="ck" title="${ev?"Conferma l'evento del giorno":"Scegli prima un evento"}">
-        <input type="checkbox" ${evOK?"checked":""} ${ev?"":"disabled"} onchange="setEvOk('${_vd}',this.checked)"><span>ok</span></label>
       <span class="cl">RGP</span>
       ${today?rgpControlHTML(di):`<span class="coff" title="Il ricalcolo si può fare solo sulla giornata di oggi">—</span>`}
+      <button class="vbtn${evOK?" done":""}" title="Conferma: registra l'evento del giorno${today?" e applica il recupero selezionato":""}"
+        onclick="applyCtl('${_vd}',${di},${today?1:0})">✓</button>
     </div>`;}
   if(S.ui.vacanza){
   h+=`<div class="gaugecard"><div style="font-size:40px">🏖️</div><h2>Modalità vacanza</h2>
@@ -2350,12 +2437,15 @@ function renderBenvenuto(){
     <p class="obp">Senza AI Nutry funziona: spunte, deficit, storico, spesa. <b>Con</b> l'AI arrivano le cose che fanno risparmiare tempo: analisi del piatto dalla foto, stima dei pasti che scrivi, ribilanciamenti, scelta dal menù del ristorante e generazione del piano.</p>
     <div class="obbox"><b>Serve una chiave Gemini di Google. È gratuita e si ottiene in un minuto:</b>
       <ol class="obol">
-        <li>apri <b>aistudio.google.com/app/apikey</b></li>
+        <li>apri <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="lnk">aistudio.google.com/app/apikey ↗</a> <small>(si apre in una nuova scheda)</small></li>
         <li>entra con il tuo account Google</li>
         <li>premi <b>Create API key</b></li>
         <li>copia la chiave e incollala qui sotto</li>
       </ol>
       Non serve carta di credito e la chiave resta solo su questo telefono.</div>
+    <div class="mtools" style="margin:10px 0">
+      <a class="btn small" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="text-decoration:none">🔑 Crea la chiave ora ↗</a>
+    </div>
     <label>Chiave Gemini</label>
     <input type="password" id="obKey" value="${esc(S.ai.key||"")}" placeholder="AIza…">
     <div class="obwhere">Si può incollare anche dopo, da <b>Io → Configurazione API</b>. Puoi proseguire senza.</div>`;
@@ -2405,19 +2495,6 @@ function renderBenvenuto(){
 function renderRegole(){const el=document.getElementById("pg-regole");
   let h=rulesCardHTML();
   h+=dietCardHTML();
-  h+=`<div class="card"><h2>🧭 Il piano</h2>
-  <div class="mtools" style="margin-top:0">
-    <button class="btn small" onclick="wizEditCurrent()">✏️ Gestisci il piano attuale</button>
-    <button class="btn ghost small" onclick="genPlanAI()">✨ Genera un piano da queste caratteristiche</button>
-    <button class="btn ghost small" onclick="wizStart(true)">🔄 Questionario guidato</button>
-  </div>
-  <label style="margin-top:10px">Hai un codice piano?</label>
-  <div class="mtools" style="margin-top:0">
-    <input type="text" id="planCode" placeholder="es. 00000000" style="max-width:180px;margin:0">
-    <button class="btn ghost small" onclick="loadPlanCode(false)">Carica</button>
-  </div>
-  <div class="hint">Un codice carica un piano già pronto. <b>00000000</b> è la dieta standard con cui è nata Nutry.</div>
-  <div class="hint">${S.customPlan?"Piano personalizzato attivo.":"Piano originale attivo."}</div></div>`;
   el.innerHTML=h;}
 function rulesCardHTML(){
   const p=S.profile,r=rulesSnapshot();
@@ -2437,6 +2514,27 @@ function rulesCardHTML(){
      sel("rAct",p.act,[["1.2","1.2 · molto sedentario"],["1.25","1.25 · sedentario−"],["1.3","1.3 · sedentario, PC"],["1.35","1.35 · poco attivo"],["1.4","1.4 · attivo"],["1.45","1.45 · moderatamente attivo"],["1.55","1.55 · molto attivo"]]))}
   ${row("Passi base","Passi che fai comunque ogni giorno. Il riferimento è 3.000: sopra o sotto, il fabbisogno si corregge.",num("rSteps",r.passi_base,500,0,null,"passi"))}
   ${row("Fabbisogno totale","Basale × attività, corretto sui passi base. Gli allenamenti si sommano a parte.",out(r.tdee_calcolato+" kcal"))}
+  ${row("Prudenza sul fabbisogno","Il moltiplicatore di attività è una stima: se i tuoi giorni sono più fermi di così, il fabbisogno risulta gonfiato. Questa percentuale lo abbassa <b>solo per il calcolo dei target</b>, senza toccare deficit e storico.",num("rPrud",prudence(),1,0,20,"%"))}
+  ${row("Fabbisogno usato per i target","Fabbisogno meno la prudenza.",out(tdeeTarget()+" kcal"))}
+  ${row("Verifica sui tuoi dati","Fabbisogno ricavato da quanto hai mangiato e da come è cambiato il peso: è una misura, non una stima.",
+     (function(){const rr=tdeeReal();return rr
+       ?out(rr.tdee+" kcal")+`<br><button class="btn ghost small" style="margin-top:6px" onclick="applyTdeeReal()">Allinea</button>`
+       :`<span class="rout" style="color:var(--grigio);font-weight:500">servono 2 settimane</span>`;})())}
+  </table>
+
+  <div class="gsec">Target del piano</div>
+  <table class="rules">
+  ${row("Come fissare il deficit","<b>Percentuale</b>: mangi una quota del fabbisogno (20% = l'80% di quello che consumi). <b>Ritmo</b>: parti dai chili a settimana desiderati.",
+     sel("rDefMode",defMode(),[["pct","Percentuale del fabbisogno"],["ritmo","Chili a settimana"]]))}
+  ${row("Percentuale di deficit","Usata se hai scelto la modalità a percentuale. Fino al 20% è tranquilla; oltre il 25% è una fase spinta, meglio se seguita da un professionista.",num("rDefPct",defPct(),1,5,30,"%"))}
+  ${row("Ritmo desiderato","Usato se hai scelto la modalità a chili: 1 kg di grasso ≈ 7.700 kcal, quindi 0,5 kg a settimana ≈ 550 kcal al giorno.",
+     sel("rRitmo",String(ratePerWeek()),[["0.25","0,25 kg a settimana"],["0.5","0,5 kg a settimana"],["0.75","0,75 kg a settimana"],["1","1 kg a settimana"]]))}
+  ${row("Deficit giornaliero","Risultato della modalità scelta, con tetto al 30% del fabbisogno.",out(deficitTarget()+" kcal"))}
+  ${row("Minimo assoluto","Il target non scende sotto questa soglia: sotto diventa difficile coprire proteine e micronutrienti. Non è il metabolismo basale — <b>stare sotto il basale è normale quando c'è grasso da consumare</b>, la differenza la copre il corpo.",num("rKcalMin",kcalFloorMin(),50,1000,null,"kcal"))}
+  ${row("Target calorico del piano","Fabbisogno per i target meno il deficit, mai sotto il minimo.",
+     out(dayTargetK()+" kcal")+(dayTargetK()<bmr()?`<br><small style="color:var(--zaff)">sotto il basale (${bmr()}): sostenibile a periodi, con proteine alte</small>`:""))}
+  ${row("Peso di riferimento per le proteine","Non il peso attuale: con molto grasso il fabbisogno proteico si calcola su massa magra, peso obiettivo o peso corretto.",out(refWeight()+" kg"))}
+  ${row("Target proteico del piano","Peso di riferimento × grammi per kg.",out(dayTargetP()+" g"))}
   </table>
 
   <div class="gsec">Allenamenti</div>
@@ -2480,7 +2578,7 @@ function rulesCardHTML(){
   <div class="aibox" id="rulesOut" style="display:none"></div></div>`;}
 window.resetRules=()=>{
   if(!confirm("Riporto tutte le regole ai valori consigliati?"))return;
-  Object.assign(S.profile,{bmrF:"auto",metMode:"netto",minMeal:250,protLock:true,realOnly:true,
+  Object.assign(S.profile,{bmrF:"auto",metMode:"netto",minMeal:250,protLock:true,realOnly:true,defMode:"pct",defPct:20,kcalMin:null,prud:0,
     protKg:1.6,rgpPct:10,rgpMin:150,rgpCap:25,rgpCapMax:400,rgpDays:5});
   INT.bassa=.8;INT.media=1;INT.alta=1.2;S.profile.intOverride={bassa:.8,media:1,alta:1.2};
   save();render("regole");toast("Regole riportate ai valori consigliati ✓");};
@@ -2505,6 +2603,38 @@ window.loadPlanCode=(fromOnboard)=>{
   S.customPlan=P.get();PLAN=S.customPlan;S.permMeals={};S.week=freshWeek();
   if(fromOnboard)S.onboard.done=true;
   save();show("piano");toast("Piano «"+P.name+"» caricato ✓");};
+/* Pulizia selettiva: azzera solo le voci scelte, opzionalmente limitandosi a
+   un intervallo di date. Serve dopo un imprevisto, per ripartire puliti senza
+   buttare via profilo, piano e impostazioni. */
+window.cleanupRun=()=>{
+  const g=id=>document.getElementById(id),ck=id=>!!(g(id)&&g(id).checked);
+  const from=(g("clFrom")&&g("clFrom").value)||"",to=(g("clTo")&&g("clTo").value)||"";
+  const inRange=d=>(!from||d>=from)&&(!to||d<=to);
+  const sel=[];
+  if(ck("clStreak"))sel.push("serie 🔥");
+  if(ck("clPeriods"))sel.push("periodi");
+  if(ck("clWeights"))sel.push("pesate");
+  if(ck("clWeek"))sel.push("settimana in corso");
+  if(ck("clHistory"))sel.push("settimane archiviate");
+  if(ck("clEvents"))sel.push("eventi");
+  if(ck("clShop"))sel.push("lista della spesa");
+  if(!sel.length)return alert("Seleziona almeno una voce da azzerare.");
+  const range=(from||to)?("\n\nLimitato al periodo "+(from||"inizio")+" → "+(to||"oggi")):"\n\nSu tutto lo storico.";
+  if(!confirm("Azzero: "+sel.join(", ")+range+"\n\nProfilo, piano, regole e caratteristiche restano intatti.\nViene creata un'istantanea prima di procedere."))return;
+  snapSave("prima della pulizia");
+  if(ck("clStreak"))S.streak={count:0,best:(S.streak&&S.streak.best)||0,last:""};
+  if(ck("clPeriods"))S.periods=(from||to)?(S.periods||[]).filter(p=>!inRange(p.start)):[];
+  if(ck("clWeights")){const keep=(S.profile.weights||[]).filter(x=>!inRange(x.d));
+    S.profile.weights=keep;}
+  if(ck("clWeek"))S.week=freshWeek();
+  if(ck("clHistory"))S.history=(from||to)?(S.history||[]).filter(w=>!inRange(w.from)):[];
+  if(ck("clEvents")){
+    if(from||to){Object.keys(S.dayEvents||{}).forEach(k=>{if(inRange(k))delete S.dayEvents[k];});
+      Object.keys(S.hardDays||{}).forEach(k=>{if(inRange(k))delete S.hardDays[k];});}
+    else {S.dayEvents={};S.hardDays={};}}
+  if(ck("clShop")){S.shop={};S.customShop=null;}
+  save();render("io");
+  alert("Pulizia completata ✓\n\nSe qualcosa non torna, recuperi tutto da 🛟 Ripristino di emergenza.");};
 window.sendBug=()=>{
   const t=document.getElementById("bugType"),x=document.getElementById("bugTxt"),c=document.getElementById("bugCtx");
   const txt=(x&&x.value||"").trim();
@@ -2528,6 +2658,11 @@ window.saveRules=()=>{const p=S.profile,g=id=>document.getElementById(id);
   p.bmrF=v("rBmrF","auto");
   p.act=parseFloat(v("rAct",p.act))||p.act;
   p.baseSteps=Math.max(0,n("rSteps",3000));
+  p.prud=Math.max(0,Math.min(20,n("rPrud",0)));
+  p.defMode=v("rDefMode","pct");
+  p.defPct=Math.max(5,Math.min(30,n("rDefPct",20)));
+  p.kcalMin=Math.max(1000,n("rKcalMin",kcalFloorMin()));
+  S.diet.ritmo=v("rRitmo",S.diet.ritmo||"0.5");
   p.metMode=v("rMet","netto");
   INT.bassa=Math.max(.3,n("rIntB",.8));INT.media=Math.max(.3,n("rIntM",1));INT.alta=Math.max(.3,n("rIntA",1.2));
   p.intOverride={bassa:INT.bassa,media:INT.media,alta:INT.alta};
@@ -2612,7 +2747,7 @@ window.genPlanAI=async()=>{
   const goal=p.goal||"dimagrimento graduale";
   const deficit=(/mantenimento/i.test(goal))?0:(/massa|aument/i.test(goal)?-300:400);
   const target=Math.max(1200,t-deficit);
-  const protG=Math.round(p.w*((S.profile.protKg!=null?+S.profile.protKg:1.6)));
+  const protG=dayTargetP();
   const slots=(D.slots||"Colazione, Metà mattina, Pranzo, Metà pomeriggio, Cena").split(",").map(x=>x.trim()).filter(Boolean);
   if(!confirm("Genero un piano settimanale completo da:\n\n• "+age()+" anni, "+p.w+" kg, obiettivo: "+goal+
     "\n• fabbisogno "+t+" kcal → target ~"+target+" kcal al giorno\n• impostazione: "+(D.tipo||"mediterranea")+
@@ -2690,6 +2825,36 @@ async function autoCloseStaleWeeks(){
     await closeWeekCore(true);}
   if(guard)toast("📅 Settimana archiviata automaticamente (modificabile in Storico)");}
 
+let PESCH=null;
+function drawWeightsChart(){
+  try{
+    const cv=document.getElementById("chPesate");
+    if(!cv||typeof Chart==="undefined")return;
+    if(PESCH){PESCH.destroy();PESCH=null;}
+    const ws=(S.profile.weights||[]).slice().sort((a,b)=>a.d<b.d?-1:1);
+    if(ws.length<2)return;
+    const goal=parseFloat((S.diet||{}).obiettivoPeso)||S.profile.goalW||null;
+    PESCH=new Chart(cv,{type:"line",
+      data:{labels:ws.map(x=>new Date(x.d).toLocaleDateString("it-IT",{day:"numeric",month:"short"})),
+        datasets:[{label:"Peso (kg)",data:ws.map(x=>x.w),tension:.3,borderColor:"#2F7D3B",pointRadius:2},
+          ...(goal?[{label:"Obiettivo",data:ws.map(()=>goal),borderColor:"#2F5FA6",borderDash:[6,5],pointRadius:0}]:[]),
+          ...(ws.some(x=>x.fat)?[{label:"Grasso %",data:ws.map(x=>x.fat||null),tension:.3,borderColor:"#C77A15",pointRadius:2,spanGaps:true,yAxisID:"y2"}]:[])]},
+      options:{animation:false,plugins:{legend:{labels:{boxWidth:11,font:{size:10}}}},
+        scales:{x:{ticks:{font:{size:9}}},y2:{position:"right",grid:{drawOnChartArea:false}}}}});
+  }catch(e){}}
+function weightsCardHTML(){const p=S.profile;let h="";
+  if(p.weights&&p.weights.length>1)
+    h+=`<div class="card"><h2>📉 Andamento del peso</h2>
+    <canvas id="chPesate" height="170"></canvas>
+    <div class="hint">Ogni salvataggio in <b>Io</b> aggiunge un punto. La linea tratteggiata è l'obiettivo, se impostato.</div></div>`;
+  h+=`<div class="card"><h2>⚖️ Pesate e biometriche</h2>`;
+  if(!p.weights.length)h+=`<div class="hint">Nessuna pesata registrata.</div>`;
+  p.weights.slice().reverse().forEach((x,ri)=>{const i=p.weights.length-1-ri;
+    const prev=i>0?p.weights[i-1].w:null;const d=prev?(x.w-prev).toFixed(1):null;
+    h+=`<div class="wline"><span>${new Date(x.d).toLocaleDateString("it-IT")}${x.fat?" · grasso "+x.fat+"%":""}${x.mus?" · muscolo "+x.mus+"%":""}${x.pa?" · "+x.pa:""}${x.spo2?" · SpO2 "+x.spo2:""}</span>
+    <span><b>${x.w} kg</b>${d!==null?` <span style="color:${d<=0?"var(--salvia)":"var(--rosso)"};font-size:12px">(${d>0?"+":""}${d})</span>`:""}<span class="del" onclick="delWeight(${i})">✕</span></span></div>`;});
+  h+=`</div>`;
+  return h;}
 function renderStorico(){const el=document.getElementById("pg-storico");
   const w=weekSummary();
   /* Recap v5.1: scostamenti dagli OBIETTIVI del giorno (Δ mangiate vs
@@ -2721,6 +2886,7 @@ function renderStorico(){const el=document.getElementById("pg-storico");
     <button class="btn ghost" onclick="waWeek()">📤 WhatsApp</button>
     <button class="btn ghost" onclick="printReport()">🖨️ Esporta Report PDF</button></div>`;
   }
+  h+=weightsCardHTML();
   h+=extendedRecapHTML();
   h+=exportCardHTML();
   // Periodi (Dieta 1, Libero 1, …) con metriche e valutazione AI
@@ -2790,13 +2956,13 @@ function renderStorico(){const el=document.getElementById("pg-storico");
         <button class="btn ghost small" onclick="toggleEditWeek(${i})">✏️ Modifica</button>
         <button class="btn warn small" onclick="delWeek(${i})">Elimina</button></div>`;}
     h+=`</div></div>`;});
-  h+=`</div>`;el.innerHTML=h;drawAnalysis();drawGoalProjection();renderProgressBox();}
+  h+=`</div>`;el.innerHTML=h;drawWeightsChart();drawAnalysis();drawGoalProjection();renderProgressBox();}
 /* ── Modifica settimane passate ──────────────────────────────────────────
    Le settimane chiuse archiviano solo dati aggregati per giorno (kcal, prot,
    carbo, grassi, sport bruciato, sonno/relax/umore, note, allenamenti come
    testo): qui si possono correggere. Il deficit e le medie della settimana
    vengono RICALCOLATI da questi valori al salvataggio (stesso TDEE usato
-   all'epoca, salvato in wk.tdee). Include un merge rapido degli allenamenti
+   all'epoca, salvato in wk.tdee). */
 let editWeekIdx=null;
 window.toggleEditWeek=(i)=>{editWeekIdx=(editWeekIdx===i?null:i);render("storico");
   setTimeout(()=>{const el=document.getElementById("hw"+i);if(el)el.classList.add("open");},0);};
@@ -3369,6 +3535,15 @@ async function wizGenerate(){
         m.o=(m.o||[]).map(o=>({d:String(o.d),k:Math.round(+o.k)||0,p:Math.round(+o.p)||0,c:Math.round(+o.c)||null,f:Math.round(+o.f)||null}));if(!m.o.length)throw new Error("opzioni");});});
     WIZ.plan=plan;WIZ.step=4;renderSetup();
   }catch(e){box.textContent="";aiFail(e.message&&e.message.includes("formato")?new Error("La risposta AI non era nel formato giusto: riprova (Genera di nuovo)."):e);}}
+/* Riga unica con TUTTI i macro stimati del piatto */
+function macroLine(o){
+  if(!o||!o.k)return "da stimare";
+  const bits=["~"+o.k+" kcal",(o.p||0)+" g P"];
+  if(o.c!=null)bits.push(o.c+" g C");
+  if(o.f!=null)bits.push(o.f+" g G");
+  if(o.fib!=null)bits.push(o.fib+" g F");
+  if(o.z!=null)bits.push(o.z+" g Z");
+  return bits.join(" · ");}
 window.wizSet=(di,mi,f,v)=>{const o=WIZ.plan[di].meals[mi].o[0];
   if(f==="d")o.d=v;else WIZ.plan[di].meals[mi][f]=v;
   const el=document.getElementById("wzTot"+di);if(el)el.textContent=wizDayTot(di);};
@@ -3395,7 +3570,7 @@ window.wizBalance=async(di)=>{
   const day=WIZ.plan[di];
   const meals=day.meals.filter(m=>m.o[0].d&&m.o[0].d.trim());
   if(!meals.length)return alert("Scrivi prima i pasti della giornata.");
-  const tk=dayTargetK(),tp=Math.round(S.profile.w*((S.profile.protKg!=null?+S.profile.protKg:1.6)));
+  const tk=dayTargetK(),tp=dayTargetP();
   if(!confirm("Bilancio "+day.day+" sul tuo target: ~"+tk+" kcal e ~"+tp+" g di proteine.\n\nL'AI aggiusta le grammature dei piatti che hai scritto, senza cambiarne la natura."))return;
   try{
     const list=meals.map(m=>({slot:m.n,desc:m.o[0].d}));
@@ -3407,11 +3582,59 @@ window.wizBalance=async(di)=>{
         fib:Math.round(a.fibre)||estFiberOf(a.desc),z:Math.round(a.zuccheri)||estSugarOf(a.desc)});});
     renderSetup();toast("Giornata bilanciata ✓");
   }catch(e){aiFail(e);}};
-function dayTargetK(){ // target calorico giornaliero dal fabbisogno e dall'obiettivo
-  const t=tdee(),g=(S.profile.goal||"").toLowerCase();
-  if(/mantenimento/.test(g))return t;
-  if(/massa|aument/.test(g))return t+300;
-  return Math.max(1200,t-400);}
+/* ── Target giornalieri ────────────────────────────────────────────
+   Le calorie del piano NON sono il fabbisogno: sono il fabbisogno meno il
+   deficit che serve davvero per il ritmo di dimagrimento scelto.
+   1 kg di grasso ≈ 7.700 kcal, quindi 0,5 kg a settimana ≈ 550 kcal al
+   giorno di deficit. Il deficit viene comunque limitato al 25% del
+   fabbisogno e il target non scende mai sotto un pavimento di sicurezza. */
+function ratePerWeek(){const r=parseFloat((S.diet||{}).ritmo);return r>0?r:0.5;}
+/* Fabbisogno usato per i TARGET del piano. Il moltiplicatore di attività è
+   una stima: se i tuoi giorni sono più fermi di quanto dichiarato, il
+   fabbisogno risulta gonfiato e il target troppo alto. La "prudenza" lo
+   abbassa di una percentuale scelta da te (0 = nessuna correzione). */
+function prudence(){return Math.max(0,Math.min(20,+S.profile.prud||0));}
+function tdeeTarget(){return Math.round(tdee()*(1-prudence()/100));}
+/* Due modi di fissare il deficit:
+   • "pct"   → una percentuale del fabbisogno (il più leggibile: 20% significa
+               mangiare l'80% di quello che consumi)
+   • "ritmo" → i chili a settimana desiderati (1 kg ≈ 7.700 kcal)
+   Il tetto è al 30%: oltre si entra in territorio da seguire con un
+   professionista, e l'app lo segnala. */
+function defMode(){return S.profile.defMode||"pct";}
+function defPct(){return Math.max(5,Math.min(30,+S.profile.defPct||20));}
+function deficitTarget(){
+  const t=tdeeTarget(),g=(S.profile.goal||"").toLowerCase();
+  if(/mantenimento/.test(g))return 0;
+  if(/massa|aument/.test(g))return -Math.min(400,Math.round(t*0.12));
+  let d;
+  if(defMode()==="pct")d=Math.round(t*defPct()/100);
+  else{d=Math.round(ratePerWeek()*7700/7);if(/deciso/.test(g))d=Math.round(d*1.15);}
+  return Math.min(d,Math.round(t*0.30));}
+/* Pavimento del target. NON è il metabolismo basale: per dimagrire si deve
+   per forza stare sotto il consumo totale, e con un peso elevato è normale
+   (e sicuro) mangiare anche sotto il basale stimato, perché la differenza la
+   copre il grasso corporeo. Il limite vero è un minimo assoluto sotto il
+   quale diventa difficile coprire proteine e micronutrienti. */
+function kcalFloorMin(){return +S.profile.kcalMin>0?+S.profile.kcalMin:(S.profile.gender==="f"?1200:1500);}
+function kcalFloor(){return kcalFloorMin();}
+function dayTargetK(){return Math.max(kcalFloor(),tdeeTarget()-deficitTarget());}
+/* Proteine: si calcolano sul peso di RIFERIMENTO, non su quello attuale.
+   Con un forte sovrappeso il grasso non "richiede" proteine: usare il peso
+   pieno gonfia il numero (ed è il motivo per cui uscivano 182 g).
+   Ordine di preferenza: massa magra → peso obiettivo → peso corretto. */
+function refWeight(){
+  const p=S.profile,fat=parseFloat(p.fatp);
+  if(fat>0)return Math.round(p.w*(1-fat/100)*1.15);   // magra + margine
+  const tw=parseFloat((S.diet||{}).obiettivoPeso);
+  if(tw>0&&tw<p.w)return Math.round(tw);
+  const h=+p.h||0;                                     // peso corretto: ideale + 25% dell'eccesso
+  if(h>0){const ideal=(p.gender==="f"?21.5:22.5)*Math.pow(h/100,2);
+    if(p.w>ideal)return Math.round(ideal+(p.w-ideal)*0.25);}
+  return Math.round(p.w);}
+function dayTargetP(){
+  const gk=(S.profile.protKg!=null?+S.profile.protKg:1.6);
+  return Math.round(refWeight()*gk);}
 function wizDayTot(di){let k=0,p=0;WIZ.plan[di].meals.forEach(m=>{k+=m.o[0].k;p+=m.o[0].p;});return "~"+k+" kcal · ~"+p+" g prot";}
 window.wizDelMeal=(di,mi)=>{WIZ.plan[di].meals.splice(mi,1);renderSetup();};
 /* Alternative dello stesso pasto: nel giorno potrai scegliere quale usare
@@ -3487,25 +3710,28 @@ function renderSetup(){const el=document.getElementById("pg-setup");let h="";
         <div><label>Ora</label><input type="text" value="${esc(m.t)}" onchange="wizSet(${di},${mi},'t',this.value)"></div>
         <div><label>Tipo</label><select onchange="wizSet(${di},${mi},'type',this.value)"><option value="norm" ${m.type==="norm"?"selected":""}>normale</option><option value="free" ${m.type==="free"?"selected":""}>libero</option><option value="mensa" ${m.type==="mensa"?"selected":""}>mensa</option></select></div></div>
         <label>Piatto</label><textarea onchange="wizSet(${di},${mi},'d',this.value)">${esc(o.d)}</textarea>
-        <div class="row3"><div><label>Valori stimati</label>
-          <div class="wzval" id="wzv${di}_${mi}">${o.k?`~${o.k} kcal · ${o.p} g P`:"da stimare"}</div></div>
-        <div><label>&nbsp;</label><button class="btn ghost small" onclick="wizEstim(${di},${mi})">🤖 Stima dal testo</button></div>
+        <div class="wzrow">
+          <div class="wzval" id="wzv${di}_${mi}">${macroLine(o)}</div>
+          <button class="btn ghost small wzbtn" onclick="wizEstim(${di},${mi})">🤖 Stima</button>
+        </div>
+        <div class="row3">
         <div><label>&nbsp;</label><button class="btn warn small" onclick="wizDelMeal(${di},${mi})">🗑 Rimuovi</button></div></div>`;
         // ── alternative dello stesso pasto (a casa / in mensa / fuori / veloce)
         if(m.o.length>1)m.o.slice(1).forEach((alt,ai)=>{const oi=ai+1;
           h+=`<div style="border-left:3px solid var(--zaff);padding-left:10px;margin-top:8px">
           <label>Alternativa ${oi}</label><textarea onchange="wizSetOpt(${di},${mi},${oi},'d',this.value)">${esc(alt.d)}</textarea>
-          <div class="row3"><div><label>Valori stimati</label>
-            <div class="wzval" id="wzv${di}_${mi}_${oi}">${alt.k?`~${alt.k} kcal · ${alt.p} g P`:"da stimare"}</div></div>
-          <div><label>&nbsp;</label><button class="btn ghost small" onclick="wizEstim(${di},${mi},${oi})">🤖 Stima</button></div>
-          <div><label>&nbsp;</label><button class="btn warn small" onclick="wizDelOpt(${di},${mi},${oi})">✕ Togli</button></div></div></div>`;});
+          <div class="wzrow">
+            <div class="wzval" id="wzv${di}_${mi}_${oi}">${macroLine(alt)}</div>
+            <button class="btn ghost small wzbtn" onclick="wizEstim(${di},${mi},${oi})">🤖 Stima</button>
+            <button class="btn warn small wzbtn" onclick="wizDelOpt(${di},${mi},${oi})">✕ Togli</button>
+          </div></div>`;});
         h+=`<div class="mtools" style="margin-top:8px"><button class="btn ghost small" onclick="wizAddOpt(${di},${mi})">+ alternativa</button></div>
         </div></div>`;});
       h+=`<div class="mtools"><button class="btn ghost small" onclick="wizAddMeal(${di})">+ pasto</button></div>
       <div class="daytotal">Totale: <span id="wzTot${di}">${wizDayTot(di)}</span></div>
       <div class="mtools" style="margin-bottom:14px">
         <button class="btn small" onclick="wizBalance(${di})">⚖️ Bilancia la giornata con l'AI</button>
-        <span class="hint" style="margin:0">target ~${dayTargetK()} kcal · ${Math.round(S.profile.w*((S.profile.protKg!=null?+S.profile.protKg:1.6)))} g prot</span>
+        <span class="hint" style="margin:0">target ~${dayTargetK()} kcal · ${dayTargetP()} g prot</span>
       </div>`;});
     h+=`<div class="card"><div class="mtools">
     ${WIZ.editOnly?"":'<button class="btn ghost" onclick="wizNext(3)">← Rigenera</button>'}
@@ -3523,17 +3749,20 @@ function renderGuida(){document.getElementById("pg-guida").innerHTML=`
 <div class="card"><h2>✨ Novità di questa versione</h2>
 <div class="hint">Stai usando <b>Nutry ${APP_VER}</b>. Qui trovi solo le differenze rispetto alla versione precedente: tutte le funzioni, comprese queste, sono descritte per esteso nel resto della guida.</div>
 <table class="gtable">
-<tr><td>🆕</td><td><b>Percorso di benvenuto</b>: al primo avvio non c'è nessun piano precompilato. Otto passi guidati raccolgono profilo, obiettivo e abitudini alimentari spiegando a cosa serve ogni dato e dove si cambia, poi il piano si genera insieme.</td></tr>
-<tr><td>🔑</td><td><b>Codice piano</b>: <b>00000000</b> carica la dieta standard con cui è nata Nutry. Si inserisce nell'ultimo passo del benvenuto o in Regole → Il piano.</td></tr>
-<tr><td>📐</td><td><b>Sezione Regole</b> con voce propria: tutti i numeri che governano l'app — formula del basale (selezionabile), moltiplicatori di intensità, minimo per pasto, soglie e tetti di recupero, obiettivo proteine — modificabili da campi e tendine, più le regole libere allegate a ogni richiesta all'AI.</td></tr>
-<tr><td>🥗</td><td><b>Caratteristiche alimentari estese</b>: tipo di dieta fra 15 impostazioni, quali pasti fai davvero, pasti liberi, mensa, tempo per cucinare, budget, vincoli religiosi, condizioni da tenere presenti.</td></tr>
-<tr><td>✨</td><td><b>Generatore di piano</b> da età, peso, obiettivo e abitudini; nell'editor <b>🤖 Stima</b> calcola kcal e macro dal testo del piatto e <b>⚖️ Bilancia la giornata</b> aggiusta le grammature sul target: i numeri non si scrivono più a mano.</td></tr>
-<tr><td>📤</td><td><b>Esportazione completa</b>: un periodo a scelta, una riga per giorno con 38 colonne (pianificato e mangiato, macro, zuccheri, sport, sonno, umore, acqua, evento, periodo, ribilanciamenti, recuperi) in CSV o JSON, più l'analisi automatica dei pattern.</td></tr>
-<tr><td>📆</td><td><b>Periodi di dieta visibili</b>: striscia sempre in cima a Oggi con giorno del periodo, variazione di peso e deficit medio.</td></tr>
-<tr><td>🧮</td><td><b>Due correzioni di calcolo</b>: il piano non cambia più quando ribilanci (il pianificato resta il riferimento fisso), e le calorie degli allenamenti non contano più il metabolismo a riposo, che era già nel fabbisogno.</td></tr>
-<tr><td>🧊</td><td><b>Dati passati congelati</b>: ogni allenamento salva il peso del momento e ogni giornata il fabbisogno del momento, così dimagrendo non cambiano i deficit già registrati.</td></tr>
-<tr><td>📝</td><td><b>Nota del giorno</b> in Oggi, <b>ripristino manuale da Drive</b>, <b>segnalazione bug e idee</b> allo sviluppatore via email.</td></tr>
-<tr><td>🔋</td><td><b>Consumo ridotto</b>: rimossi sfondi sfocati animati, effetto vetro, coriandoli e animazioni dei grafici. Resta solo la rotella mentre l'AI lavora.</td></tr>
+<tr><td>🆕</td><td><b>Percorso di benvenuto</b>: al primo avvio non c'è nessun piano né lista della spesa. Otto passi guidati raccolgono profilo, obiettivo e abitudini spiegando a cosa serve ogni dato, dove si cambia e come sono trattati; poi il piano si costruisce insieme.</td></tr>
+<tr><td>🎯</td><td><b>Target calcolati sul ritmo</b>: le calorie del piano nascono dal deficit necessario ai chili a settimana che hai scelto, con il metabolismo basale come pavimento. Le proteine si calcolano sul peso di riferimento, non su quello attuale.</td></tr>
+<tr><td>📏</td><td><b>Verifica del fabbisogno sui tuoi dati</b>: dal confronto fra quanto hai mangiato e come è cambiato il peso, l'app ricava il fabbisogno reale e allinea il moltiplicatore di attività. Più una <b>prudenza</b> regolabile se sospetti di muoverti meno del dichiarato.</td></tr>
+<tr><td>🔑</td><td><b>Codice piano</b>: <b>00000000</b> ripristina il piano principale di Nutry, dalla pagina Piano o dall'ultimo passo del benvenuto.</td></tr>
+<tr><td>📐</td><td><b>Sezione Regole</b> con voce propria: fabbisogno, formula del basale, moltiplicatori di intensità, minimo per pasto, soglie e tetti di recupero, obiettivo proteine, target — tutto modificabile da campi e tendine, più le regole libere allegate a ogni richiesta all'AI.</td></tr>
+<tr><td>🥗</td><td><b>Caratteristiche alimentari estese</b>: tipo di dieta fra quindici impostazioni, quali pasti fai davvero, pasti liberi, mensa, tempo per cucinare, budget, vincoli religiosi, condizioni da tenere presenti.</td></tr>
+<tr><td>✨</td><td><b>Generatore di piano</b> e, nell'editor, <b>🤖 Stima</b> per ricavare kcal e macro dal testo del piatto e <b>⚖️ Bilancia la giornata</b> per aggiustare le grammature sul target: i numeri non si scrivono più a mano.</td></tr>
+<tr><td>📤</td><td><b>Esportazione completa</b>: un periodo a scelta, una riga per giorno con 38 colonne, in CSV o JSON, più l'analisi automatica dei pattern.</td></tr>
+<tr><td>📆</td><td><b>Periodi visibili</b> con la striscia in cima a Oggi, e <b>pesate e biometriche</b> spostate in Storico con il grafico dell'andamento del peso.</td></tr>
+<tr><td>✓</td><td><b>Riga del giorno</b> con evento e recupero sempre nella stessa posizione, resi effettivi da un solo pulsante di conferma.</td></tr>
+<tr><td>🧮</td><td><b>Due correzioni di calcolo</b>: il piano non cambia più quando ribilanci, e le calorie degli allenamenti non contano più il metabolismo a riposo, che era già nel fabbisogno.</td></tr>
+<tr><td>🧊</td><td><b>Dati passati congelati</b>: ogni allenamento salva il peso del momento e ogni giornata il fabbisogno del momento, così dimagrendo non cambiano i numeri già registrati.</td></tr>
+<tr><td>🛟</td><td><b>Protezioni</b>: copie di sicurezza automatiche con ripristino, <b>pulizia selettiva</b> per azzerare solo serie, periodi, pesate o settimane (anche per intervallo di date), backup su Drive differito con copie datate e blocco se il backup remoto è più completo di quello locale.</td></tr>
+<tr><td>📝</td><td><b>Nota del giorno</b>, ripristino manuale da Drive, segnalazione di bug e idee allo sviluppatore, e nessuna schermata bianca: gli errori diventano visibili e recuperabili.</td></tr>
 </table></div>
 
 <div class="card"><h2>🧠 Come funziona il sistema</h2>
@@ -3549,6 +3778,12 @@ Dalla distanza fra questi due numeri nasce tutto il resto: recap, ribilanciament
 <p style="font-size:14.5px;line-height:1.55">Il <b>metabolismo basale</b> si calcola su peso, altezza, età e sesso; si moltiplica per l'<b>attività di base</b> (lavoro e vita quotidiana) e si corregge sui <b>passi base</b>, quelli che fai comunque ogni giorno (riferimento 3.000). Il risultato è il <b>fabbisogno</b>.
 Gli allenamenti non sono dentro: si sommano a parte, con la formula <b>(MET dello sport × intensità − 1) × peso × ore</b>. Quel −1 toglie il metabolismo a riposo, che nel fabbisogno c'è già: senza, ogni allenamento risulterebbe più generoso del reale.
 <b>Il deficit</b> = fabbisogno + sport − mangiato. Se cali di peso il basale scende, quindi aggiornando la pesata cala anche il fabbisogno: il dimagrimento rallenta da solo, ed è normale.</p>
+
+<div class="gsec">2 bis · Il target del piano (e perché non è il fabbisogno)</div>
+<p style="font-size:14.5px;line-height:1.55">Le calorie del piano non coincidono col fabbisogno: sono <b>fabbisogno meno il deficit</b>. Il deficit si fissa in due modi, a scelta in <b>Regole</b>: come <b>percentuale</b> del fabbisogno (20% significa mangiare l'80% di quello che consumi) oppure partendo dai <b>chili a settimana</b> desiderati, sapendo che un chilo di grasso vale circa 7.700 kcal. Il tetto è il 30%.
+<br><br>Il metabolismo basale <b>non</b> è un pavimento: per dimagrire bisogna stare sotto il consumo totale, e quando c'è grasso da consumare è normale — e sostenibile — mangiare anche sotto il basale stimato, perché la differenza la copre il corpo. Il limite vero è un <b>minimo assoluto</b> (di base 1.500 kcal per gli uomini, 1.200 per le donne, modificabile) sotto il quale diventa difficile coprire proteine e micronutrienti. Se il target scende sotto il basale, l'app te lo segnala: è una fase spinta, da tenere per periodi limitati e con proteine alte.
+<br><br>Il moltiplicatore di attività resta però una stima, e se le tue giornate sono più ferme di così il fabbisogno risulta gonfiato. Per questo in <b>Regole</b> ci sono due strumenti: la <b>prudenza</b>, che abbassa di una percentuale il fabbisogno usato per i target, e soprattutto la <b>verifica sui tuoi dati</b>, che ricava il fabbisogno reale da quanto hai mangiato e da come è cambiato il peso — una misura, non una stima — e permette di allineare il moltiplicatore con un tocco.
+<br><br>Le proteine si calcolano sul <b>peso di riferimento</b> (massa magra, peso obiettivo o peso corretto), non su quello attuale: il grasso non richiede proteine, e usare il peso pieno gonfia il numero.</p>
 
 <div class="gsec">3 · Ribilanciare la giornata</div>
 <p style="font-size:14.5px;line-height:1.55">⚖️ <b>Ribilancia Oggi</b> ragiona a <b>budget</b>: pianificato del giorno meno quello già mangiato. Se i pasti che restano stanno dentro il budget non tocca nulla e te lo dice.
@@ -3578,10 +3813,10 @@ Da <b>Storico → Esporta i dati</b> scarichi qualsiasi periodo come tabella: un
 <tr><td>🍽️</td><td><b>Piano</b> — tutta la settimana: spunte, spostamenti, modifiche, note ed extra per ogni giorno.</td></tr>
 <tr><td>🛒</td><td><b>Spesa</b> — checklist spuntabile, ricerca sul sito del tuo supermercato, alternative AI, prodotti salvati, invio WhatsApp.</td></tr>
 <tr><td>🏃</td><td><b>Sport</b> — registra allenamenti (le kcal si calcolano sul tuo peso); nuovi sport con stima MET.</td></tr>
-<tr><td>📚</td><td><b>Storico</b> — recap con selettore <b>Settimana / Mese in corso</b>, <b>Riepilogo esteso</b> (medie settimanali o mensili di tutta la storia, in un riquadro scorrevole), <b>Mesi passati</b> e <b>Settimane passate</b> sempre modificabili, grafici, report AI, stampa PDF.</td></tr>
+<tr><td>📚</td><td><b>Storico</b> — recap settimanale, <b>pesate e biometriche</b> con grafico del peso, <b>Riepilogo esteso</b> (medie settimanali o mensili di tutta la storia, in un riquadro scorrevole), <b>Mesi passati</b> e <b>Settimane passate</b> sempre modificabili, grafici, report AI, stampa PDF.</td></tr>
 <tr><td>🔑</td><td><b>Codice piano</b> (in Regole → Il piano, o nell'ultimo passo del benvenuto): carica un piano già pronto. <b>00000000</b> è la dieta standard con cui è nata Nutry — mediterranea, cinque pasti, mensa il martedì e il giovedì.</td></tr>
 <tr><td>📐</td><td><b>Regole</b> — la configurazione del sistema: fabbisogno, formula degli allenamenti, soglie di ribilanciamento e recupero, obiettivo proteine, caratteristiche alimentari e gestione del piano.</td></tr>
-<tr><td>👤</td><td><b>Io</b> — dati e biometrie, motore calorico, vacanza, AI, Drive e backup.</td></tr>
+<tr><td>👤</td><td><b>Io</b> — profilo e biometriche, percorso guidato e questionario del piano, chiave AI, backup e Drive, ripristino di emergenza, pulizia selettiva, segnalazioni</td></tr>
 <tr><td>🧭</td><td><b>Il tuo piano</b> (in Io) — "Ri/comincia da zero": questionario guidato (dati, intolleranze, gusti, obiettivi) da cui l'AI genera una settimana su misura, modificabile prima della conferma. "Modifica il piano attuale" per ritocchi a mano. Sempre da validare con un dietista.</td></tr></table></div>
 
 <div class="card"><h2>I simboli</h2>
@@ -3663,7 +3898,7 @@ Finché l'app è in "Testing", Google blocca le email non autorizzate:<br>
 </div>
 <div class="gsec">Parte 2 — Google Gemini</div>
 <div class="hint">
-1. Vai su <b>aistudio.google.com/apikey</b><br>
+1. Vai su <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="lnk">aistudio.google.com/app/apikey ↗</a><br>
 2. Clicca "Crea chiave"<br>
 3. Scegli o crea un progetto<br>
 4. Copia la chiave e incollala in <b>Io → Motore AI (Gemini)</b>
@@ -3739,17 +3974,6 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <label>🚶 Passi base garantiti al giorno</label>
   <input type="number" id="pBaseSteps" value="${(+p.baseSteps>0)?+p.baseSteps:3000}" step="500" min="0">
   <div class="hint">I passi che fai <b>sempre</b>, anche nei giorni pigri. Il riferimento è 3000: se ne fai stabilmente di più (o di meno), imposta qui il tuo valore e il fabbisogno si aggiusta. Le camminate vere si registrano come sport.</div>
-  <label>⚖️ Recupero degli sfori — soglia di tolleranza</label>
-  <div class="mtools" style="align-items:center">
-    <input type="number" id="pRgpPct" value="${(S.profile.rgpPct!=null)?S.profile.rgpPct:10}" step="1" min="0" max="30" style="width:80px"><span style="font-size:12.5px;color:var(--grigio)">% del giorno</span>
-    <input type="number" id="pRgpMin" value="${(S.profile.rgpMin!=null)?S.profile.rgpMin:150}" step="25" min="0" style="width:90px"><span style="font-size:12.5px;color:var(--grigio)">kcal minime</span>
-  </div>
-  <div class="hint">Sotto questa soglia lo sforo <b>non viene proposto</b> per il recupero: rientra nell'errore normale di stima delle porzioni. Vale la più alta delle due (es. 10% di 1800 = 180 kcal).</div>
-  <label>⚖️ Recupero massimo in un giorno</label>
-  <div class="mtools" style="align-items:center">
-    <input type="number" id="pRgpCap" value="${(S.profile.rgpCap!=null)?S.profile.rgpCap:25}" step="5" min="5" max="50" style="width:80px"><span style="font-size:12.5px;color:var(--grigio)">% del pianificato</span>
-  </div>
-  <div class="hint">Quanto puoi tagliare al massimo in una giornata: se lo sforo è più grande, il resto viene recuperato nei giorni successivi. Nessun pasto scende comunque sotto ~250 kcal — <b>mai giorni di digiuno</b>.</div>
   <button class="btn" onclick="saveProfile()">Salva dati e pesata</button>
   <div class="hint">Ogni salvataggio registra peso e biometriche nello storico (grafici in Storico).</div></div>`;
   // Gestione periodi (inizio/fine dieta o periodo libero)
@@ -3763,7 +3987,7 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <button class="btn ${S.ui.vacanza?"warn":"ghost"}" onclick="toggleVacanza()">${S.ui.vacanza?"Disattiva vacanza":"Attiva vacanza"}</button>
   <div class="hint">In vacanza il deficit non viene giudicato e la serie 🔥 è congelata: l'app diventa un semplice diario.</div></div>`;
   h+=`<div class="card"><h2>🧭 Percorso guidato</h2>
-  <div class="hint">Rifai la configurazione passo per passo: profilo, obiettivo, come mangi, AI e backup. Non cancella nulla di quello che hai già registrato.</div>
+  <div class="hint">Ripercorre la configurazione iniziale: profilo, obiettivo, come mangi, chiave AI e backup. Non cancella nulla di quello che hai già registrato. <b>Il piano non si tocca da qui</b>: si genera e si modifica dalla pagina Piano.</div>
   <button class="btn ghost" onclick="S.onboard.step=0;save();show('benvenuto')">Rifai il percorso guidato</button></div>`;
   {const sn=snapshots();
    h+=`<div class="card"><h2>🛟 Ripristino di emergenza</h2>
@@ -3775,6 +3999,23 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
        <small style="color:var(--grigio)">${esc(x.tag)} · v${esc(x.v||"?")} · ${kb} KB</small></span>
        <button class="btn ghost small" onclick="restoreSnap(${i})">Ripristina</button></div>`;});
    h+=`<div class="mtools" style="margin-top:8px"><button class="btn ghost small" onclick="snapSave('manuale');render('io');toast('Copia creata ✓')">📸 Crea una copia adesso</button></div></div>`;}
+  {const st=S.streak||{},ws=(S.profile.weights||[]).length,pr=(S.periods||[]).length;
+   h+=`<div class="card"><h2>🧹 Pulizia selettiva</h2>
+   <div class="hint">Azzera <b>solo</b> quello che scegli, tenendo intatto tutto il resto: profilo, piano, regole e caratteristiche non vengono toccati. Prima di procedere viene creata un'istantanea, quindi si può tornare indietro dal <b>🛟 Ripristino di emergenza</b>.</div>
+   <label>Cosa vuoi azzerare</label>
+   <label class="ckline"><input type="checkbox" id="clStreak"> 🔥 Serie di giorni in target <small>(ora: ${st.count||0})</small></label>
+   <label class="ckline"><input type="checkbox" id="clPeriods"> 📆 Periodi dieta/libero <small>(ora: ${pr})</small></label>
+   <label class="ckline"><input type="checkbox" id="clWeights"> ⚖️ Pesate e biometriche <small>(ora: ${ws})</small></label>
+   <label class="ckline"><input type="checkbox" id="clWeek"> 📅 Settimana in corso <small>(spunte, extra, sport, acqua)</small></label>
+   <label class="ckline"><input type="checkbox" id="clHistory"> 📚 Settimane archiviate <small>(ora: ${(S.history||[]).length})</small></label>
+   <label class="ckline"><input type="checkbox" id="clEvents"> 🏷️ Eventi e giornate particolari</label>
+   <label class="ckline"><input type="checkbox" id="clShop"> 🛒 Lista della spesa</label>
+   <label>Limita a un periodo di date <small>(facoltativo: vale per pesate, settimane archiviate ed eventi)</small></label>
+   <div class="grid2">
+     <div><label>Dal</label><input type="date" id="clFrom"></div>
+     <div><label>Al</label><input type="date" id="clTo"></div>
+   </div>
+   <button class="btn warn" onclick="cleanupRun()">🧹 Esegui la pulizia</button></div>`;}
   h+=`<div class="card"><h2>🐞 Segnala un bug o un'idea</h2>
   <div class="hint">Hai trovato qualcosa che non funziona, o ti è venuta un'idea per migliorare Nutry? Scrivila qui: si apre la tua email già pronta per lo sviluppatore.</div>
   <label>Di cosa si tratta</label>
@@ -3790,18 +4031,6 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
     <input type="checkbox" id="bugCtx" checked style="width:20px;height:20px"> Allega i dati tecnici (versione, dispositivo, dimensioni schermo)</label>
   <div class="hint">Non vengono allegati i tuoi dati alimentari né il profilo: solo la versione dell'app e il tipo di dispositivo, per capire dove si è rotto.</div>
   <button class="btn" onclick="sendBug()">✉️ Invia allo sviluppatore</button></div>`;
-  h+=`<div class="card"><h2>🧭 Il tuo piano</h2>
-  <div class="mtools"><button class="btn small" onclick="wizStart(true)">Ri/comincia da zero</button>
-  <button class="btn ghost small" onclick="wizEditCurrent()">✏️ Modifica il piano attuale</button></div>
-  <div class="hint">${S.customPlan?"Stai usando un piano personalizzato.":"Stai usando il piano originale."} "Ri/comincia da zero" = questionario guidato con AI: azzera piano e settimana e ne genera uno nuovo su misura, che potrai modificare prima di confermare.</div></div>`;
-  // Biometriche storiche
-  h+=`<div class="card"><h2>Storico pesate & biometriche</h2>`;
-  if(!p.weights.length)h+=`<div class="hint">Nessuna pesata registrata.</div>`;
-  p.weights.slice().reverse().forEach((x,ri)=>{const i=p.weights.length-1-ri;
-    const prev=i>0?p.weights[i-1].w:null;const d=prev?(x.w-prev).toFixed(1):null;
-    h+=`<div class="wline"><span>${new Date(x.d).toLocaleDateString("it-IT")}${x.fat?" · grasso "+x.fat+"%":""}${x.mus?" · muscolo "+x.mus+"%":""}${x.pa?" · "+x.pa:""}${x.spo2?" · SpO2 "+x.spo2:""}</span>
-    <span><b>${x.w} kg</b>${d!==null?` <span style="color:${d<=0?"var(--salvia)":"var(--rosso)"};font-size:12px">(${d>0?"+":""}${d})</span>`:""}<span class="del" onclick="delWeight(${i})">✕</span></span></div>`;});
-  h+=`</div>`;
   // AI
   h+=`<div class="card"><h2>Motore AI (Gemini)</h2>
   <label>Chiave API Google Gemini</label><input type="text" id="gKey" value="${(S.ai&&S.ai.key)||""}" placeholder="AIza…">
@@ -3812,7 +4041,7 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   <div class="aibox" style="margin-top:10px"><div id="usageLine">${usageHtml()}</div>
   <div class="hint" style="margin-top:4px">Contatore locale del tuo consumo (Google non espone i token residui: quelli si vedono solo nella Google Cloud Console). Se vedi molti errori \"quota\", stai toccando i limiti gratuiti: rallenta o attiva la fatturazione.</div>
   <button class="btn ghost small" onclick="S.usage={day:'',calls:0,tokens:0,errors:0,last:''};save();render('io')">Azzera contatore</button></div>
-  <div class="hint">Chiave gratuita su <b>aistudio.google.com</b> → Get API key (resta sul dispositivo). Alimenta: 📸 conta-calorie, 📸 svuota-frigo, 📸 selezionatore di menù, stime sgarri/sport, ✏️ ristime, 🎲 alternative, ribilancia, sostituzioni spesa, report settimanali.</div></div>`;
+  <div class="hint">Chiave gratuita su <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="lnk">aistudio.google.com/app/apikey ↗</a> → <b>Create API key</b> (resta sul dispositivo). Alimenta: 📸 conta-calorie, 📸 svuota-frigo, 📸 selezionatore di menù, stime sgarri/sport, ✏️ ristime, 🎲 alternative, ribilancia, sostituzioni spesa, report settimanali.</div></div>`;
   // Drive
   h+=`<div class="card"><h2>☁️ Sincronizzazione Google Drive</h2>
   <label>CLIENT_ID (Google Cloud)</label><input type="text" id="dCid" value="${S.drive.cid||""}" placeholder="xxxx.apps.googleusercontent.com">
@@ -3858,9 +4087,6 @@ window.saveProfile=()=>{const p=S.profile;
   p.name=document.getElementById("pName").value;p.gender=document.getElementById("pGen").value;
   p.dob=document.getElementById("pDob").value;p.h=+document.getElementById("pH").value||"";
   const _bs=document.getElementById("pBaseSteps");if(_bs)p.baseSteps=Math.max(0,parseInt(_bs.value)||3000);
-  const _rp=document.getElementById("pRgpPct");if(_rp)p.rgpPct=Math.max(0,Math.min(30,parseInt(_rp.value)||0));
-  const _rm=document.getElementById("pRgpMin");if(_rm)p.rgpMin=Math.max(0,parseInt(_rm.value)||0);
-  const _rc=document.getElementById("pRgpCap");if(_rc)p.rgpCap=Math.max(5,Math.min(50,parseInt(_rc.value)||25));
   const wIn=parseFloat(document.getElementById("pW").value);
   const nw=wIn>0?wIn:(parseFloat(p.w)>0?parseFloat(p.w):"");
   const fat=parseFloat(document.getElementById("pFat").value)||null;
