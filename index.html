@@ -609,15 +609,22 @@ function snapshots(){try{return JSON.parse(localStorage.getItem(SNAP_KEY))||[];}
 function snapSave(tag){
   try{
     if(!S||!S.week)return;
+    const data=JSON.stringify(S);
     const list=snapshots();
     const today=new Date().toISOString().slice(0,10);
     if(tag==="giornaliera"&&list.some(x=>x.tag==="giornaliera"&&x.at.slice(0,10)===today))return;
-    list.unshift({at:new Date().toISOString(),tag:tag||"manuale",
-      v:APP_VER,data:JSON.stringify(S)});
-    // teniamo le 7 più recenti, spazio permettendo
-    while(list.length>7)list.pop();
-    try{localStorage.setItem(SNAP_KEY,JSON.stringify(list));}
-    catch(e){while(list.length>2){list.pop();try{localStorage.setItem(SNAP_KEY,JSON.stringify(list));break;}catch(e2){}}}
+    list.unshift({at:new Date().toISOString(),tag:tag||"manuale",v:APP_VER,data});
+    /* Le copie stanno nello stesso spazio dei dati veri: se lo riempissero,
+       i salvataggi normali fallirebbero. Perciò si tengono al massimo 5 copie
+       e comunque solo finché ci si sta comodi: alla prima difficoltà si
+       scartano le più vecchie, e in caso estremo si rinuncia alla copia. */
+    while(list.length>5)list.pop();
+    for(;;){
+      try{localStorage.setItem(SNAP_KEY,JSON.stringify(list));return;}
+      catch(e){
+        list.pop();
+        if(!list.length){try{localStorage.removeItem(SNAP_KEY);}catch(_){}return;}
+      }}
   }catch(e){}}
 window.snapSave=(t)=>snapSave(t);
 window.restoreSnap=(i)=>{
@@ -626,8 +633,21 @@ window.restoreSnap=(i)=>{
   snapSave("prima del ripristino");
   try{localStorage.setItem(KEY,s.data);location.reload();}
   catch(e){alert("Ripristino non riuscito.");}};
+let saveFailed=false;
 function save(){S.meta.updated=new Date().toISOString();
-  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify(S));
+    if(saveFailed){saveFailed=false;const b=document.getElementById("saveWarn");if(b)b.remove();}
+  }catch(e){
+    /* Spazio esaurito: è la situazione più pericolosa (si continuerebbe a usare
+       l'app senza che nulla venga registrato). Prima liberiamo le copie di
+       sicurezza, poi — se non basta — avvisiamo in modo ben visibile. */
+    try{localStorage.removeItem(SNAP_KEY);localStorage.setItem(KEY,JSON.stringify(S));return;}catch(e2){}
+    if(!saveFailed){saveFailed=true;
+      try{const b=document.createElement("div");b.id="saveWarn";
+        b.style.cssText="position:fixed;left:8px;right:8px;bottom:86px;z-index:120;background:#B0402E;color:#fff;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.3)";
+        b.innerHTML="⚠️ <b>Memoria del browser piena</b>: le modifiche non vengono salvate. Esporta subito un backup da Io e libera spazio.";
+        document.body.appendChild(b);}catch(e3){}}
+  }
   // Drive: caricamento DIFFERITO. Non si sincronizza a ogni tocco ma al
   // massimo ogni SYNC_EVERY minuti (e comunque quando chiudi o metti in
   // secondo piano l'app). Meno chiamate, e una finestra di tempo per
@@ -4133,7 +4153,37 @@ function needMorningBanner(){return !S.ui.vacanza&&pendingReviewDays().length>0;
 try{if(window.Chart){Chart.defaults.animation=false;Chart.defaults.animations={};
   Chart.defaults.transitions.active.animation.duration=0;
   Chart.defaults.responsiveAnimationDuration=0;}}catch(e){}
-function render(p){({oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,storico:renderStorico,io:renderIo,regole:renderRegole,benvenuto:renderBenvenuto,guida:renderGuida,setup:renderSetup})[p]();renderHeader();initFX();}
+/* ── Rete di sicurezza dell'interfaccia ────────────────────────────
+   Se una pagina va in errore mentre si disegna, prima restava il
+   contenitore vuoto: schermo bianco e app inutilizzabile. Ora l'errore
+   viene catturato, mostrato e restano a disposizione le vie d'uscita. */
+function errorCardHTML(where,e){
+  return `<div class="card" style="border-left:4px solid var(--rosso)">
+  <h2>😕 Qualcosa si è rotto</h2>
+  <div class="hint">Non sono riuscito a disegnare la sezione <b>${esc(where)}</b>. I tuoi dati non sono stati toccati: sono ancora tutti sul dispositivo.</div>
+  <div class="hint" style="font-family:monospace;font-size:11.5px;word-break:break-word;background:var(--crema);padding:8px;border-radius:8px">${esc((e&&e.message)||String(e))}</div>
+  <div class="mtools" style="margin-top:10px">
+    <button class="btn small" onclick="location.reload()">🔄 Ricarica</button>
+    <button class="btn ghost small" onclick="show('oggi')">🏠 Vai a Oggi</button>
+    <button class="btn ghost small" onclick="show('io')">🛟 Ripristino e backup</button>
+    <button class="btn ghost small" onclick="reportCrash('${esc(where)}',${JSON.stringify((e&&e.message)||String(e))})">✉️ Segnala</button>
+  </div></div>`;}
+window.reportCrash=(where,msg)=>{
+  const body="Errore nella sezione: "+where+"\n\n"+msg+"\n\n---\nNutry v"+APP_VER+
+    "\n"+new Date().toLocaleString("it-IT")+"\n"+navigator.userAgent;
+  location.href="mailto:alberto.scian@gmail.com?subject="+encodeURIComponent("[Nutry "+APP_VER+"] Errore in "+where)+
+    "&body="+encodeURIComponent(body);};
+function safeRender(p,fn){
+  try{fn();}
+  catch(e){
+    try{const el=document.getElementById("pg-"+p);
+      if(el)el.innerHTML=errorCardHTML(p,e);}catch(_){}
+    try{console.error("Nutry render:",p,e);}catch(_){}
+  }}
+function render(p){const M={oggi:renderOggi,piano:renderPiano,spesa:renderSpesa,sport:renderSport,
+  storico:renderStorico,io:renderIo,regole:renderRegole,benvenuto:renderBenvenuto,guida:renderGuida,setup:renderSetup};
+  const fn=M[p];if(!fn)return;
+  safeRender(p,fn);}
 
 /* ═══════════════════════════════════════════════════════════════
    FX ENGINE — reveal allo scroll, header dinamico, zoom grafici.
@@ -4257,11 +4307,37 @@ document.addEventListener("click",e=>{
    diventa un rischio di perdere l'ultima mezz'ora di lavoro. */
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")driveFlush();});
 window.addEventListener("pagehide",driveFlush);
-snapSave("giornaliera"); // copia di sicurezza prima di qualsiasi cosa
-applyTheme();bumpStreak();renderHeader();tryDriveAuto();
-show(S.onboard.done?(S.profile.dob?"oggi":"io"):"benvenuto");
-// v5: archiviazione automatica delle settimane scadute (poi ridisegna)
-if(weekStale())autoCloseStaleWeeks().then(()=>{renderHeader();render(cur);});
+/* Qualsiasi errore non gestito diventa visibile invece di lasciare
+   una schermata bianca. */
+window.addEventListener("error",function(ev){
+  try{
+    if(document.querySelector(".page.active")&&document.querySelector(".page.active").innerHTML.trim())return;
+    const el=document.querySelector(".page.active")||document.getElementById("pg-oggi");
+    if(el&&!el.innerHTML.trim())el.innerHTML=errorCardHTML(cur||"avvio",ev.error||ev.message);
+  }catch(_){}
+});
+/* Avvio protetto: se qualcosa esplode, l'app resta comunque utilizzabile
+   e mostra come recuperare. */
+(function boot(){
+  try{snapSave("giornaliera");}catch(e){}
+  try{applyTheme();}catch(e){}
+  try{bumpStreak();}catch(e){}
+  try{renderHeader();}catch(e){}
+  try{tryDriveAuto();}catch(e){}
+  let start="oggi";
+  try{start=S.onboard.done?(S.profile.dob?"oggi":"io"):"benvenuto";}catch(e){}
+  try{show(start);}
+  catch(e){
+    try{
+      const el=document.getElementById("pg-oggi");
+      if(el){el.classList.add("active");el.innerHTML=errorCardHTML("avvio",e);}
+    }catch(_){
+      document.body.innerHTML='<div style="padding:24px;font-family:system-ui">'+
+        '<h2>Nutry non è riuscita a partire</h2><p>I dati sono ancora sul dispositivo.</p>'+
+        '<p><a href="javascript:location.reload()">Ricarica</a></p></div>';}
+  }
+  try{if(weekStale())autoCloseStaleWeeks().then(()=>{renderHeader();render(cur);}).catch(()=>{});}catch(e){}
+})();
 </script>
 </body>
 </html>
