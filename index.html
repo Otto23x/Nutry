@@ -628,8 +628,22 @@ window.restoreSnap=(i)=>{
   catch(e){alert("Ripristino non riuscito.");}};
 function save(){S.meta.updated=new Date().toISOString();
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
-  // Auto-save su Drive (debounce 4s) se connesso
-  if(DTOKEN&&S.drive.on){clearTimeout(driveTimer);driveTimer=setTimeout(driveUpload,4000);}}
+  // Drive: caricamento DIFFERITO. Non si sincronizza a ogni tocco ma al
+  // massimo ogni SYNC_EVERY minuti (e comunque quando chiudi o metti in
+  // secondo piano l'app). Meno chiamate, e una finestra di tempo per
+  // accorgersi di un problema prima che finisca anche nel backup.
+  driveSyncSoon();}
+const SYNC_EVERY=15*60*1000;         // intervallo minimo fra due caricamenti
+const SYNC_LAST_KEY="diarioDieta_v2_lastsync";
+let drivePending=false;
+function lastSyncAt(){try{return +localStorage.getItem(SYNC_LAST_KEY)||0;}catch(e){return 0;}}
+function driveSyncSoon(){
+  if(!(DTOKEN&&S.drive.on))return;
+  drivePending=true;clearTimeout(driveTimer);
+  const wait=Math.max(8000,SYNC_EVERY-(Date.now()-lastSyncAt()));
+  driveTimer=setTimeout(()=>driveUpload(true),wait);}
+function driveFlush(){ // caricamento immediato: chiusura app o richiesta esplicita
+  if(drivePending&&DTOKEN&&S.drive.on){clearTimeout(driveTimer);driveUpload(true);}}
 function applyTheme(){
   S.ui.theme="light";
   document.documentElement.dataset.theme="light";}
@@ -3782,9 +3796,12 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   // Drive
   h+=`<div class="card"><h2>☁️ Sincronizzazione Google Drive</h2>
   <label>CLIENT_ID (Google Cloud)</label><input type="text" id="dCid" value="${S.drive.cid||""}" placeholder="xxxx.apps.googleusercontent.com">
+  <div class="hint">Il salvataggio non avviene a ogni tocco: l'app carica al massimo <b>ogni 15 minuti</b> e comunque quando chiudi o metti in secondo piano. Oltre al backup principale conserva una <b>copia datata al giorno</b> (ne restano sette), così puoi tornare a una versione precedente. Se il backup remoto risulta molto più ricco di quello locale, l'app <b>si ferma e chiede</b> invece di sovrascrivere.</div>
   <div class="mtools"><button class="btn small" onclick="driveConnect()">Connetti e sincronizza</button>
   <button class="btn ghost small" onclick="driveDisconnect()">Disconnetti e desincronizza</button>
-  <button class="btn ghost small" onclick="driveImport()">⬇️ Ripristina da Drive</button>
+  <button class="btn ghost small" onclick="driveImport()">⬇️ Ripristina l'ultimo</button>
+  <button class="btn ghost small" onclick="driveVersions()">🕓 Versioni precedenti</button>
+  <button class="btn ghost small" onclick="driveFlush();driveUpload()">☁️ Salva ora</button>
   <button class="btn warn small" onclick="driveDelete()">Elimina backup</button></div>
   <div class="hint" id="driveStatus">${S.drive.on?"Configurato: a ogni avvio l'app si riconnette da sola, confronta i timestamp e carica la versione più recente (telefono e PC condividono così gli stessi dati). Auto-save attivo.":"Non connesso."}
   <br><b>Disconnetti e desincronizza</b> = stacca solo QUESTO dispositivo, il backup su Drive e gli altri dispositivi restano intatti. <b>Elimina backup</b> = cancella il file su Drive: sparisce da TUTTI i dispositivi (con conferma).
@@ -3915,9 +3932,33 @@ async function driveFind(){
     {headers:{Authorization:"Bearer "+DTOKEN}});
   if(r.status===401){driveClearToken();throw new Error("auth");}
   const j=await r.json();return (j.files&&j.files[0])||null;}
-window.driveUpload=async()=>{
-  if(!DTOKEN)return alert("Connettiti prima a Drive.");
+/* Quanti "dati veri" contiene uno stato: serve per accorgersi se stiamo per
+   sovrascrivere un backup pieno con uno molto più povero. */
+function dataWeight(st){
+  try{let n=0;
+    n+=(st.history||[]).length*50;
+    n+=(st.periods||[]).length*10;
+    n+=((st.profile||{}).weights||[]).length*3;
+    ((st.week||{}).days||[]).forEach(d=>{
+      n+=(d.meals||[]).filter(m=>m.done||m.skip||m.custom).length;
+      n+=(d.extras||[]).length+(d.workouts||[]).length;});
+    return n;}catch(e){return 0;}}
+window.driveUpload=async(silent)=>{
+  if(!DTOKEN)return silent?null:alert("Connettiti prima a Drive.");
   try{const f=await driveFind();
+    // controllo di sicurezza: se il backup remoto contiene molti più dati di
+    // quelli locali, qualcosa non torna. Meglio chiedere che cancellare.
+    if(f&&!S.drive.forceUp){try{
+      const rr=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
+      if(rr.ok){const remote=await rr.json();
+        const wl=dataWeight(S),wr=dataWeight(remote);
+        if(wr>0&&wl<wr*0.6){
+          const ok=confirm("⚠️ Attenzione: il backup su Drive contiene molti più dati di quelli presenti su questo dispositivo.\n\nSe hai perso dei dati, NON sovrascrivere: annulla e usa «Ripristina da Drive».\n\nOK = sovrascrivo comunque il backup · Annulla = lascio il backup intatto");
+          if(!ok){const st0=document.getElementById("driveStatus");
+            if(st0)st0.textContent="⏸️ Caricamento sospeso per sicurezza: il backup remoto è più completo.";
+            drivePending=false;return;}
+          S.drive.forceUp=true;}
+      }}catch(e){}}
     const meta={name:"diario_backup.json",parents:f?undefined:["appDataFolder"]};
     const boundary="-------diario";const body=
       "--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify(meta)+
@@ -3926,8 +3967,33 @@ window.driveUpload=async()=>{
     await fetch(url,{method:f?"PATCH":"POST",
       headers:{Authorization:"Bearer "+DTOKEN,"Content-Type":"multipart/related; boundary="+boundary},body});
     const st=document.getElementById("driveStatus");if(st)st.textContent="✅ Salvato su Drive alle "+new Date().toLocaleTimeString("it-IT");
-    try{localStorage.setItem(SYNCED_ONCE_KEY,"1");}catch(e2){}
-  }catch(e){alert("Errore Drive: "+e.message);}};
+    try{localStorage.setItem(SYNCED_ONCE_KEY,"1");localStorage.setItem(SYNC_LAST_KEY,String(Date.now()));}catch(e2){}
+    drivePending=false;
+    driveDailyCopy();   // copia datata, così le versioni precedenti restano
+  }catch(e){if(!silent)alert("Errore Drive: "+e.message);}};
+/* Copia datata giornaliera su Drive: diario_YYYY-MM-DD.json, ne teniamo 7.
+   Il file principale può essere sovrascritto, ma le versioni dei giorni
+   scorsi restano recuperabili. */
+async function driveDailyCopy(){
+  try{
+    const today=iso(new Date()),name="diario_"+today+".json";
+    const q=encodeURIComponent("name contains 'diario_2'");
+    const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q="+q+"&fields=files(id,name,modifiedTime)",
+      {headers:{Authorization:"Bearer "+DTOKEN}});
+    if(!r.ok)return;
+    const files=((await r.json()).files||[]).filter(x=>/^diario_\d{4}-\d{2}-\d{2}\.json$/.test(x.name));
+    if(files.some(x=>x.name===name))return;           // copia di oggi già fatta
+    const meta={name,parents:["appDataFolder"]};
+    const b="-------diarioC";const body=
+      "--"+b+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify(meta)+
+      "\r\n--"+b+"\r\nContent-Type: application/json\r\n\r\n"+JSON.stringify(S)+"\r\n--"+b+"--";
+    await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+      {method:"POST",headers:{Authorization:"Bearer "+DTOKEN,"Content-Type":"multipart/related; boundary="+b},body});
+    // rotazione: teniamo le 7 copie più recenti
+    files.sort((a,b2)=>a.name<b2.name?1:-1);
+    for(let i=6;i<files.length;i++)
+      fetch("https://www.googleapis.com/drive/v3/files/"+files[i].id,{method:"DELETE",headers:{Authorization:"Bearer "+DTOKEN}}).catch(()=>{});
+  }catch(e){}}
 /* Avvio: riconnessione silenziosa se già autorizzato su questo dispositivo.
    1) se ho un token valido in cache lo riuso senza contattare Google (nessun
       popup, nessun "accesso a Drive"); 2) altrimenti provo il rinnovo silenzioso. */
@@ -3939,6 +4005,27 @@ function tryDriveAuto(){
     return;}
   driveSilentAuth();}
 /* Importa da Drive su richiesta: scarica il backup e sostituisce i dati locali */
+/* Elenco delle copie disponibili su Drive: il backup principale più le copie
+   datate degli ultimi giorni, così si può tornare a una versione precedente. */
+window.driveVersions=async()=>{
+  if(!DTOKEN)return alert("Connettiti prima a Drive.");
+  try{
+    const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime,size)",
+      {headers:{Authorization:"Bearer "+DTOKEN}});
+    const files=((await r.json()).files||[]).filter(x=>/^diario_/.test(x.name))
+      .sort((a,b)=>a.modifiedTime<b.modifiedTime?1:-1);
+    if(!files.length)return alert("Nessuna copia trovata su Drive.");
+    const list=files.map((f,i)=>(i+1)+") "+f.name.replace("diario_","").replace(".json","")+
+      " — "+new Date(f.modifiedTime).toLocaleString("it-IT")+(f.size?" ("+Math.round(f.size/1024)+" KB)":"")).join("\n");
+    const n=prompt("Copie disponibili su Drive:\n\n"+list+"\n\nScrivi il numero della copia da ripristinare (annulla per uscire):");
+    if(!n)return;
+    const f=files[parseInt(n)-1];if(!f)return alert("Numero non valido.");
+    if(!confirm("Ripristino «"+f.name+"» del "+new Date(f.modifiedTime).toLocaleString("it-IT")+"?\n\nI dati attuali del dispositivo vengono prima salvati in un'istantanea locale."))return;
+    snapSave("prima del ripristino da Drive");
+    const rr=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+DTOKEN}});
+    const data=await rr.text();
+    localStorage.setItem(KEY,data);location.reload();
+  }catch(e){alert("Errore Drive: "+e.message);}};
 window.driveImport=async()=>{
   if(!DTOKEN)return alert("Connettiti prima a Drive.");
   try{const f=await driveFind();
@@ -4166,6 +4253,10 @@ document.addEventListener("click",e=>{
   });
   window.addEventListener("appinstalled",function(){const b=document.getElementById("install-banner");if(b)b.remove();deferredPrompt=null;try{localStorage.removeItem(KEY_DISMISS);}catch(e){}});
 })();
+/* Caricamento su Drive anche quando esci dall'app: così il ritardo non
+   diventa un rischio di perdere l'ultima mezz'ora di lavoro. */
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")driveFlush();});
+window.addEventListener("pagehide",driveFlush);
 snapSave("giornaliera"); // copia di sicurezza prima di qualsiasi cosa
 applyTheme();bumpStreak();renderHeader();tryDriveAuto();
 show(S.onboard.done?(S.profile.dob?"oggi":"io"):"benvenuto");
