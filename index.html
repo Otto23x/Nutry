@@ -228,6 +228,17 @@ html[data-theme="dark"] .water span.f{background:#1E3350}
 .gtable{width:100%;font-size:13px}
 .gtable td{padding:6px 6px;vertical-align:top;border-bottom:1px solid var(--linea)}
 .gtable td:first-child{width:64px;text-align:center;font-size:17px}
+.pbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px;padding:9px 13px;border-radius:14px;
+  background:var(--menta);border-left:4px solid var(--salvia);cursor:pointer;font-size:12.5px}
+.pbar.libero{background:var(--zaffbg);border-left-color:var(--zaff)}
+.pbar.none{background:var(--card);border-left-color:var(--linea);color:var(--grigio)}
+.pbar .pl{font-weight:700;color:var(--bosco)}
+.pbar.none .pl{color:var(--grigio);font-weight:600}
+.pbar .pd{color:var(--grigio)}
+.pbar .pv{margin-left:auto;font-weight:700;color:var(--bosco)}
+.pbar .pv+.pv{margin-left:0}
+.pbar .pv.ok{color:var(--salvia)}
+.pbar .pv.up{color:var(--rosso)}
 .gsec{font-weight:700;color:var(--bosco);margin:10px 0 2px;font-size:13.5px}
 .aibox{background:var(--mensabg);border:1px solid var(--linea);border-radius:14px;padding:12px;margin-top:9px;font-size:13.5px;line-height:1.5;white-space:pre-wrap}
 .histweek{border:1px solid var(--linea);border-radius:16px;background:var(--card);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .3s}
@@ -270,8 +281,23 @@ html[data-theme="dark"] #zoomOv img{background:#131E15}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:97;overflow:hidden}
 #confetti span{position:absolute;width:9px;height:9px;border-radius:2px;top:-12px}
 /* ══ MODALI ══ */
-table.rules td:first-child{white-space:normal;width:26%}
-table.rules td:nth-child(2){font-size:13px}
+table.rules{table-layout:fixed}
+table.rules td{vertical-align:middle}
+table.rules td:first-child{white-space:normal;width:30%;font-weight:600;color:var(--ink)}
+table.rules td.rd{font-size:12.5px;line-height:1.45;color:var(--grigio)}
+table.rules td.rc{width:154px;text-align:right;white-space:nowrap}
+table.rules .rv{width:96px;display:inline-block;margin:0;padding:7px 8px;font-size:13.5px;text-align:right;vertical-align:middle}
+table.rules select.rv{width:150px;text-align:left;padding:7px 6px}
+table.rules .ru{font-size:11.5px;color:var(--grigio);margin-left:5px}
+table.rules .rout{font-family:inherit;font-weight:700;color:var(--salvia);font-size:14.5px}
+@media(max-width:520px){
+  table.rules,table.rules tbody,table.rules tr,table.rules td{display:block;width:auto}
+  table.rules tr{padding:11px 0;border-bottom:1px solid var(--linea)}
+  table.rules tr:last-child{border-bottom:0}
+  table.rules td{border:0;padding:2px 0}
+  table.rules td.rc{text-align:left;width:auto;margin-top:6px}
+  table.rules select.rv{width:100%;max-width:260px}
+}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .modal{position:fixed;inset:0;background:rgba(6,14,8,.55);z-index:95;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal .mcard{width:100%;max-width:530px;max-height:86vh;overflow:auto;background:var(--card);border:1px solid var(--linea);border-radius:22px;padding:18px;box-shadow:var(--shadow-lift)}
@@ -409,7 +435,7 @@ const SHOP=[
  ["GRASSI, SEMI, DISPENSA",["Olio EVO","Semi oleosi misti ~150 g (con noci e lino)","Noci ~100 g (1 al giorno)","Avocado 1–2 (lun)","Olive 1 barattolo (opz.)","Tisane: finocchio, melissa, camomilla"]]
 ];
 const SPORTS_DEFAULT=[{name:"Camminata",met:3.5},{name:"Corsa",met:9.8},{name:"Tennis",met:7.3},{name:"Squash",met:9.0},{name:"Pesi",met:5.0},{name:"Trekking",met:6.0},{name:"Lavori domestici — interno (faccende)",met:3.0},{name:"Lavori domestici — esterno (giardino)",met:4.3}];
-const INT={bassa:.8,media:1,alta:1.2};
+let INT={bassa:.8,media:1,alta:1.2}; // moltiplicatori di intensità (modificabili nelle Regole)
 /* ── FIBRE (g): stima per ogni opzione del piano, se non già indicata ──────────
    Euristica per ingrediente (verdura, legumi, patate, frutta, cereali, semi…).
    È volutamente approssimata: serve a dare un ordine di grandezza, mostrato
@@ -453,7 +479,7 @@ enrichFiber(BASE_PLAN);
    2. STATO, PERSISTENZA, TEMA
    ═══════════════════════════════════════════════════════════════ */
 const KEY="diarioDieta_v2"; // NON cambiare mai: e' dove vivono i dati dell'utente
-const APP_VER="5.3.1";        // aggiorna a ogni release: visibile in Io per verificare il deploy
+const APP_VER="6.0.0";        // aggiorna a ogni release: visibile in Io per verificare il deploy
 function freshWeek(){return {started:new Date().toISOString().slice(0,10),
   days:PLAN.map(d=>({meals:d.meals.map(()=>({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null})),
     extras:[],workouts:[],note:"",water:0,sleep:0,relax:0,feel:0,steps:0}))};}
@@ -489,6 +515,7 @@ S.progressLog=S.progressLog||[];
    giudizio finale (stelle), motivazioni e valutazione AI. */
 S.periods=S.periods||[];
 S.rules=Object.assign({custom:""},S.rules||{});
+if(S.profile&&S.profile.intOverride)Object.assign(INT,S.profile.intOverride); // ripristina i moltiplicatori scelti
 S.diet=Object.assign({intol:"",
   no:"",
   si:"",
@@ -543,12 +570,26 @@ const fmtDate=d=>d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",mont
    ═══════════════════════════════════════════════════════════════ */
 function age(){if(!S.profile.dob)return 0;const b=new Date(S.profile.dob),n=new Date();
   let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a;}
+/* Metabolismo basale. Tre formule selezionabili nelle Regole:
+   • auto      → Katch-McArdle se conosci la % di grasso, altrimenti Mifflin
+   • mifflin   → sempre su peso/altezza/età (la più usata)
+   • katch     → solo su massa magra (richiede la % di grasso)
+   • harris    → Harris-Benedict rivista, tende a stimare un filo più alto */
+function bmrFormula(){return S.profile.bmrF||"auto";}
 function bmr(){const p=S.profile;
   if(!(+p.w>0)||!(+p.h>0))return 0; // profilo non ancora compilato
   const fat=parseFloat(p.fatp);
   const lbm=fat>0?p.w*(1-fat/100):parseFloat(p.lbm); // magra in kg dalla % di grasso
-  if(lbm>0)return Math.round(370+21.6*lbm);
-  const base=10*p.w+6.25*p.h-5*age();return Math.round(p.gender==="m"?base+5:base-161);}
+  const F=bmrFormula();
+  const mifflin=()=>{const b=10*p.w+6.25*p.h-5*age();return Math.round(p.gender==="m"?b+5:b-161);};
+  const katch=()=>lbm>0?Math.round(370+21.6*lbm):mifflin();
+  const harris=()=>Math.round(p.gender==="m"
+    ?88.36+13.4*p.w+4.8*p.h-5.7*age()
+    :447.6+9.2*p.w+3.1*p.h-4.3*age());
+  if(F==="mifflin")return mifflin();
+  if(F==="katch")return katch();
+  if(F==="harris")return harris();
+  return lbm>0?katch():mifflin();}
 function tdee(){ // fabbisogno: BMR×attività + correzione sui PASSI BASE
   // Riferimento: 3000 passi base (quelli che fai comunque). Se in Io imposti
   // un valore diverso, il fabbisogno si aggiusta di conseguenza.
@@ -564,7 +605,12 @@ function allSports(){return SPORTS_DEFAULT.concat(S.customSports);}
 function metNet(sport,intensity){
   const sp=allSports().find(s=>s.name===sport)||{met:6};
   return Math.max(0.5,sp.met*(INT[intensity]||1)-1);}
-function workoutKcal(w){return Math.round(metNet(w.sport,w.int)*S.profile.w*((+w.min||0)/60));}
+function metMode(){return S.profile.metMode||"netto";}
+function metUsed(sport,intensity){
+  const sp=allSports().find(s=>s.name===sport)||{met:6};
+  const m=sp.met*(INT[intensity]||1);
+  return metMode()==="lordo"?m:Math.max(0.5,m-1);}
+function workoutKcal(w){return Math.round(metUsed(w.sport,w.int)*S.profile.w*((+w.min||0)/60));}
 function mealOpt(pdi,mi){const st=S.week.days[pdi].meals[mi];
   if(st.custom)return st.custom; // override AI/manuale della settimana
   const perm=S.permMeals[pdi+"_"+mi];
@@ -611,8 +657,8 @@ function bmrForWeight(w){const p=S.profile;const fat=parseFloat(p.fatp);
   if(lbm>0)return Math.round(370+21.6*lbm);
   const base=10*w+6.25*p.h-5*age();return Math.round(p.gender==="m"?base+5:base-161);}
 function stepsBurnFor(steps,w){return Math.round(((+steps||0)-5000)*w*0.00045);}
-function workoutBurnFor(sport,min,intensity,w){ // stessa formula al netto del basale
-  return Math.round(metNet(sport,intensity)*w*((+min||0)/60));}
+function workoutBurnFor(sport,min,intensity,w){ // stessa formula usata ovunque
+  return Math.round(metUsed(sport,intensity)*w*((+min||0)/60));}
 /* Dispendio EXTRA medio giornaliero dagli obiettivi (passi/giorno + lista allenamenti/sett) */
 function plannedActivityBurnFor(w){let b=0;const p=S.profile;
   (p.goalWorkoutList||[]).forEach(g=>{if(g.sport&&g.perWeek)b+=Math.round(workoutBurnFor(g.sport,g.min||30,"media",w)*g.perWeek/7);});
@@ -776,7 +822,9 @@ function dietStr(){const D=S.diet;
   return "Vincoli alimentari della persona — "+L.join("; ")+".";}
 /* Le REGOLE numeriche attive, in forma leggibile: entrano nei prompt AI così
    che stime e proposte rispettino gli stessi limiti dell'app. */
-function goalWkTotal(){return (S.profile.goalWorkoutList||[]).reduce((a,g)=>a+(+g.perWeek||0),0);}
+function goalWkTotal(){
+  if(+S.profile.goalWk>0)return +S.profile.goalWk; // valore impostato nelle Regole
+  return (S.profile.goalWorkoutList||[]).reduce((a,g)=>a+(+g.perWeek||0),0);}
 function workoutsThisWeek(){return S.week.days.reduce((a,d)=>a+d.workouts.length,0);}
 function rulesSnapshot(){return{
   passi_base:(+S.profile.baseSteps>0)?+S.profile.baseSteps:3000,
@@ -786,8 +834,10 @@ function rulesSnapshot(){return{
   soglia_recupero_min_kcal:(S.profile.rgpMin!=null?+S.profile.rgpMin:150),
   recupero_max_pct_giorno:rgpCapPct(),
   recupero_max_kcal_giorno:rgpCapMax(),
-  proteine_mai_ridotte:true,
-  met_al_netto_del_basale:true,
+  proteine_mai_ridotte:S.profile.protLock!==false,
+  solo_valori_reali:S.profile.realOnly!==false,
+  formula_basale:bmrFormula(),
+  met_al_netto_del_basale:metMode()==="netto",
   moltiplicatori_intensita:INT,
   obiettivo_allenamenti_settimana:goalWkTotal(),
   obiettivo_proteine_g_kg:(S.profile.protKg!=null?+S.profile.protKg:1.6)
@@ -1231,7 +1281,8 @@ function residualOfDay(di){ // sforo ancora da recuperare (al netto di quanto gi
   return Math.max(0,overOfDay(di)-(S.week.days[di].rgpRecovered||0));}
 function rgpDays(di){
   const out=[];
-  for(let d=di-1;d>=0&&out.length<5;d--){ // al massimo i 5 giorni precedenti
+  const maxD=Math.max(1,Math.min(7,+S.profile.rgpDays||5));
+  for(let d=di-1;d>=0&&out.length<maxD;d--){ // giorni precedenti considerati (Regole)
     const res=residualOfDay(d),th=rgpThresh(d);
     out.push({di:d,over:overOfDay(d),res,th,tracked:eatenOfDay(d).k>0,
       done:(S.week.days[d].rgpRecovered||0)>0&&res<th,
@@ -1448,6 +1499,7 @@ function renderOggi(){const el=document.getElementById("pg-oggi");const di=viewI
     <button class="btn ghost small" onclick="goReview(${p.di})">Apri ieri</button>
     <button class="btn small" onclick="reviewDone('${p.dISO}')">Fatto</button></div>`;}
   // v5.1: nessun banner automatico di ribilanciamento — si usa il tasto RGP
+  if(!S.ui.vacanza)h+=periodBarHTML();
   const _vd=iso(VIEW);
   // 🏷️ Evento del giorno (sostituisce "giornata difficile"): il giorno viene
   // escluso dalle medie e non spezza lo streak, ma con una MOTIVAZIONE chiara.
@@ -1923,6 +1975,21 @@ window.aiRatePeriod=async(id)=>{
     p.aiStars=Math.max(1,Math.min(5,Math.round(j.stelle)||3));p.aiText=String(j.testo||"").trim();
     save();render("storico");toast("Valutazione AI pronta ✓");
   }catch(e){aiFail(e);}};
+/* Striscia del periodo in corso: sempre visibile in Oggi, così sai da quanto
+   tempo stai seguendo la dieta e come sta andando dall'inizio del periodo. */
+function periodBarHTML(){
+  const ap=activePeriod();
+  if(!ap)return `<div class="pbar none" onclick="show('regole')" title="Apri un periodo per raggruppare i dati">
+    <span class="pl">📆 Nessun periodo aperto</span>
+    <span class="pv">tocca per aprirne uno</span></div>`;
+  const st=periodStats(ap),dieta=ap.type==="dieta";
+  const dw=(st.dW==null)?null:Math.round(st.dW*10)/10;
+  return `<div class="pbar ${dieta?"dieta":"libero"}" onclick="show('storico')" title="Vai allo storico del periodo">
+    <span class="pl">${dieta?"📆":"🏖️"} ${esc(periodLabel(ap))}</span>
+    <span class="pd">giorno ${st.nDays}</span>
+    ${dw!=null?`<span class="pv ${dw<=0?"ok":"up"}">${dw>0?"+":""}${dw} kg</span>`:""}
+    ${st.avgDef?`<span class="pv">${st.avgDef>=0?"−":"+"}${Math.abs(st.avgDef)} kcal/g</span>`:""}
+  </div>`;}
 function periodsCardHTML(forIo){
   const ap=activePeriod();
   let h=`<div class="card"><h2>📆 Periodi (dieta / libero)</h2>`;
@@ -2052,47 +2119,89 @@ function renderRegole(){const el=document.getElementById("pg-regole");
   el.innerHTML=h;}
 function rulesCardHTML(){
   const p=S.profile,r=rulesSnapshot();
+  const num=(id,val,step,min,max,suf)=>`<input class="rv" type="number" id="${id}" value="${val}"${step?` step="${step}"`:""}${min!=null?` min="${min}"`:""}${max!=null?` max="${max}"`:""}>${suf?`<span class="ru">${suf}</span>`:""}`;
+  const sel=(id,val,opts)=>`<select class="rv" id="${id}">`+opts.map(o=>`<option value="${o[0]}" ${String(val)===String(o[0])?"selected":""}>${o[1]}</option>`).join("")+`</select>`;
+  const row=(k,desc,ctrl)=>`<tr><td>${k}</td><td class="rd">${desc}</td><td class="rc">${ctrl}</td></tr>`;
+  const out=(v)=>`<span class="rout">${v}</span>`;
   return `<div class="card"><h2>📐 Regole del sistema</h2>
-  <div class="hint">Qui c'è <b>tutto</b> ciò che governa i calcoli e le proposte dell'AI. Ogni valore modificato ha effetto immediato su fabbisogno, ribilanciamenti, recuperi e stime. <b>In prova sono tutte modificabili</b>; in futuro questa sezione sarà protetta e gestita dal professionista.</div>
+  <div class="hint">Ogni regola qui sotto è <b>modificabile</b>: cambiala e ha effetto immediato su fabbisogno, ribilanciamenti, recuperi e proposte dell'AI. I valori in verde sono risultati calcolati.</div>
 
-  <h3 style="margin:16px 0 6px">Fabbisogno</h3>
-  <table class="rules"><tr><th>Regola</th><th>Come funziona</th><th class="n">Valore</th></tr>
-  <tr><td>Metabolismo basale</td><td>Mifflin-St Jeor su peso, altezza, età e sesso. <b>Cala se cali di peso</b>: aggiorna il peso in Io e il fabbisogno si abbassa da solo.</td><td class="n">${bmr()} kcal</td></tr>
-  <tr><td>Attività di base</td><td>Moltiplicatore su lavoro e vita quotidiana, sport escluso.</td><td class="n">×${p.act}</td></tr>
-  <tr><td>Passi base</td><td>Passi che fai comunque; il riferimento è 3.000. Sopra o sotto, il fabbisogno si corregge.</td><td class="n">${r.passi_base}</td></tr>
-  <tr><td>Fabbisogno totale</td><td>Basale × attività, corretto sui passi base. Non include gli allenamenti, che si sommano a parte.</td><td class="n">${r.tdee_calcolato} kcal</td></tr></table>
+  <div class="gsec">Fabbisogno</div>
+  <table class="rules">
+  ${row("Formula del basale","Come si calcola il metabolismo a riposo. <b>Auto</b> usa la massa magra se conosci la percentuale di grasso, altrimenti Mifflin.",
+     sel("rBmrF",bmrFormula(),[["auto","Auto (consigliata)"],["mifflin","Mifflin-St Jeor"],["katch","Katch-McArdle"],["harris","Harris-Benedict"]]))}
+  ${row("Basale calcolato","Scende quando cali di peso: aggiorna la pesata in Io e il fabbisogno si abbassa da solo.",out(bmr()+" kcal"))}
+  ${row("Attività di base","Moltiplicatore su lavoro e vita quotidiana, allenamenti esclusi.",
+     sel("rAct",p.act,[["1.2","1.2 · molto sedentario"],["1.25","1.25 · sedentario−"],["1.3","1.3 · sedentario, PC"],["1.35","1.35 · poco attivo"],["1.4","1.4 · attivo"],["1.45","1.45 · moderatamente attivo"],["1.55","1.55 · molto attivo"]]))}
+  ${row("Passi base","Passi che fai comunque ogni giorno. Il riferimento è 3.000: sopra o sotto, il fabbisogno si corregge.",num("rSteps",r.passi_base,500,0,null,"passi"))}
+  ${row("Fabbisogno totale","Basale × attività, corretto sui passi base. Gli allenamenti si sommano a parte.",out(r.tdee_calcolato+" kcal"))}
+  </table>
 
-  <h3 style="margin:16px 0 6px">Allenamenti</h3>
-  <table class="rules"><tr><th>Regola</th><th>Come funziona</th><th class="n">Valore</th></tr>
-  <tr><td>Formula</td><td>(MET dell'attività × intensità − 1) × <b>peso corporeo</b> × ore. Il −1 toglie il metabolismo a riposo, già contato nel fabbisogno: senza, ogni allenamento risulterebbe più generoso del reale.</td><td class="n">peso ×</td></tr>
-  <tr><td>Intensità</td><td>Moltiplicatore sul MET dichiarato dello sport.</td><td class="n">bassa ${INT.bassa} · media ${INT.media} · alta ${INT.alta}</td></tr>
-  <tr><td>Esempio</td><td>Squash 45' a bassa intensità con il tuo peso attuale (${p.w} kg).</td><td class="n">${workoutBurnFor("Squash",45,"bassa",p.w)} kcal</td></tr>
-  <tr><td>Obiettivo settimanale</td><td>Somma degli allenamenti obiettivo impostati in <b>Io → Obiettivi</b>. Il confronto con quelli fatti è in Sport e nel recap.</td><td class="n">${goalWkTotal()||"—"} a settimana</td></tr></table>
+  <div class="gsec">Allenamenti</div>
+  <table class="rules">
+  ${row("Modo di calcolo","<b>Netto</b> = (MET × intensità − 1) × peso × ore: toglie il metabolismo a riposo, già incluso nel fabbisogno. <b>Lordo</b> non lo toglie e restituisce numeri più alti.",
+     sel("rMet",metMode(),[["netto","Netto (consigliato)"],["lordo","Lordo"]]))}
+  ${row("Intensità bassa","Moltiplicatore applicato al MET dichiarato dello sport.",num("rIntB",INT.bassa,.05,.3,2,"×"))}
+  ${row("Intensità media","",num("rIntM",INT.media,.05,.3,2,"×"))}
+  ${row("Intensità alta","",num("rIntA",INT.alta,.05,.3,2,"×"))}
+  ${row("Verifica","Squash 45 minuti a bassa intensità con il tuo peso attuale ("+p.w+" kg).",out(workoutBurnFor("Squash",45,"bassa",p.w)+" kcal"))}
+  ${row("Obiettivo settimanale","Allenamenti da fare in una settimana. A 0 vale la somma degli obiettivi per sport impostati in Io.",num("rGoalWk",+p.goalWk||0,1,0,14,"a sett."))}
+  </table>
 
-  <h3 style="margin:16px 0 6px">Pasti, ribilanciamento e recupero</h3>
-  <table class="rules"><tr><th>Regola</th><th>Come funziona</th><th class="n">Valore</th></tr>
-  <tr><td>Minimo per pasto</td><td>Nessuna proposta può portare un pasto sotto questa soglia, e nessun pasto viene eliminato.</td><td class="n"><input type="number" id="rMinMeal" value="${r.kcal_minime_per_pasto}" step="25" style="width:80px"> kcal</td></tr>
-  <tr><td>Proteine intoccabili</td><td>Ribilanciamenti e recuperi riducono solo carboidrati e grassi.</td><td class="n">sempre</td></tr>
-  <tr><td>Valori reali</td><td>Per ridurre si abbassano prima le grammature, poi si sostituiscono ingredienti. Le proposte che cambiano solo i numeri vengono scartate.</td><td class="n">sempre</td></tr>
-  <tr><td>Soglia di tolleranza</td><td>Sotto questa quota lo sforo non viene proposto per il recupero: è dentro l'errore di stima delle porzioni. Vale la più alta delle due.</td><td class="n"><input type="number" id="rRgpPct" value="${r.soglia_recupero_pct}" min="0" max="30" style="width:64px">% · <input type="number" id="rRgpMin" value="${r.soglia_recupero_min_kcal}" step="25" style="width:76px"> kcal</td></tr>
-  <tr><td>Tetto di recupero</td><td>Massimo taglio in una giornata; il resto slitta ai giorni successivi. Vale il più basso dei due.</td><td class="n"><input type="number" id="rRgpCap" value="${r.recupero_max_pct_giorno}" min="5" max="50" style="width:64px">% · <input type="number" id="rRgpCapMax" value="${r.recupero_max_kcal_giorno}" step="50" style="width:76px"> kcal</td></tr>
-  <tr><td>Obiettivo proteine</td><td>Grammi di proteine per kg di peso usati come riferimento dall'AI.</td><td class="n"><input type="number" id="rProtKg" value="${r.obiettivo_proteine_g_kg}" step="0.1" min="0.8" max="3" style="width:70px"> g/kg</td></tr></table>
+  <div class="gsec">Pasti e ribilanciamento</div>
+  <table class="rules">
+  ${row("Minimo per pasto","Nessuna proposta può portare un pasto sotto questa soglia, e nessun pasto viene eliminato.",num("rMinMeal",r.kcal_minime_per_pasto,25,100,null,"kcal"))}
+  ${row("Proteine intoccabili","Ribilanciamenti e recuperi riducono solo carboidrati e grassi.",
+     sel("rProtLock",p.protLock!==false?"si":"no",[["si","Sì, mai ridotte"],["no","No, riducibili"]]))}
+  ${row("Solo valori reali","Per ridurre si abbassano prima le grammature, poi si sostituiscono ingredienti. Con <b>Sì</b> le proposte che cambiano solo i numeri vengono scartate.",
+     sel("rReal",p.realOnly!==false?"si":"no",[["si","Sì, controlla e scarta"],["no","No, accetta comunque"]]))}
+  ${row("Obiettivo proteine","Grammi per kg di peso usati come riferimento dall'AI.",num("rProtKg",r.obiettivo_proteine_g_kg,.1,.8,3,"g/kg"))}
+  </table>
 
-  <h3 style="margin:16px 0 6px">Regole aggiuntive per l'AI</h3>
-  <textarea id="rCustom" placeholder="Scrivi qui regole in linguaggio naturale: es. «niente carne rossa più di una volta a settimana», «la cena deve essere leggera», «mai legumi a cena», «almeno 2 porzioni di pesce a settimana»…">${esc(S.rules.custom||"")}</textarea>
-  <div class="hint">Queste righe vengono allegate a <b>ogni</b> richiesta all'AI (stime, ribilanciamenti, piatti, menù), insieme alle caratteristiche alimentari qui sotto.</div>
-  <button class="btn" onclick="saveRules()">Salva regole</button>
-  <button class="btn ghost" onclick="showRulesAI()">👁️ Vedi cosa legge l'AI</button>
+  <div class="gsec">Recupero degli sfori</div>
+  <table class="rules">
+  ${row("Soglia · percentuale","Sotto questa quota della giornata lo sforo non viene proposto: è dentro l'errore di stima delle porzioni.",num("rRgpPct",r.soglia_recupero_pct,1,0,30,"%"))}
+  ${row("Soglia · minimo","Vale la più alta fra percentuale e minimo.",num("rRgpMin",r.soglia_recupero_min_kcal,25,0,null,"kcal"))}
+  ${row("Tetto · percentuale","Massimo taglio in una giornata, in quota del pianificato.",num("rRgpCap",r.recupero_max_pct_giorno,5,5,50,"%"))}
+  ${row("Tetto · massimo","Vale il più basso fra percentuale e massimo. Il resto slitta ai giorni successivi.",num("rRgpCapMax",r.recupero_max_kcal_giorno,50,50,null,"kcal"))}
+  ${row("Giorni recuperabili","Quanti giorni indietro possono comparire nel menu Recupero.",num("rRgpDays",(+p.rgpDays||5),1,1,7,"giorni"))}
+  </table>
+
+  <div class="gsec">Regole aggiuntive per l'AI</div>
+  <textarea id="rCustom" placeholder="Scrivi qui regole in linguaggio naturale: es. «niente carne rossa più di una volta a settimana», «cena sempre leggera», «almeno 2 porzioni di pesce a settimana»…">${esc(S.rules.custom||"")}</textarea>
+  <div class="hint">Vengono allegate a <b>ogni</b> richiesta all'AI, insieme ai valori qui sopra e alle caratteristiche alimentari.</div>
+  <div class="mtools">
+    <button class="btn" onclick="saveRules()">Salva regole</button>
+    <button class="btn ghost" onclick="showRulesAI()">👁️ Vedi cosa legge l'AI</button>
+    <button class="btn ghost" onclick="resetRules()">↩️ Valori consigliati</button>
+  </div>
   <div class="aibox" id="rulesOut" style="display:none"></div></div>`;}
+window.resetRules=()=>{
+  if(!confirm("Riporto tutte le regole ai valori consigliati?"))return;
+  Object.assign(S.profile,{bmrF:"auto",metMode:"netto",minMeal:250,protLock:true,realOnly:true,
+    protKg:1.6,rgpPct:10,rgpMin:150,rgpCap:25,rgpCapMax:400,rgpDays:5});
+  INT.bassa=.8;INT.media=1;INT.alta=1.2;S.profile.intOverride={bassa:.8,media:1,alta:1.2};
+  save();render("regole");toast("Regole riportate ai valori consigliati ✓");};
 window.saveRules=()=>{const p=S.profile,g=id=>document.getElementById(id);
-  const num=(id,def)=>{const e=g(id);return e?(parseFloat(e.value)||def):def;};
-  p.minMeal=Math.max(100,num("rMinMeal",250));
-  p.rgpPct=Math.max(0,Math.min(30,num("rRgpPct",10)));
-  p.rgpMin=Math.max(0,num("rRgpMin",150));
-  p.rgpCap=Math.max(5,Math.min(50,num("rRgpCap",25)));
-  p.rgpCapMax=Math.max(50,num("rRgpCapMax",400));
-  p.protKg=Math.max(.8,Math.min(3,num("rProtKg",1.6)));
-  S.rules.custom=(g("rCustom")&&g("rCustom").value||"").trim();
+  const n=(id,def)=>{const e=g(id);return e?(parseFloat(e.value)||def):def;};
+  const v=(id,def)=>{const e=g(id);return e?e.value:def;};
+  p.bmrF=v("rBmrF","auto");
+  p.act=parseFloat(v("rAct",p.act))||p.act;
+  p.baseSteps=Math.max(0,n("rSteps",3000));
+  p.metMode=v("rMet","netto");
+  INT.bassa=Math.max(.3,n("rIntB",.8));INT.media=Math.max(.3,n("rIntM",1));INT.alta=Math.max(.3,n("rIntA",1.2));
+  p.intOverride={bassa:INT.bassa,media:INT.media,alta:INT.alta};
+  p.goalWk=Math.max(0,Math.min(14,n("rGoalWk",0)));
+  p.minMeal=Math.max(100,n("rMinMeal",250));
+  p.protLock=v("rProtLock","si")==="si";
+  p.realOnly=v("rReal","si")==="si";
+  p.protKg=Math.max(.8,Math.min(3,n("rProtKg",1.6)));
+  p.rgpPct=Math.max(0,Math.min(30,n("rRgpPct",10)));
+  p.rgpMin=Math.max(0,n("rRgpMin",150));
+  p.rgpCap=Math.max(5,Math.min(50,n("rRgpCap",25)));
+  p.rgpCapMax=Math.max(50,n("rRgpCapMax",400));
+  p.rgpDays=Math.max(1,Math.min(7,n("rRgpDays",5)));
+  S.rules.custom=((g("rCustom")&&g("rCustom").value)||"").trim();
   save();render("regole");toast("Regole salvate ✓");};
 window.showRulesAI=()=>{const b=document.getElementById("rulesOut");
   b.style.display="block";b.textContent=rulesForAI();};
@@ -2288,6 +2397,7 @@ function renderStorico(){const el=document.getElementById("pg-storico");
     <div><div class="v">${mAvg("def")>=0?"−":"+"}${Math.abs(mAvg("def"))}</div><div class="l">deficit medio</div></div></div>
     <div class="hint">Medie del <b>mese in corso</b> calcolate sui giorni tracciati, settimana per settimana.</div></div>`;}
   h+=extendedRecapHTML();
+  h+=periodsCardHTML(false);
   h+=exportCardHTML();
   // Periodi (Dieta 1, Libero 1, …) con metriche e valutazione AI
   h+=periodsCardHTML(false);
