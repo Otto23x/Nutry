@@ -576,15 +576,56 @@ function emptyPlan(){const D=["Lunedì","Martedì","Mercoledì","Giovedì","Vene
   return D.map(d=>({day:d,ctx:"",meals:[]}));}
 function planIsEmpty(){return PLAN.every(d=>!d.meals||!d.meals.length);}
 if(S.customPlan&&Array.isArray(S.customPlan)&&S.customPlan.length===7)PLAN=S.customPlan;
-/* Nuovo utente: nessun piano precompilato. Si parte da zero e lo si costruisce
-   insieme nel percorso di benvenuto. */
-if(!S.onboard.done&&!S.customPlan){S.customPlan=emptyPlan();PLAN=S.customPlan;S.week=freshWeek();}
+/* Nuovo utente: nessun piano precompilato, si costruisce nel percorso di
+   benvenuto. ATTENZIONE: "nuovo" significa DAVVERO senza dati — niente
+   profilo, niente settimane archiviate, nessuna spunta e nessun allenamento.
+   Chi sta già usando l'app non viene toccato in nessun caso, e la settimana
+   in corso non viene MAI azzerata da questo controllo. */
+function hasAnyData(){
+  if(S.profile&&S.profile.dob)return true;
+  if(S.history&&S.history.length)return true;
+  if(S.periods&&S.periods.length)return true;
+  if(S.week&&S.week.days&&S.week.days.some(d=>
+    (d.workouts&&d.workouts.length)||(d.extras&&d.extras.length)||d.water||d.note||
+    (d.meals&&d.meals.some(m=>m.done||m.skip||m.custom))))return true;
+  return false;}
+if(!S.onboard.done&&!S.customPlan&&!hasAnyData()){
+  S.customPlan=emptyPlan();PLAN=S.customPlan;S.week=freshWeek();
+}else if(!S.onboard.done){
+  S.onboard.done=true; // utente già avviato: niente percorso di benvenuto
+}
 enrichFiber(PLAN);
 if(!S.week||!S.week.days||S.week.days.length!==7)S.week=freshWeek();
 S.week.days.forEach((d,di)=>{d.meals.forEach(m=>{if(m.skip===undefined)m.skip=false;if(m.movedAs===undefined)m.movedAs="";if(m.custom===undefined)m.custom=null;});
   while(d.meals.length<PLAN[di].meals.length)d.meals.push({done:false,skip:false,opt:0,movedTo:-1,movedAs:"",custom:null});
   if(d.sleep===undefined)d.sleep=0;if(d.relax===undefined)d.relax=(d.stress?Math.max(1,6-d.stress):0);if(d.feel===undefined)d.feel=0;if(d.steps===undefined)d.steps=0;});
 let driveTimer=null;
+/* ── Istantanee di sicurezza ───────────────────────────────────────
+   Una copia completa dei dati al giorno (ne teniamo 7) più una copia
+   forzata prima di ogni operazione che può sovrascrivere qualcosa.
+   Servono a poter tornare indietro se qualcosa va storto. */
+const SNAP_KEY="diarioDieta_v2_snapshots";
+function snapshots(){try{return JSON.parse(localStorage.getItem(SNAP_KEY))||[];}catch(e){return [];}}
+function snapSave(tag){
+  try{
+    if(!S||!S.week)return;
+    const list=snapshots();
+    const today=new Date().toISOString().slice(0,10);
+    if(tag==="giornaliera"&&list.some(x=>x.tag==="giornaliera"&&x.at.slice(0,10)===today))return;
+    list.unshift({at:new Date().toISOString(),tag:tag||"manuale",
+      v:APP_VER,data:JSON.stringify(S)});
+    // teniamo le 7 più recenti, spazio permettendo
+    while(list.length>7)list.pop();
+    try{localStorage.setItem(SNAP_KEY,JSON.stringify(list));}
+    catch(e){while(list.length>2){list.pop();try{localStorage.setItem(SNAP_KEY,JSON.stringify(list));break;}catch(e2){}}}
+  }catch(e){}}
+window.snapSave=(t)=>snapSave(t);
+window.restoreSnap=(i)=>{
+  const list=snapshots(),s=list[i];if(!s)return;
+  if(!confirm("Ripristino i dati salvati il "+new Date(s.at).toLocaleString("it-IT")+"?\n\nI dati attuali vengono messi da parte in una nuova istantanea, così puoi tornare indietro."))return;
+  snapSave("prima del ripristino");
+  try{localStorage.setItem(KEY,s.data);location.reload();}
+  catch(e){alert("Ripristino non riuscito.");}};
 function save(){S.meta.updated=new Date().toISOString();
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   // Auto-save su Drive (debounce 4s) se connesso
@@ -1472,7 +1513,6 @@ function renderPiano(){const el=document.getElementById("pg-piano");const ti=wd(
   <div class="mtools">
     <button class="btn small" onclick="wizEditCurrent()">✏️ Gestisci il piano</button>
     <button class="btn ghost small" onclick="genPlanAI()">✨ Generane uno nuovo</button>
-    <button class="btn ghost small" onclick="show('regole')">📐 Regole e caratteristiche</button>
   </div>
 </div>`;
   if(planIsEmpty())h+=`<div class="card" style="text-align:center">
@@ -1719,7 +1759,11 @@ window.subAI=async(txt)=>{
   if(!aiOn())return aiFail(new Error("nokey"));
   try{const t=await aiAsk('Al supermercato è esaurito: "'+txt+'". Suggerisci 2-3 alternative acquistabili in un supermercato italiano, coerenti con una dieta senza lattosio, senza aglio/cipolla/pomodoro e basso FODMAP. Elenco brevissimo, testo semplice.');
     alert("Alternative per: "+txt+"\n\n"+t);}catch(e){aiFail(e);}};
-const SHOPCUR=()=>S.customShop&&S.customShop.length?S.customShop:SHOP;
+/* La lista base SHOP appartiene alla dieta standard: finché l'utente non ha un
+   piano, la spesa resta vuota e si popola solo dopo la sincronizzazione. */
+const SHOPCUR=()=>{
+  if(S.customShop&&S.customShop.length)return S.customShop;
+  return planIsEmpty()?[]:SHOP;};
 /* Genera la lista della spesa dal piano attuale (per i piani personalizzati) */
 window.genShop=async()=>{
   if(!aiOn())return aiFail(new Error("nokey"));
@@ -1783,6 +1827,7 @@ function buildShopFromPlan(){
 function shopItemSet(arr){const m={};(arr||[]).forEach(([,items])=>items.forEach(it=>{m[ingrKey(it)]=it;}));return m;}
 /* Sincronizza la lista con il piano: mostra le differenze e chiede conferma */
 window.syncShopFromPlan=()=>{
+  if(planIsEmpty())return alert("Non c'è ancora un piano da cui calcolare la spesa.\n\nGenera o carica un piano dalla sezione Regole, poi torna qui.");
   const next=buildShopFromPlan();
   if(!next.length)return alert("Nessun ingrediente ricavabile dal piano.");
   const cur=shopItemSet(SHOPCUR());const nw=shopItemSet(next);
@@ -1834,6 +1879,11 @@ function renderSpesa(){const el=document.getElementById("pg-spesa");
   <button class="btn ghost small" onclick="waShop()">📤 WhatsApp</button></div>
   <div class="hint" style="margin-top:6px">🔄 <b>Sincronizza col piano</b> calcola la lista da ciò che c'è nel piano usando <b>una sola opzione per pasto</b> — sempre quella <b>a casa</b> (mai mensa/fuori) — e ti mostra le <b>differenze</b> prima di confermare. Puoi comunque aggiungere o togliere prodotti a mano.</div></div>`;
   if(S.customPlan)h+=`<div class="card"><div class="hint">Piano personalizzato attivo: la lista qui sotto ${S.customShop?"è stata generata/modificata dal tuo piano":"è ancora quella del piano originale"}.</div><button class="btn ghost small" onclick="genShop()">🛒 ${S.customShop?"Rigenera":"Genera"} lista dal piano (AI)</button></div>`;
+  if(!SHOPCUR().length)h+=`<div class="card" style="text-align:center">
+    <div style="font-size:32px">🛒</div><h2 style="margin-top:4px">Lista vuota</h2>
+    <div class="hint">${planIsEmpty()
+      ?"La lista si costruisce dal piano: appena avrai un piano attivo, premi <b>🔄 Sincronizza col piano</b> e comparirà qui la spesa della settimana."
+      :"Premi <b>🔄 Sincronizza col piano</b> per generare la spesa dai pasti previsti, oppure aggiungi i prodotti a mano."}</div></div>`;
   SHOPCUR().forEach(([cat,items],ci)=>{h+=`<div class="shopcat">${esc(cat)} <button class="ibtn" title="Aggiungi prodotto" style="float:right" onclick="addShopItem(${ci})">＋</button></div><div class="shopitems">`;
     items.forEach((it,ii)=>{const id=ci+"_"+ii,c=S.shop[id];
       h+=`<div class="shopitem ${c?"c":""}">
@@ -1922,10 +1972,17 @@ window.addSportType=async()=>{const n=prompt("Nome del nuovo sport? (es. canoa)"
        check TDEE), grafici Chart.js, WhatsApp, Report PDF
    ═══════════════════════════════════════════════════════════════ */
 function weekSummary(){
-  const days=PLAN.map((d,di)=>{const e=eatenOfDay(di);
-    return {day:d.day,eat:e.k,prot:e.p,c:e.c,f:e.f,fib:e.fib,burn:burnedOfDay(di),def:deficitOfDay(di),sk:skippedOfDay(di),
-      sgarri:extrasKcal(di),sleep:S.week.days[di].sleep,relax:S.week.days[di].relax,feel:S.week.days[di].feel,
-      note:S.week.days[di].note||"",workouts:S.week.days[di].workouts.map(w=>w.sport+" "+w.min+"'")}});
+  const days=PLAN.map((d,di)=>{const e=eatenOfDay(di),pl=plannedOfDay(di),D=S.week.days[di];
+    // si salva TUTTO ciò che serve all'esportazione: le settimane archiviate
+    // devono avere gli stessi campi di quella in corso, non zeri
+    return {day:d.day,eat:e.k,prot:e.p,c:e.c,f:e.f,fib:e.fib,z:e.z||0,
+      planK:pl.k,planP:pl.p,planC:pl.c||0,planF:pl.f||0,planFib:pl.fib||0,planZ:pl.z||0,
+      burn:burnedOfDay(di),def:deficitOfDay(di),tdee:tdeeOfDay(di),sk:skippedOfDay(di),
+      mealsDone:dayItems(di).filter(it=>S.week.days[it.pdi].meals[it.mi].done).length,
+      mealsTot:dayItems(di).length,extrasN:D.extras.filter(x=>x.st!=="skip").length,
+      recovered:D.rgpRecovered||0,water:D.water||0,
+      sgarri:extrasKcal(di),sleep:D.sleep,relax:D.relax,feel:D.feel,
+      note:D.note||"",workouts:D.workouts.map(w=>w.sport+" "+w.min+"' "+(w.int||"media"))}});
   days.forEach((d,di)=>d.completed=dayCompleted(di));
   const done=days.filter(d=>d.completed);
   const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
@@ -2410,6 +2467,7 @@ window.loadPlanCode=(fromOnboard)=>{
   const P=PLAN_CODES[code];
   if(!P)return alert("Codice non riconosciuto.\n\nSe non hai un codice, genera il piano con l'AI o scrivilo tu: sono le due strade normali.");
   if(!confirm("Carico «"+P.name+"»?\n\n"+P.desc+"\n\nSostituisce il piano attuale. Le settimane già archiviate restano intatte."))return;
+  snapSave("prima di: codice piano");
   S.customPlan=P.get();PLAN=S.customPlan;S.permMeals={};S.week=freshWeek();
   if(fromOnboard)S.onboard.done=true;
   save();show("piano");toast("Piano «"+P.name+"» caricato ✓");};
@@ -2540,7 +2598,8 @@ window.genPlanAI=async()=>{
     const tot=plan.map(d=>d.meals.reduce((a,m)=>a+m.o[0].k,0));
     if(!confirm("Piano pronto. Calorie per giorno:\n\n"+plan.map((d,i)=>d.day+": ~"+tot[i]+" kcal").join("\n")+
       "\n\nMedia: ~"+Math.round(tot.reduce((a,b)=>a+b,0)/7)+" kcal (target "+target+")\n\nOK = attiva questo piano"))return;
-    S.customPlan=plan;PLAN=plan;S.permMeals={};S.week=freshWeek();
+    snapSave("prima di: piano generato");
+  S.customPlan=plan;PLAN=plan;S.permMeals={};S.week=freshWeek();
     save();render("piano");show("piano");
     alert("Piano attivato ✓\n\nPuoi correggere ogni pasto dal Piano con ✏️, e le modifiche restano permanenti.\n\nRicorda: falla validare da un professionista.");
     if(box)box.textContent="";
@@ -2629,7 +2688,6 @@ function renderStorico(){const el=document.getElementById("pg-storico");
     <button class="btn ghost" onclick="printReport()">🖨️ Esporta Report PDF</button></div>`;
   }
   h+=extendedRecapHTML();
-  h+=periodsCardHTML(false);
   h+=exportCardHTML();
   // Periodi (Dieta 1, Libero 1, …) con metriche e valutazione AI
   h+=periodsCardHTML(false);
@@ -3334,6 +3392,7 @@ window.wizAddMeal=(di)=>{WIZ.plan[di].meals.push({n:"Pranzo",t:"~12:30",type:"no
 window.wizConfirm=()=>{
   if(!WIZ.plan||WIZ.plan.some(d=>!d.meals.length))return alert("Ogni giorno deve avere almeno un pasto.");
   if(!confirm("Confermo questo piano come base settimanale? La settimana in corso (spunte, extra, allenamenti) viene azzerata."+(WIZ.editOnly?"":" Consulta comunque un dietista prima di seguirlo.")))return;
+  snapSave("prima di: piano modificato");
   S.customPlan=WIZ.plan;PLAN=S.customPlan;S.permMeals={};
   if(!WIZ.editOnly){const d=WIZ.d,t=wizTargets();
     S.profile.name=d.nome||S.profile.name;S.profile.gender=d.gen||S.profile.gender;S.profile.dob=d.dob;
@@ -3672,6 +3731,16 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
   h+=`<div class="card"><h2>🧭 Percorso guidato</h2>
   <div class="hint">Rifai la configurazione passo per passo: profilo, obiettivo, come mangi, AI e backup. Non cancella nulla di quello che hai già registrato.</div>
   <button class="btn ghost" onclick="S.onboard.step=0;save();show('benvenuto')">Rifai il percorso guidato</button></div>`;
+  {const sn=snapshots();
+   h+=`<div class="card"><h2>🛟 Ripristino di emergenza</h2>
+   <div class="hint">Nutry conserva una <b>copia completa dei tuoi dati</b> a ogni avvio giornaliero e prima di ogni operazione che li sovrascrive. Se qualcosa va storto, torni indietro da qui. Tutto resta su questo dispositivo.</div>`;
+   if(!sn.length)h+=`<div class="hint">Nessuna copia disponibile per ora: la prima viene creata al prossimo avvio.</div>`;
+   else sn.forEach((x,i)=>{
+     const kb=Math.round(x.data.length/1024);
+     h+=`<div class="wline"><span>${new Date(x.at).toLocaleString("it-IT")}<br>
+       <small style="color:var(--grigio)">${esc(x.tag)} · v${esc(x.v||"?")} · ${kb} KB</small></span>
+       <button class="btn ghost small" onclick="restoreSnap(${i})">Ripristina</button></div>`;});
+   h+=`<div class="mtools" style="margin-top:8px"><button class="btn ghost small" onclick="snapSave('manuale');render('io');toast('Copia creata ✓')">📸 Crea una copia adesso</button></div></div>`;}
   h+=`<div class="card"><h2>🐞 Segnala un bug o un'idea</h2>
   <div class="hint">Hai trovato qualcosa che non funziona, o ti è venuta un'idea per migliorare Nutry? Scrivila qui: si apre la tua email già pronta per lo sviluppatore.</div>
   <label>Di cosa si tratta</label>
@@ -3687,9 +3756,6 @@ function renderIo(){const el=document.getElementById("pg-io");const p=S.profile;
     <input type="checkbox" id="bugCtx" checked style="width:20px;height:20px"> Allega i dati tecnici (versione, dispositivo, dimensioni schermo)</label>
   <div class="hint">Non vengono allegati i tuoi dati alimentari né il profilo: solo la versione dell'app e il tipo di dispositivo, per capire dove si è rotto.</div>
   <button class="btn" onclick="sendBug()">✉️ Invia allo sviluppatore</button></div>`;
-  h+=`<div class="card"><h2>📐 Regole e caratteristiche</h2>
-  <div class="hint">Fabbisogno, formula degli allenamenti, soglie di ribilanciamento e recupero, tipo di dieta, intolleranze e preferenze si impostano nella sezione dedicata.</div>
-  <button class="btn" onclick="show('regole')">Apri Regole</button></div>`;
   h+=`<div class="card"><h2>🧭 Il tuo piano</h2>
   <div class="mtools"><button class="btn small" onclick="wizStart(true)">Ri/comincia da zero</button>
   <button class="btn ghost small" onclick="wizEditCurrent()">✏️ Modifica il piano attuale</button></div>
@@ -4100,6 +4166,7 @@ document.addEventListener("click",e=>{
   });
   window.addEventListener("appinstalled",function(){const b=document.getElementById("install-banner");if(b)b.remove();deferredPrompt=null;try{localStorage.removeItem(KEY_DISMISS);}catch(e){}});
 })();
+snapSave("giornaliera"); // copia di sicurezza prima di qualsiasi cosa
 applyTheme();bumpStreak();renderHeader();tryDriveAuto();
 show(S.onboard.done?(S.profile.dob?"oggi":"io"):"benvenuto");
 // v5: archiviazione automatica delle settimane scadute (poi ridisegna)
